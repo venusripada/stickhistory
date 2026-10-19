@@ -80,8 +80,10 @@ export function makeSim(E) {
         else { e.vz = 0; if (e.state === 'air') { e.state = 'down'; e.timer = .45; } }
       }
     }
-    if (!e.duel) e.x = clamp(e.x, -80, E.W + 80);
-    else if (e.state !== 'enter' && e.state !== 'dead') e.x = clamp(e.x, 40, E.W - 40);
+    // once fully on screen, a living enemy stays on screen (knockback included)
+    if (!e.entered && e.x - e.r >= 0 && e.x + e.r <= E.W) e.entered = true;
+    if (e.entered && e.state !== 'dead') e.x = clamp(e.x, e.r + 4, E.W - e.r - 4);
+    else e.x = clamp(e.x, -80, E.W + 80);
     if (e.state === 'dead') { e.timer -= dt; e.alpha = clamp(e.timer / .7, 0, 1); e.rot += dt * 6 * e.f; return; }
     if (e.state === 'hurt') { e.timer -= dt; if (e.timer <= 0) e.state = 'move'; return; }
     if (e.state === 'air') return;
@@ -451,6 +453,11 @@ export function makeSim(E) {
       const a = G.heroes[i], c = G.heroes[j], d = c.x - a.x;
       if (G.boss || a.leaving || c.leaving) continue;
       if (Math.abs(d) < 32) { const p = (32 - Math.abs(d)) / 2 * (d >= 0 ? 1 : -1); a.x -= p; c.x += p; }
+    }
+    // heroes walk on from the left; after that they fight inside the frame until they leave
+    for (const h of G.heroes) {
+      if (!h.entered && h.x >= 16 && h.x <= E.W - 16) h.entered = true;
+      if (h.entered && !h.leaving) h.x = clamp(h.x, 16, E.W - 16);
     }
     for (const e of G.enemies) updEnemy(e, dt);
     G.enemies = G.enemies.filter((e) => !(e.state === 'dead' && e.timer <= 0));

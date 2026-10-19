@@ -27,6 +27,7 @@ if (EMBED) document.body.classList.add('embed');
 
 // ================= player =================
 const player = createPlayer({ canvas: $('#stage'), autoplay: true, loop: EMBED || params.has('loop') });
+if (params.has('debug') || navigator.webdriver) window.__cwPlayer = player; // tests read stage positions
 let current = null; // { link, c, s } for the loaded episode
 
 // ================= movie: player + overlays + timeline =================

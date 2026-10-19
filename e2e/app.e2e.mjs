@@ -97,6 +97,23 @@ try {
     await page.waitForTimeout(200);
     check('show everyone ends following', !(await page.textContent('#modeLabel')).includes('Following'));
 
+    // Everyone fighting stays inside the frame, and the camera doesn't zoom away from a brawl.
+    await page.evaluate(() => window.__cwPlayer && window.__cwPlayer.follow(null));
+    await pauseAndScrub(page, 330);
+    await page.click('#bPlay');
+    for (let k = 0; k < 3; k++) await page.click('#bSpeed');
+    const outside = [];
+    for (let k = 0; k < 60; k++) {
+      await page.waitForTimeout(150);
+      const st = await page.evaluate(() => window.__cwPlayer.stageSnapshot());
+      for (const e of st.enemies) if (e.entered && e.state !== 'dead' && (e.x - e.r < -2 || e.x + e.r > st.width + 2)) outside.push(`enemy at ${Math.round(e.x)} of ${Math.round(st.width)}`);
+      for (const h of st.heroes) if (h.entered && !h.leaving && (h.x < 8 || h.x > st.width - 8)) outside.push(`${h.name} at ${Math.round(h.x)} of ${Math.round(st.width)}`);
+      if (st.enemies.some((e) => !e.duel && e.state !== 'dead') && st.zoom > 1.02) outside.push(`zoomed to ${st.zoom.toFixed(2)} during a brawl`);
+    }
+    check('every fight stays inside the visible frame', outside.length === 0, outside.slice(0, 4).join('; ') || '60 samples at 8x');
+    await page.click('#bSpeed'); await page.click('#bSpeed');
+    if ((await page.textContent('#playLabel')) === 'Pause') await page.click('#bPlay');
+
     await page.click('#bFull');
     await page.waitForTimeout(400);
     const full = await page.evaluate(() => document.fullscreenElement && document.fullscreenElement.id);

@@ -212,7 +212,11 @@ export function createPlayer(opts) {
       D.comboPop = Math.max(0, D.comboPop - dt);
       if (!D.won && D.t > 14 && sim.alive(D.enemy)) sim.finishEnemy(D.enemy, D.hero);
       if (D.won && D.t > 2.1) { G.duel = null; G.banner = null; sim.camReset(); }
-      else if (!D.won) sim.camTarget((D.hero.x + D.enemy.x) / 2, E.W < 600 ? 1.1 : 1.15);
+      else if (!D.won) {
+        // zoom in on a duel only when nothing else is fighting, so no brawl is cut off at the edges
+        const brawl = G.boss || G.enemies.some((x) => !x.duel && sim.alive(x));
+        if (brawl) sim.camReset(); else sim.camTarget((D.hero.x + D.enemy.x) / 2, E.W < 600 ? 1.1 : 1.15);
+      }
     }
     if (!G.duel && !G.boss && !G.finisher && G.bigQ.length) { const ev = G.bigQ.shift(); if (ev.t > G.day - 10) startBoss(ev); }
     G.lineupT -= dt;
@@ -356,6 +360,14 @@ export function createPlayer(opts) {
     get day() { return G.day; },
     get following() { return followWho == null ? null : TLN.people[followWho].name; },
     getState: snapshot,
+    /** Where everyone is on stage, in world units (for tests and debugging). */
+    stageSnapshot() {
+      return {
+        width: E.W, zoom: CAM.z,
+        heroes: G.heroes.map((h) => ({ name: h.name, x: h.x, leaving: h.leaving, entered: !!h.entered })),
+        enemies: G.enemies.map((e) => ({ x: e.x, r: e.r, state: e.state, duel: !!e.duel, entered: !!e.entered })),
+      };
+    },
     get episode() { return EP; },
     on(type, fn) { if (!listeners.has(type)) listeners.set(type, new Set()); listeners.get(type).add(fn); return () => listeners.get(type).delete(fn); },
     /** The resolved color for a person, matching the canvas. */
