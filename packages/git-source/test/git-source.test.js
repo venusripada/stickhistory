@@ -2,7 +2,7 @@ import { describe, it, expect, afterAll } from 'vitest';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { checkGitUrl, cloneRepo, fetchRepo, headOf, readHistory, repoMeta, GitSourceError } from '../src/index.js';
+import { checkGitUrl, cloneRepo, fetchRepo, headOf, readHistory, repoMeta, sshAlternative, GitSourceError } from '../src/index.js';
 import { makeRepo, addCommits, tempDir, removeDir } from './make-repo.js';
 
 const made = [];
@@ -24,6 +24,16 @@ describe('checkGitUrl', () => {
     expect(() => checkGitUrl('ext::sh -c touch% /tmp/x')).toThrow(/https, ssh/);
     expect(() => checkGitUrl('/no/such/folder/anywhere')).toThrow(/doesn't exist/);
     expect(() => checkGitUrl('')).toThrow(/link/);
+  });
+});
+
+describe('sshAlternative', () => {
+  it('turns an https repo link into the ssh form that uses this machine\'s key', () => {
+    expect(sshAlternative('https://github.com/acme/rocket')).toBe('git@github.com:acme/rocket.git');
+    expect(sshAlternative('https://gitlab.com/team/sub/tool.git')).toBe('git@gitlab.com:team/sub/tool.git');
+    expect(sshAlternative('git@github.com:acme/rocket.git')).toBeNull();
+    expect(sshAlternative('file:///tmp/x')).toBeNull();
+    expect(sshAlternative('https://user:secret@github.com/acme/rocket')).toBeNull();
   });
 });
 

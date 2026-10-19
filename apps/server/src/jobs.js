@@ -7,7 +7,7 @@
 
 import { existsSync, rmSync, renameSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { cloneRepo, fetchRepo, headOf, readHistory, repoMeta } from '@commit-wars/git-source';
+import { cloneRepo, fetchRepo, headOf, readHistory, repoMeta, sshAlternative } from '@commit-wars/git-source';
 import { buildEpisode, validateEpisode } from '@commit-wars/story-engine';
 
 const now = () => new Date().toISOString();
@@ -66,13 +66,23 @@ export function createJobs({ library, emit }) {
         const partial = join(where().dir, 'repo.git.partial');
         if (existsSync(partial)) rmSync(partial, { recursive: true, force: true });
         let lastPublish = 0;
-        await cloneRepo(loc.story.url, partial, {
-          onProgress: (p) => {
-            if (p.percent == null || Date.now() - lastPublish < 150) return;
-            lastPublish = Date.now();
-            step('cloning', `${p.phase}: ${p.percent}%`, p.percent / 100 * 0.8);
-          },
-        });
+        const onProgress = (p) => {
+          if (p.percent == null || Date.now() - lastPublish < 150) return;
+          lastPublish = Date.now();
+          step('cloning', `${p.phase}: ${p.percent}%`, p.percent / 100 * 0.8);
+        };
+        try {
+          await cloneRepo(loc.story.url, partial, { onProgress });
+        } catch (e) {
+          // Private repos over https need a password git can't ask for here; this machine's ssh key may work instead.
+          const ssh = sshAlternative(loc.story.url);
+          if (!ssh || !['auth', 'not-found'].includes(e.code)) throw e;
+          step('cloning', `https needs a sign-in for this repo; trying ssh (${ssh}) with this machine's key…`, 0);
+          if (existsSync(partial)) rmSync(partial, { recursive: true, force: true });
+          try { await cloneRepo(ssh, partial, { onProgress }); }
+          catch (e2) { throw new Error(`${e.message} Trying ${ssh} with this machine's ssh key failed too: ${e2.message}`); }
+          loc = save({ url: ssh });
+        }
         renameSync(partial, join(where().dir, 'repo.git'));
         save({ fetchedAt: now() });
       }

@@ -44,6 +44,15 @@ export function checkGitUrl(input) {
   return { url: pathToFileURL(p).href, kind: 'local' };
 }
 
+/**
+ * The ssh form of an https repository link ("https://github.com/a/b" -> "git@github.com:a/b.git"),
+ * so private repos can use this machine's ssh key. Null when it isn't a plain https link.
+ */
+export function sshAlternative(url) {
+  const m = String(url).replace(/\/+$/, '').replace(/\.git$/i, '').match(/^https:\/\/([\w.-]+)\/([\w.-]+(?:\/[\w.-]+)+)$/i);
+  return m ? `git@${m[1]}:${m[2]}.git` : null;
+}
+
 /** Owner, name and a web link for a repository URL (null where it can't tell). */
 export function repoMeta(url) {
   const u = String(url).replace(/\.git$/, '').replace(/\/+$/, '');
