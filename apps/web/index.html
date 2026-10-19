@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Commit Wars</title>
+  <meta name="description" content="Paste a GitHub link and watch its history as a stick-figure fight: developers duel the bugs and issues they actually fixed.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='%231c2433' stroke-width='3' stroke-linecap='round'%3E%3Ccircle cx='16' cy='7' r='4.5'/%3E%3Cpath d='M16 12v10M16 22l-6 8M16 22l6 8M16 15l-8 2M16 15l9-5'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Gaegu:wght@400;700&family=Spline+Sans+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+<main class="wrap">
+  <header class="mast">
+    <p class="eyebrow">Commit Wars · git history replay</p>
+    <h1><span id="repoTitle">Commit Wars</span></h1>
+    <p class="lede" id="lede">Paste a GitHub link. The app reads the repository's history and turns it into a stick-figure fight: <b>every hero is someone who wrote the commits, and every enemy is a bug or issue they actually fixed.</b></p>
+  </header>
+
+  <section class="builder" aria-labelledby="buildH">
+    <h2 id="buildH" class="sr">Build a fight</h2>
+    <form id="buildForm" class="build-row" novalidate>
+      <label for="repoUrl" class="sr">GitHub repository link</label>
+      <input id="repoUrl" name="repoUrl" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="github.com/owner/repo" required>
+      <button class="btn primary" id="bBuild" type="submit">Build the fight</button>
+    </form>
+    <div class="build-opts">
+      <label class="opt" for="commitLimit">History
+        <select id="commitLimit">
+          <option value="1000">newest 1,000 commits</option>
+          <option value="2000" selected>newest 2,000 commits</option>
+          <option value="5000">newest 5,000 commits</option>
+          <option value="10000">newest 10,000 commits</option>
+          <option value="50000">everything (slow)</option>
+        </select>
+      </label>
+      <details class="token" id="tokenBox">
+        <summary>GitHub token <span id="tokenState" class="pill">not set</span></summary>
+        <div class="token-body">
+          <p>Without a token the app can make 60 requests an hour, which covers about 2,000 commits with no file counts or linked issues. With one, every enemy gets its pull request, its closed issue and its real size.</p>
+          <p>Create a <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">fine-grained token</a> with read-only access to public repositories (or to the private ones you want to replay). It stays in this browser and is only sent to api.github.com.</p>
+          <div class="build-row">
+            <label for="token" class="sr">GitHub token</label>
+            <input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…">
+            <button class="btn" id="bForget" type="button">Forget</button>
+          </div>
+          <label class="check" for="rememberToken"><input id="rememberToken" type="checkbox"> Remember on this device</label>
+        </div>
+      </details>
+    </div>
+    <p class="samples">Try one: <button class="link" type="button" data-sample="opencode">anomalyco/opencode</button> <span aria-hidden="true">·</span> <button class="link" type="button" data-repo="expressjs/express">expressjs/express</button> <span aria-hidden="true">·</span> <button class="link" type="button" data-repo="sindresorhus/ky">sindresorhus/ky</button></p>
+
+    <div class="progress-card" id="progressCard" hidden>
+      <div class="pc-head"><strong id="pcTitle">Building the fight</strong><button class="btn small" id="bCancel" type="button">Cancel</button></div>
+      <div class="pc-bar" aria-hidden="true"><i id="pcBar"></i></div>
+      <p class="pc-msg" id="pcMsg" role="status">Starting…</p>
+    </div>
+    <p class="error" id="errorBox" role="alert" hidden></p>
+  </section>
+
+  <section class="stage-wrap" id="stageWrap" aria-label="History movie">
+    <div class="modebar">
+      <p class="mode" id="modeLabel">Everyone</p>
+      <p class="cache-note" id="cacheNote" hidden></p>
+      <button class="btn small" id="bAll" type="button" hidden>Show everyone</button>
+    </div>
+    <div class="movie" id="movie">
+      <div class="screen" id="screen">
+        <canvas id="stage" role="img" aria-label="Stick-figure fight"></canvas>
+        <div class="ov-head">
+          <p class="ov-date"><time id="ovDate">&nbsp;</time></p>
+          <p class="ov-ch" id="ovChapter"></p>
+          <p class="ov-tot" id="ovTotals"></p>
+        </div>
+        <aside class="ov ov-people" id="ovPeople" aria-labelledby="peopleH">
+          <h3 id="peopleH">Active now <span>last 14 days</span></h3>
+          <ol id="peopleList"></ol>
+        </aside>
+        <aside class="ov ov-feed" id="ovFeed" aria-labelledby="feedH">
+          <h3 id="feedH">Commits <span id="feedNote">newest first</span></h3>
+          <ol id="feedList"></ol>
+        </aside>
+      </div>
+      <div class="bar">
+        <div class="scrub" id="scrubBox">
+          <canvas id="tlCanvas" aria-hidden="true"></canvas>
+          <input type="range" id="scrub" min="0" max="1" step="1" value="0" aria-label="Date in the history">
+        </div>
+        <div class="ctrl">
+          <button class="btn primary" id="bPlay" type="button"><svg viewBox="0 0 24 24" fill="currentColor" id="playIcon"><path d="M7 4l13 8-13 8z"/></svg><span id="playLabel">Play</span></button>
+          <button class="btn" id="bPrevCh" type="button" aria-label="Previous chapter" title="Previous chapter (Shift+←)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14M19 5l-9 7 9 7z"/></svg></button>
+          <button class="btn" id="bBack" type="button" aria-label="Back one week" title="Back one week (←)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 6l-6 6 6 6M19 6l-6 6 6 6"/></svg></button>
+          <button class="btn" id="bFwd" type="button" aria-label="Forward one week" title="Forward one week (→)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 6l6 6-6 6M5 6l6 6-6 6"/></svg></button>
+          <button class="btn" id="bNextCh" type="button" aria-label="Next chapter" title="Next chapter (Shift+→)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5v14M5 5l9 7-9 7z"/></svg></button>
+          <button class="btn speed" id="bSpeed" type="button" aria-label="Playback speed" title="Playback speed">1×</button>
+          <p class="caption" id="caption" aria-live="polite"></p>
+          <button class="btn toggle" id="bPeople" type="button" aria-pressed="true" title="People (P)">People</button>
+          <button class="btn toggle" id="bFeed" type="button" aria-pressed="true" title="Commit feed (L)">Feed</button>
+          <button class="btn" id="bFull" type="button" aria-label="Full screen" title="Full screen (F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" id="fullIcon"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+        </div>
+      </div>
+    </div>
+    <div class="share">
+      <button class="btn small" id="bShare" type="button">Copy link</button>
+      <button class="btn small" id="bEmbed" type="button">Copy embed code</button>
+      <button class="btn small" id="bDownload" type="button">Download episode</button>
+      <label class="btn small file-btn" for="episodeFile">Open episode file<input id="episodeFile" type="file" accept=".json,application/json"></label>
+      <span class="share-status" id="shareStatus" role="status"></span>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="chapH">
+    <div class="panel-head"><h2 id="chapH">Chapters</h2><span class="eyebrow">tap to jump</span></div>
+    <ol class="chapters" id="chapters"></ol>
+  </section>
+
+  <section class="panel" aria-labelledby="rosterH">
+    <div class="panel-head"><h2 id="rosterH">Follow a hero</h2><span class="eyebrow">the movie plays only their fixes and features</span></div>
+    <div class="roster" id="roster"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="legendH">
+    <h2 id="legendH">Who's who on the stage</h2>
+    <dl class="legend" id="legend"></dl>
+  </section>
+
+  <section class="own" aria-labelledby="ownH">
+    <h2 id="ownH">Replay a local or private repo</h2>
+    <p>Run this inside any git repository and open the file here. Nothing leaves your browser. The command line tool in this project does the same and also writes a shareable episode file.</p>
+    <div class="cmd">
+      <pre id="cmdText"></pre>
+      <button class="btn" id="bCopyCmd" type="button">Copy</button>
+    </div>
+    <div class="file-row">
+      <label for="logFile" class="sr">git log file</label>
+      <input type="file" id="logFile" accept=".txt,.log,text/plain">
+    </div>
+  </section>
+
+  <footer id="footer"></footer>
+</main>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
