@@ -9,7 +9,7 @@ const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct
 const fmtN = (n) => Number(n).toLocaleString('en-US');
 const fmtDate = (d) => { const [y, m, dd] = d.split('-'); return `${MON[+m - 1]} ${+dd}, ${y}`; };
 const fmtShort = (d) => { const [, m, dd] = d.split('-'); return `${MON[+m - 1]} ${+dd}`; };
-const plural = (n, w) => `${fmtN(n)} ${w}${n === 1 ? '' : 's'}`;
+const plural = (n, w) => `${fmtN(n)} ${w}${n === 1 ? '' : /(x|s|ch)$/.test(w) ? 'es' : 's'}`;
 const FEED_ROWS = 60;
 
 /**

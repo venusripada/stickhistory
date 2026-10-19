@@ -1,15 +1,17 @@
-// Commit Wars web app: paste a GitHub link, fetch its history in the
-// browser, build the story, and play it as a movie you can scrub. Routes:
-//   #/r/owner/repo            build (or load from cache) and play a repo
-//   #/r/owner/repo/tree/name  same, on another branch
-//   #/sample/opencode         the bundled sample
-//   ?embed=1                  stage only, autoplay, loops (for iframes)
+// Commit Wars web app: a library of collections and stories kept by the
+// local server (apps/server), each story played as a movie you can scrub.
+// Routes:
+//   #/                        the library
+//   #/s/collection/story      play a story from the library
+//   #/sample/opencode         the bundled sample (works without the server)
+//   ?embed=1                  movie only, autoplay, loops (for iframes)
 
 import { createPlayer, SPEEDS } from '@commit-wars/player';
-import { fetchHistory, parseRepoUrl, GitHubError, DEFAULT_LIMITS } from '@commit-wars/github-fetcher';
 import { buildEpisode, parseGitLog, GIT_LOG_COMMAND, dayOfIso, chapterAt } from '@commit-wars/story-engine';
-import { cacheGet, cacheSet, storage, dropLegacyCache } from './store.js';
+import { storage, dropLegacyCache } from './store.js';
 import { createMovieUI } from './movie-ui.js';
+import { api, subscribe, OFFLINE_MESSAGE } from './api.js';
+import { createLibraryUI, ago } from './library-ui.js';
 
 const $ = (s) => document.querySelector(s);
 const fmtN = (n) => Number(n).toLocaleString('en-US');
@@ -19,13 +21,6 @@ const fmtMonth = (d) => { const [y, m] = d.split('-'); return `${MON[+m - 1]} ${
 const range = (ch) => { const a = fmtMonth(ch.first), b = fmtMonth(ch.last); return a === b ? a : `${a} – ${b}`; };
 const fixTitle = (fx) => (fx.issues && fx.issues.length && fx.issues[0].title) || fx.t;
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const ago = (iso) => {
-  const s = Math.max(1, (Date.now() - new Date(iso).getTime()) / 1000);
-  if (s < 90) return 'just now';
-  if (s < 5400) return `${Math.round(s / 60)} minutes ago`;
-  if (s < 129600) return `${Math.round(s / 3600)} hours ago`;
-  return `${Math.round(s / 86400)} days ago`;
-};
 
 const params = new URLSearchParams(location.search);
 const EMBED = params.has('embed');
@@ -33,7 +28,7 @@ if (EMBED) document.body.classList.add('embed');
 
 // ================= player =================
 const player = createPlayer({ canvas: $('#stage'), autoplay: true, loop: EMBED || params.has('loop') });
-let current = null; // { key, label, link } for the loaded episode
+let current = null; // { link, c, s } for the loaded episode
 
 // ================= movie: player + overlays + timeline =================
 const movie = $('#movie');
@@ -178,125 +173,139 @@ function showEpisode(ep, meta) {
   $('#footer').textContent = ep.summary.note || '';
   const note = $('#cacheNote');
   note.textContent = '';
-  if (meta && meta.savedAt && meta.repo) {
-    note.append(`Built ${ago(meta.savedAt)} from ${fmtN(ep.summary.commits)} commits · `);
-    const b = document.createElement('button'); b.className = 'link'; b.type = 'button'; b.textContent = 'Rebuild';
-    b.addEventListener('click', () => openRepo(meta.repo, { force: true }));
+  if (meta && meta.story) {
+    note.append(`Updated ${ago(meta.story.fetchedAt)} · `);
+    const b = document.createElement('button'); b.className = 'link'; b.type = 'button'; b.textContent = 'Update now';
+    b.addEventListener('click', () => api.updateStory(meta.c, meta.s).then(() => showNotice('Checking for new commits…')).catch((e) => showError(e.message)));
     note.append(b);
     note.hidden = false;
   } else note.hidden = true;
-  if (meta && meta.repo) $('#repoUrl').value = `github.com/${meta.repo.owner}/${meta.repo.repo}${meta.repo.branch ? '/tree/' + meta.repo.branch : ''}`;
+  setCrumbs(meta && meta.crumbs);
+  showView('story');
 }
 
-// ================= building from GitHub =================
-let building = null;
-function showProgress(on, title) {
-  $('#progressCard').hidden = !on;
-  if (title) $('#pcTitle').textContent = title;
-  $('#bBuild').disabled = on;
+// ================= views and routing =================
+function showView(v) {
+  document.body.dataset.view = v;
+  document.querySelectorAll('[data-view-only]').forEach((el) => { el.hidden = el.dataset.viewOnly !== v; });
 }
-function setProgress(msg, frac) {
-  $('#pcMsg').textContent = msg;
-  const bar = $('#pcBar').parentElement;
-  if (frac == null) { bar.classList.add('indeterminate'); $('#pcBar').style.width = ''; }
-  else { bar.classList.remove('indeterminate'); $('#pcBar').style.width = Math.round(frac * 100) + '%'; }
+function setCrumbs(c) {
+  $('#crumbCol').textContent = c ? c.collection : '';
+  $('#crumbStory').textContent = c ? c.story : '';
 }
 function showError(msg) {
   const el = $('#errorBox');
   el.hidden = !msg; el.textContent = msg || '';
 }
-const repoKey = (r) => `${r.owner}/${r.repo}${r.branch ? '@' + r.branch : ''}`.toLowerCase();
-const repoHash = (r) => `#/r/${r.owner}/${r.repo}${r.branch ? '/tree/' + encodeURIComponent(r.branch) : ''}`;
+function showNotice(msg, action) {
+  const el = $('#storyNotice'); el.textContent = '';
+  if (!msg) { el.hidden = true; return; }
+  el.append(msg);
+  if (action) { const b = document.createElement('button'); b.className = 'link'; b.type = 'button'; b.textContent = action.label; b.addEventListener('click', action.run); el.append(' ', b); }
+  el.hidden = false;
+}
 
-async function openRepo(r, { force = false } = {}) {
-  showError('');
-  const key = repoKey(r);
-  const cached = !force && await cacheGet(key);
-  if (cached) {
-    try { showEpisode(cached.episode, { key, repo: r, savedAt: cached.savedAt, link: repoHash(r) }); return; } catch { /* older format or damaged: rebuild below */ }
+let serverUp = null;
+const lib = createLibraryUI({ root: $('#collections'), select: $('#addCollection'), onError: (m) => showError(m), onServer: (up) => setServer(up) });
+function setServer(up) {
+  serverUp = up;
+  $('#offline').hidden = up;
+  $('#offlineMsg').textContent = OFFLINE_MESSAGE.replace(/`/g, '');
+  document.querySelectorAll('#addForm input, #addForm button, #colForm input, #colForm button').forEach((el) => { el.disabled = !up; });
+}
+let waiting = null; // { c, s, id } story opened before its build finished
+subscribe({
+  onOpen: () => { if (serverUp === false) { setServer(true); lib.refresh(); } },
+  onDown: () => { if (serverUp) setServer(false); },
+  onLibrary: () => lib.refreshSoon(),
+  onJob: (job) => {
+    lib.onJob(job);
+    if (!current || !current.story || job.storyId !== current.story.id) return;
+    if (job.state === 'running' || job.state === 'queued') { if (!player.episode || waiting) showNotice(`${job.message || 'Working…'}`); return; }
+    if (job.state === 'error') { showNotice(`The last ${job.kind} failed: ${job.message}`); return; }
+    if (job.state === 'done' && waiting) { waiting = null; openStory(current.c, current.s); return; }
+    if (job.state === 'done' && job.changed) showNotice('New commits are in.', { label: 'Reload the story', run: () => openStory(current.c, current.s) });
+    else if (job.state === 'done') showNotice('');
+  },
+});
+
+async function openLibrary() {
+  showView('library');
+  setCrumbs(null);
+  document.title = 'Library · Commit Wars';
+  $('#repoTitle').textContent = 'Commit Wars';
+  await lib.refresh();
+}
+
+async function openStory(c, s) {
+  showError(''); showNotice('');
+  await lib.refresh();
+  const found = lib.find(c, s);
+  if (!found || !found.story) { showView('library'); showError(serverUp === false ? '' : `There's no story "${s}" in "${c}". It may have been renamed or moved.`); return; }
+  const { col, story } = found;
+  const meta = { link: `#/s/${encodeURIComponent(c)}/${encodeURIComponent(s)}`, c, s, story, crumbs: { collection: col.name, story: story.name } };
+  current = meta;
+  if (!story.hasEpisode) {
+    waiting = { c, s };
+    setCrumbs(meta.crumbs); showView('story');
+    showNotice(story.status === 'error' ? `This story didn't build: ${story.error}` : 'This story is still being built. It will start as soon as it is ready.');
+    return;
   }
-  if (building) building.abort();
-  const ac = new AbortController(); building = ac;
-  const token = getToken();
-  const maxCommits = Number($('#commitLimit').value) || (token ? DEFAULT_LIMITS.withToken : DEFAULT_LIMITS.withoutToken);
-  const limit = token ? maxCommits : Math.min(maxCommits, 3000);
-  showProgress(true, `Building ${r.owner}/${r.repo}`);
-  setProgress(token ? 'Connecting to GitHub with your token…' : 'Connecting to GitHub without a token (basic detail)…', null);
   try {
-    const history = await fetchHistory({
-      owner: r.owner, repo: r.repo, branch: r.branch, token, maxCommits: limit, signal: ac.signal,
-      onProgress: (p) => setProgress(p.message, p.total ? Math.min(0.95, p.fetched / p.total) : null),
-    });
-    setProgress('Writing the story…', 0.97);
-    await new Promise((res) => setTimeout(res, 30));
-    const episode = buildEpisode(history);
-    const savedAt = new Date().toISOString();
-    await cacheSet(key, { savedAt, episode });
-    showProgress(false);
-    showEpisode(episode, { key, repo: r, savedAt, link: repoHash(r) });
-    if (!EMBED) $('#stageWrap').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
-    if (history.source === 'github-rest' && !token) flash('Built without a token. Add one for linked issues and real enemy sizes.');
-  } catch (e) {
-    showProgress(false);
-    if (e && e.name === 'AbortError') return;
-    showError(e instanceof GitHubError || (e && e.message) ? e.message : 'Something went wrong while building the fight.');
-    if (e instanceof GitHubError && (e.code === 'rate-limit' || e.code === 'not-found') && !token) $('#tokenBox').open = true;
-  } finally {
-    if (building === ac) building = null;
-  }
+    showEpisode(await api.episode(c, s), meta);
+  } catch (e) { showError(e.message); return; }
+  // Opening a story that hasn't been fetched for a day checks for new commits in the background.
+  if (story.setUp && story.status === 'ready' && (!story.fetchedAt || Date.now() - Date.parse(story.fetchedAt) > 864e5)) api.updateStory(c, s).catch(() => {});
 }
 
 async function openSample(name) {
-  showError('');
+  showError(''); showNotice('');
   try {
     const res = await fetch(`./samples/${name}.json`);
     if (!res.ok) throw new Error(`The ${name} sample is missing from this build.`);
-    showEpisode(await res.json(), { key: 'sample:' + name, link: `#/sample/${name}` });
-    $('#repoUrl').value = '';
+    showEpisode(await res.json(), { link: `#/sample/${name}`, crumbs: { collection: 'Samples', story: name } });
   } catch (e) { showError(e.message); }
 }
 
 function route() {
-  const h = decodeURIComponent(location.hash || '');
-  let m = h.match(/^#\/r\/([\w.-]+)\/([\w.-]+)(?:\/tree\/(.+))?$/);
-  if (m) { openRepo({ owner: m[1], repo: m[2], branch: m[3] || null }); return; }
+  const h = location.hash || '';
+  let m = h.match(/^#\/s\/([^/]+)\/([^/]+)$/);
+  if (m) { openStory(decodeURIComponent(m[1]), decodeURIComponent(m[2])); return; }
   m = h.match(/^#\/sample\/([\w-]+)$/);
-  openSample(m ? m[1] : 'opencode');
+  if (m || EMBED && !h) { openSample(m ? m[1] : 'opencode'); return; }
+  m = h.match(/^#\/r\/([\w.-]+)\/([\w.-]+)/);
+  openLibrary().then(() => {
+    // old shared links: offer to add the repo to the library
+    if (m) { $('#repoUrl').value = `https://github.com/${m[1]}/${m[2]}`; showError(`Links to GitHub repos now go through the library. Pick a collection and press Add story to build ${m[1]}/${m[2]}.`); }
+  });
 }
 window.addEventListener('hashchange', route);
 
-$('#buildForm').addEventListener('submit', (e) => {
+$('#addCollection').addEventListener('change', () => { $('#newColWrap').hidden = $('#addCollection').value !== '__new'; });
+$('#addForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  let r;
-  try { r = parseRepoUrl($('#repoUrl').value); } catch (err) { showError(err.message); $('#repoUrl').focus(); return; }
-  const hash = repoHash(r);
-  if (location.hash === hash) openRepo(r, { force: true });
-  else location.hash = hash;
+  showError('');
+  const url = $('#repoUrl').value.trim();
+  if (!url) { showError('Paste a repository link, such as https://github.com/owner/repo, or a folder path on this machine.'); $('#repoUrl').focus(); return; }
+  try {
+    let c = $('#addCollection').value;
+    if (!c || c === '__new') {
+      const name = $('#newColName').value.trim() || (lib.collections.length ? '' : 'My stories');
+      if (!name) { showError('Give the new collection a name.'); $('#newColName').focus(); return; }
+      c = (await api.createCollection(name)).collection.slug;
+    }
+    await api.addStory(c, { url, name: $('#addName').value.trim(), branch: $('#addBranch').value.trim() });
+    $('#repoUrl').value = ''; $('#addName').value = ''; $('#addBranch').value = ''; $('#newColName').value = '';
+    await lib.refresh();
+    $('#addCollection').value = c; $('#newColWrap').hidden = true;
+  } catch (err) { showError(err.message); }
 });
-$('#bCancel').addEventListener('click', () => { if (building) building.abort(); });
-document.querySelectorAll('[data-repo]').forEach((b) => b.addEventListener('click', () => { $('#repoUrl').value = 'github.com/' + b.dataset.repo; $('#buildForm').requestSubmit(); }));
+$('#colForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try { await api.createCollection($('#colName').value); $('#colName').value = ''; showError(''); await lib.refresh(); }
+  catch (err) { showError(err.message); }
+});
 document.querySelectorAll('[data-sample]').forEach((b) => b.addEventListener('click', () => { location.hash = `#/sample/${b.dataset.sample}`; }));
-
-// ================= token & options =================
-function getToken() { return (storage.get('cw:token', 'local') || storage.get('cw:token', 'session') || '').trim(); }
-function refreshTokenUI() {
-  const t = getToken();
-  $('#token').value = t;
-  $('#rememberToken').checked = !!storage.get('cw:token', 'local');
-  const pill = $('#tokenState'); pill.textContent = t ? 'set' : 'not set'; pill.classList.toggle('on', !!t);
-}
-$('#token').addEventListener('input', () => {
-  const v = $('#token').value.trim();
-  const where = $('#rememberToken').checked ? 'local' : 'session';
-  storage.del('cw:token', 'local'); storage.del('cw:token', 'session');
-  if (v) storage.set('cw:token', v, where);
-  const pill = $('#tokenState'); pill.textContent = v ? 'set' : 'not set'; pill.classList.toggle('on', !!v);
-});
-$('#rememberToken').addEventListener('change', () => $('#token').dispatchEvent(new Event('input')));
-$('#bForget').addEventListener('click', () => { storage.del('cw:token', 'local'); storage.del('cw:token', 'session'); refreshTokenUI(); });
-const savedLimit = storage.get('cw:limit', 'local');
-if (savedLimit && [...$('#commitLimit').options].some((o) => o.value === savedLimit)) $('#commitLimit').value = savedLimit;
-$('#commitLimit').addEventListener('change', () => storage.set('cw:limit', $('#commitLimit').value, 'local'));
 
 // ================= controls =================
 const chapterDays = () => { const ep = player.episode; return ep ? ep.chapters.map((ch) => dayOfIso(ep.timeline, ch.first)) : []; };
@@ -387,7 +396,7 @@ function readFile(input, onText) {
 }
 $('#episodeFile').addEventListener('change', (e) => readFile(e.target, (text) => {
   let ep; try { ep = JSON.parse(text); } catch { throw new Error('That file is not valid JSON.'); }
-  showError(''); showEpisode(ep, { key: null, link: null });
+  showError(''); showEpisode(ep, { link: null, crumbs: { collection: 'Files', story: ep.summary ? ep.summary.repo : 'episode' } });
   history.replaceState(null, '', baseUrl() + location.search);
   flash('Episode loaded from file.');
 }));
@@ -396,7 +405,7 @@ $('#bCopyCmd').addEventListener('click', () => copy($('#cmdText').textContent, '
 $('#logFile').addEventListener('change', (e) => readFile(e.target, (text, file) => {
   const base = file.name.replace(/\.(txt|log)$/i, '');
   const ep = buildEpisode(parseGitLog(text, { repoName: /^history$/i.test(base) ? 'your repo' : base }));
-  showError(''); showEpisode(ep, { key: null, link: null });
+  showError(''); showEpisode(ep, { link: null, crumbs: { collection: 'Files', story: file.name } });
   history.replaceState(null, '', baseUrl() + location.search);
   $('#stageWrap').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
 }));
@@ -404,5 +413,4 @@ $('#logFile').addEventListener('change', (e) => readFile(e.target, (text, file) 
 // ================= boot =================
 dropLegacyCache();
 buildLegend();
-refreshTokenUI();
 route();

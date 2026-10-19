@@ -16,51 +16,39 @@
   <header class="mast">
     <p class="eyebrow">Commit Wars · git history replay</p>
     <h1><span id="repoTitle">Commit Wars</span></h1>
-    <p class="lede" id="lede">Paste a GitHub link. The app reads the repository's history and turns it into a stick-figure fight: <b>every hero is someone who wrote the commits, and every enemy is a bug or issue they actually fixed.</b></p>
+    <p class="lede" id="lede">Keep a library of repositories and watch each one's history as a stick-figure fight: <b>every hero is someone who wrote the commits, and every enemy is a bug or issue they actually fixed.</b></p>
   </header>
+  <p class="error" id="errorBox" role="alert" hidden></p>
 
-  <section class="builder" aria-labelledby="buildH">
-    <h2 id="buildH" class="sr">Build a fight</h2>
-    <form id="buildForm" class="build-row" novalidate>
-      <label for="repoUrl" class="sr">GitHub repository link</label>
-      <input id="repoUrl" name="repoUrl" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="github.com/owner/repo" required>
-      <button class="btn primary" id="bBuild" type="submit">Build the fight</button>
+  <section class="library" id="libraryView" aria-labelledby="libH" data-view-only="library">
+    <div class="panel-head"><h2 id="libH">Library</h2><span class="eyebrow">collections of stories, kept in the library folder on this machine</span></div>
+    <form id="addForm" class="build-row" novalidate>
+      <label for="repoUrl" class="sr">Repository link or folder</label>
+      <input id="repoUrl" name="repoUrl" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://github.com/owner/repo, git@host:owner/repo.git or a folder" required>
+      <button class="btn primary" id="bAdd" type="submit">Add story</button>
     </form>
     <div class="build-opts">
-      <label class="opt" for="commitLimit">History
-        <select id="commitLimit">
-          <option value="1000">newest 1,000 commits</option>
-          <option value="2000" selected>newest 2,000 commits</option>
-          <option value="5000">newest 5,000 commits</option>
-          <option value="10000">newest 10,000 commits</option>
-          <option value="50000">everything (slow)</option>
-        </select>
-      </label>
-      <details class="token" id="tokenBox">
-        <summary>GitHub token <span id="tokenState" class="pill">not set</span></summary>
-        <div class="token-body">
-          <p>Without a token the app can make 60 requests an hour, which covers about 2,000 commits with no file counts or linked issues. With one, every enemy gets its pull request, its closed issue and its real size.</p>
-          <p>Create a <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">fine-grained token</a> with read-only access to public repositories (or to the private ones you want to replay). It stays in this browser and is only sent to api.github.com.</p>
-          <div class="build-row">
-            <label for="token" class="sr">GitHub token</label>
-            <input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…">
-            <button class="btn" id="bForget" type="button">Forget</button>
-          </div>
-          <label class="check" for="rememberToken"><input id="rememberToken" type="checkbox"> Remember on this device</label>
-        </div>
-      </details>
+      <label class="opt" for="addCollection">to <select id="addCollection"></select></label>
+      <label class="opt" for="newColName" id="newColWrap" hidden>new collection <input id="newColName" type="text" placeholder="Collection name"></label>
+      <label class="opt" for="addName">named <input id="addName" type="text" placeholder="from the link"></label>
+      <label class="opt" for="addBranch">branch <input id="addBranch" type="text" placeholder="default"></label>
     </div>
-    <p class="samples">Try one: <button class="link" type="button" data-sample="opencode">anomalyco/opencode</button> <span aria-hidden="true">·</span> <button class="link" type="button" data-repo="expressjs/express">expressjs/express</button> <span aria-hidden="true">·</span> <button class="link" type="button" data-repo="sindresorhus/ky">sindresorhus/ky</button></p>
-
-    <div class="progress-card" id="progressCard" hidden>
-      <div class="pc-head"><strong id="pcTitle">Building the fight</strong><button class="btn small" id="bCancel" type="button">Cancel</button></div>
-      <div class="pc-bar" aria-hidden="true"><i id="pcBar"></i></div>
-      <p class="pc-msg" id="pcMsg" role="status">Starting…</p>
+    <p class="hint">The server clones the history only (no file contents) with this machine's git, so private repos work when <code>git clone</code> does. Nothing is sent anywhere else.</p>
+    <div class="offline" id="offline" hidden>
+      <p id="offlineMsg"></p>
+      <p><button class="btn small" type="button" data-sample="opencode">Play the bundled opencode sample</button></p>
     </div>
-    <p class="error" id="errorBox" role="alert" hidden></p>
+    <div id="collections" class="collections"></div>
+    <form id="colForm" class="build-row col-form" novalidate>
+      <label for="colName" class="sr">New collection name</label>
+      <input id="colName" type="text" placeholder="New collection name">
+      <button class="btn" type="submit">New collection</button>
+    </form>
   </section>
 
-  <section class="stage-wrap" id="stageWrap" aria-label="History movie">
+  <section class="stage-wrap" id="stageWrap" aria-label="History movie" data-view-only="story">
+    <nav class="crumbs" aria-label="Where you are"><a href="#/" id="crumbHome">Library</a><span aria-hidden="true">/</span><span id="crumbCol"></span><span aria-hidden="true">/</span><strong id="crumbStory"></strong></nav>
+    <p class="notice" id="storyNotice" role="status" hidden></p>
     <div class="modebar">
       <p class="mode" id="modeLabel">Everyone</p>
       <p class="cache-note" id="cacheNote" hidden></p>
@@ -111,24 +99,24 @@
     </div>
   </section>
 
-  <section class="panel" aria-labelledby="chapH">
+  <section class="panel" aria-labelledby="chapH" data-view-only="story">
     <div class="panel-head"><h2 id="chapH">Chapters</h2><span class="eyebrow">tap to jump</span></div>
     <ol class="chapters" id="chapters"></ol>
   </section>
 
-  <section class="panel" aria-labelledby="rosterH">
+  <section class="panel" aria-labelledby="rosterH" data-view-only="story">
     <div class="panel-head"><h2 id="rosterH">Follow a hero</h2><span class="eyebrow">the movie plays only their fixes and features</span></div>
     <div class="roster" id="roster"></div>
   </section>
 
-  <section class="panel" aria-labelledby="legendH">
+  <section class="panel" aria-labelledby="legendH" data-view-only="story">
     <h2 id="legendH">Who's who on the stage</h2>
     <dl class="legend" id="legend"></dl>
   </section>
 
-  <section class="own" aria-labelledby="ownH">
-    <h2 id="ownH">Replay a local or private repo</h2>
-    <p>Run this inside any git repository and open the file here. Nothing leaves your browser. The command line tool in this project does the same and also writes a shareable episode file.</p>
+  <section class="own" aria-labelledby="ownH" data-view-only="library">
+    <h2 id="ownH">Replay a git log file</h2>
+    <p>Without the library server, run this inside any git repository and open the file here; it plays without being saved. To keep a repo in the library, add its folder path above instead.</p>
     <div class="cmd">
       <pre id="cmdText"></pre>
       <button class="btn" id="bCopyCmd" type="button">Copy</button>

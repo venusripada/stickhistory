@@ -1,9 +1,10 @@
-// End-to-end check of the built web app with GitHub mocked out.
+// End-to-end check of the built web app with the real library server.
 // Run: npm run build && npm run e2e
-// Serves apps/web/dist, drives Chromium with Playwright, and answers
-// api.github.com requests from e2e/fixtures/opencode-graphql.json
-// (real opencode commits in GraphQL shape). e2e/fixtures/ky-git-log.txt is
-// real sindresorhus/ky `git log` output in GIT_LOG_COMMAND's format.
+// Starts apps/server against a temporary library folder (serving apps/web/dist
+// on the same port) and drives Chromium with Playwright. Stories are made from
+// repos generated here with made-up people and messages; nothing reads the
+// real library or the network. e2e/fixtures/ky-git-log.txt is real
+// sindresorhus/ky `git log` output in GIT_LOG_COMMAND's format (public).
 
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
@@ -11,52 +12,35 @@ import { join, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { buildEpisode, parseGitLog, activeAt, isoOfDay, commitRange, TL } from '../packages/story-engine/src/index.js';
+import { startServer } from '../apps/server/src/server.js';
+import { makeRepo, addCommits, tempDir, removeDir } from '../packages/git-source/test/make-repo.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const DIST = join(here, '..', 'apps', 'web', 'dist');
 const OUT = join(here, 'output');
 mkdirSync(OUT, { recursive: true });
 if (!existsSync(join(DIST, 'index.html'))) { console.error('Build the app first: npm run build'); process.exit(1); }
-const fixture = JSON.parse(readFileSync(join(here, 'fixtures', 'opencode-graphql.json'), 'utf8'));
 const sample = JSON.parse(readFileSync(join(DIST, 'samples', 'opencode.json'), 'utf8'));
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const fmtDate = (d) => { const [y, m, dd] = d.split('-'); return `${MON[+m - 1]} ${+dd}, ${y}`; };
 
+// The real server, with a throwaway library.
+const libRoot = tempDir('cw-e2e-lib-');
+const app = await startServer({ port: 0, library: libRoot, staticDir: DIST, quiet: true });
+const BASE = app.url + '/';
+
+// A plain static server: the same app with no library server behind it.
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml' };
-const server = createServer((req, res) => {
+const offline = createServer((req, res) => {
   const p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
   const file = join(DIST, p === '/' ? 'index.html' : p);
   if (!file.startsWith(DIST) || !existsSync(file)) { res.writeHead(404); res.end(); return; }
   res.writeHead(200, { 'content-type': TYPES[extname(file)] || 'application/octet-stream' });
   res.end(readFileSync(file));
 });
-await new Promise((r) => server.listen(0, r));
-const BASE = `http://127.0.0.1:${server.address().port}/`;
-
-let apiCalls = 0;
-async function mockGitHub(page, { rateLimitRest = false } = {}) {
-  await page.route('https://api.github.com/**', async (route) => {
-    apiCalls++;
-    const req = route.request();
-    const url = new URL(req.url());
-    const json = (body, status = 200, headers = {}) => route.fulfill({ status, contentType: 'application/json', headers: { 'access-control-allow-origin': '*', 'access-control-expose-headers': 'ETag, Link, Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset', ...headers }, body: JSON.stringify(body) });
-    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST' } });
-    if (url.pathname === '/graphql') {
-      const { query, variables } = JSON.parse(req.postData());
-      if (query.includes('defaultBranchRef')) return json({ data: { repository: { nameWithOwner: 'anomalyco/opencode', url: 'https://github.com/anomalyco/opencode', isPrivate: false, defaultBranchRef: { name: 'dev' } }, rateLimit: { remaining: 4999 } } });
-      if (query.includes('history(')) {
-        const start = variables.after ? Number(variables.after) : 0;
-        const nodes = fixture.nodes.slice(start, start + variables.first);
-        const end = start + nodes.length;
-        await new Promise((r) => setTimeout(r, 60));
-        return json({ data: { repository: { ref: { target: { history: { totalCount: fixture.nodes.length, pageInfo: { hasNextPage: end < fixture.nodes.length, endCursor: String(end) }, nodes } } } } }, rateLimit: { cost: 1, remaining: 4990 } });
-      }
-      if (query.includes('refs(')) return json({ data: { repository: { refs: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] } } } });
-    }
-    if (rateLimitRest) return json({ message: 'API rate limit exceeded' }, 403, { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': String(Math.floor(Date.now() / 1000) + 1500) });
-    return json({ message: 'Not Found' }, 404);
-  });
-}
+await new Promise((r) => offline.listen(0, '127.0.0.1', r));
+const OFFLINE_BASE = `http://127.0.0.1:${offline.address().port}/`;
+const repos = [];
 
 const results = [];
 const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ' — ' + detail : ''}`); };
@@ -71,12 +55,6 @@ async function pauseAndScrub(page, day) {
   await page.evaluate((d) => { const s = document.querySelector('#scrub'); s.value = String(d); s.dispatchEvent(new Event('input', { bubbles: true })); s.dispatchEvent(new Event('change', { bubbles: true })); }, day);
   await page.waitForTimeout(250);
 }
-const readEpisodeFromIDB = (page, key) => page.evaluate((k) => new Promise((res) => {
-  const r = indexedDB.open('commit-wars', 1);
-  r.onsuccess = () => { const g = r.result.transaction('episodes').objectStore('episodes').get(k); g.onsuccess = () => res(g.result ? g.result.episode : null); g.onerror = () => res(null); };
-  r.onerror = () => res(null);
-}), key);
-
 const browser = await chromium.launch();
 try {
   // 1. Home page plays the bundled sample as a movie, and the overlays match the engine.
@@ -84,8 +62,7 @@ try {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await ctx.newPage();
     const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
-    await mockGitHub(page);
-    await page.goto(BASE);
+    await page.goto(BASE + '#/sample/opencode');
     await page.waitForFunction(() => document.querySelector('#ovDate').textContent.trim().length > 4);
     const d0 = await page.textContent('#ovDate');
     await page.waitForTimeout(3500);
@@ -132,67 +109,85 @@ try {
     check('no page errors on the sample', errors.length === 0, errors.join(' | '));
     await ctx.close();
   }
-  // 2. Paste a link with a token: fetch, build, play, cache, reload from cache.
+  // 2. The library: collections and stories managed from the page, built by the server.
   {
-    const ctx = await browser.newContext({ viewport: { width: 1200, height: 900 } });
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await ctx.newPage();
     const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
-    await mockGitHub(page);
+    const repo = makeRepo({ n: 40, tagAt: { 20: 'v1.0.0' } }); repos.push(repo);
     await page.goto(BASE);
-    await page.click('#tokenBox summary');
-    await page.fill('#token', 'github_pat_test');
-    await page.fill('#repoUrl', 'https://github.com/anomalyco/opencode');
-    apiCalls = 0;
-    await page.click('#bBuild');
-    await page.waitForSelector('#progressCard:not([hidden])', { timeout: 5000 });
-    await page.screenshot({ path: join(OUT, '4-progress.png'), clip: { x: 0, y: 0, width: 1200, height: 700 } });
-    await page.waitForSelector('#progressCard[hidden]', { state: 'attached', timeout: 30000 });
-    const hash = await page.evaluate(() => location.hash);
-    check('link builds an episode and routes to it', hash === '#/r/anomalyco/opencode', hash);
-    check('GitHub API was called', apiCalls >= 13, `${apiCalls} calls`);
-    const err = await page.locator('#errorBox').isVisible();
-    check('no error shown after building', !err, err ? await page.textContent('#errorBox') : '');
-    const ep = await readEpisodeFromIDB(page, 'anomalyco/opencode');
-    check('episode cached with linked issues', !!ep && ep.summary.commits === 1200 && ep.summary.issuesLinked > 0, ep ? `${ep.summary.commits} commits, ${ep.summary.issuesLinked} issues` : 'not cached');
-    if (ep) {
-      const i = ep.timeline.commits.findIndex((c) => c[TL.issues] && c[TL.kind] === 'fix');
-      const c = ep.timeline.commits[i];
-      await pauseAndScrub(page, c[TL.day]);
-      const href = await page.getAttribute(`#feedList a[href$="/issues/${c[TL.issues][0]}"]`, 'href').catch(() => null);
-      check('feed links fixes to the issue they closed', href === `https://github.com/anomalyco/opencode/issues/${c[TL.issues][0]}`, href || 'no link');
-      await page.locator('#movie').screenshot({ path: join(OUT, '5-built.png') });
-    }
-    apiCalls = 0;
-    await page.reload();
+    await page.waitForSelector('#libraryView:not([hidden])');
+    check('home is the library', (await page.textContent('#collections')).includes('library is empty') && await page.locator('#stageWrap').isHidden());
+
+    await page.fill('#colName', 'Side projects');
+    await page.click('#colForm button');
+    await page.waitForSelector('[data-collection="side-projects"]');
+    check('a new collection is a folder', existsSync(join(libRoot, 'side-projects', 'collection.json')));
+
+    await page.fill('#repoUrl', repo);
+    await page.selectOption('#addCollection', 'side-projects');
+    await page.fill('#addName', 'Demo');
+    await page.click('#bAdd');
+    await page.waitForSelector('[data-collection="side-projects"] .story-card a.btn.primary', { timeout: 30000 });
+    const card = await page.textContent('[data-collection="side-projects"] .story-card');
+    check('adding a link clones and builds a story', card.includes('Demo') && card.includes('40 commits'), card.replace(/\s+/g, ' ').slice(0, 90));
+    check('the story folder holds the clone and the built story', ['story.json', 'history.json', 'episode.json', 'repo.git/HEAD'].every((f) => existsSync(join(libRoot, 'side-projects', 'demo', f))));
+    await page.screenshot({ path: join(OUT, '4-library.png'), fullPage: true });
+
+    await page.click('[data-collection="side-projects"] .story-card a.btn.primary');
+    await page.waitForSelector('#stageWrap:not([hidden])');
     await page.waitForFunction(() => document.querySelector('#ovDate').textContent.trim().length > 4);
+    check('a story plays from the library', (await page.textContent('#crumbCol')) === 'Side projects' && (await page.textContent('#crumbStory')) === 'Demo' && (await page.evaluate(() => location.hash)) === '#/s/side-projects/demo');
+    await page.locator('#movie').screenshot({ path: join(OUT, '5-library-story.png') });
+
+    addCommits(repo, { n: 3, from: 40 });
+    await page.click('#cacheNote button');
+    await page.waitForFunction(() => /New commits are in/.test(document.querySelector('#storyNotice').textContent), null, { timeout: 30000 });
+    await page.click('#storyNotice button');
     await page.waitForTimeout(500);
-    check('reload plays from cache without calling GitHub', apiCalls === 0 && (await page.isVisible('#cacheNote')), `${apiCalls} calls; note: ${await page.textContent('#cacheNote')}`);
-    check('no page errors while building and playing', errors.length === 0, errors.join(' | '));
-    await page.screenshot({ path: join(OUT, '6-full-desktop.png'), fullPage: true });
+    const ep = await page.evaluate(() => fetch('/api/collections/side-projects/stories/demo/episode').then((r) => r.json()));
+    await pauseAndScrub(page, ep.timeline.days - 1);
+    const totals = await page.textContent('#ovTotals');
+    check('Update fetches new commits and the story reloads with them', ep.summary.commits === 43 && totals.startsWith('43 commits'), totals);
+
+    await page.click('#crumbHome');
+    await page.waitForSelector('#libraryView:not([hidden]) .story-card');
+    await page.click('.story-card button:has-text("Rename")');
+    await page.fill('.story-card .inline input', 'Demo Renamed');
+    await page.click('.story-card .inline button:has-text("Save")');
+    await page.waitForSelector('.story-card h4:has-text("Demo Renamed")');
+    check('renaming a story renames its folder', existsSync(join(libRoot, 'side-projects', 'demo-renamed', 'episode.json')) && !existsSync(join(libRoot, 'side-projects', 'demo')));
+
+    await page.fill('#colName', 'Archive');
+    await page.click('#colForm button');
+    await page.waitForSelector('[data-collection="archive"]');
+    await page.selectOption('[data-collection="side-projects"] .story-card select.move', 'archive');
+    await page.waitForSelector('[data-collection="archive"] .story-card');
+    check('moving a story moves its folder', existsSync(join(libRoot, 'archive', 'demo-renamed', 'repo.git')) && !existsSync(join(libRoot, 'side-projects', 'demo-renamed')));
+
+    await page.click('[data-collection="archive"] .story-card button:has-text("Delete")');
+    check('deleting asks first', (await page.textContent('[data-collection="archive"] .confirm')).includes('removed from the library folder'));
+    await page.click('[data-collection="archive"] .confirm .danger');
+    await page.waitForFunction(() => !document.querySelector('[data-collection="archive"] .story-card'));
+    check('deleting removes the story folder', !existsSync(join(libRoot, 'archive', 'demo-renamed')));
+
+    await page.fill('#repoUrl', '--upload-pack=touch /tmp/x');
+    await page.click('#bAdd');
+    await page.waitForSelector('#errorBox:not([hidden])');
+    check('odd links are refused with a reason', /isn't a repository link/.test(await page.textContent('#errorBox')), await page.textContent('#errorBox'));
+    check('no page errors in the library', errors.length === 0, errors.join(' | '));
     await ctx.close();
   }
-  // 3. Without a token and rate limited: readable error, token box opens.
+  // 3. Without the library server, the page says how to start it and still plays the sample.
   {
     const ctx = await browser.newContext({ viewport: { width: 1000, height: 800 } });
     const page = await ctx.newPage();
-    await mockGitHub(page, { rateLimitRest: true });
-    await page.goto(BASE);
-    await page.fill('#repoUrl', 'expressjs/express');
-    await page.click('#bBuild');
-    await page.waitForSelector('#errorBox:not([hidden])', { timeout: 10000 });
-    const msg = await page.textContent('#errorBox');
-    check('rate limit error explains reset time and token', /resets in about 25 minutes\. Add a token/.test(msg), msg);
-    check('token box opens on rate limit', await page.evaluate(() => document.querySelector('#tokenBox').open));
-    await ctx.close();
-  }
-  // 4. Bad input.
-  {
-    const ctx = await browser.newContext();
-    const page = await ctx.newPage();
-    await page.goto(BASE);
-    await page.fill('#repoUrl', 'https://gitlab.com/a/b');
-    await page.click('#bBuild');
-    check('non-GitHub links are explained', /Only github.com/.test(await page.textContent('#errorBox')));
+    await page.goto(OFFLINE_BASE);
+    await page.waitForSelector('#offline:not([hidden])', { timeout: 10000 });
+    check('a missing server is explained', /npm run dev/.test(await page.textContent('#offline')));
+    await page.click('#offline [data-sample]');
+    await page.waitForFunction(() => document.querySelector('#ovDate').textContent.trim().length > 4);
+    check('the bundled sample still plays without the server', (await page.textContent('#crumbStory')) === 'opencode');
     await ctx.close();
   }
   // 5. Embed mode and phone width.
@@ -201,17 +196,20 @@ try {
     const page = await ctx.newPage();
     await page.goto(BASE + '?embed=1#/sample/opencode');
     await page.waitForTimeout(2000);
-    const visible = await page.evaluate(() => ({ builder: getComputedStyle(document.querySelector('.builder')).display, chapters: getComputedStyle(document.querySelector('#chapters').closest('section')).display }));
+    const visible = await page.evaluate(() => ({ library: getComputedStyle(document.querySelector('.library')).display, chapters: getComputedStyle(document.querySelector('#chapters').closest('section')).display }));
     const ink = await canvasInk(page);
-    check('embed shows only the movie', visible.builder === 'none' && visible.chapters === 'none' && (await page.isVisible('#ovDate')) && ink > 20, `ink ${ink}`);
+    check('embed shows only the movie', visible.library === 'none' && visible.chapters === 'none' && (await page.isVisible('#ovDate')) && ink > 20, `ink ${ink}`);
     await page.screenshot({ path: join(OUT, '7-embed.png') });
     await ctx.close();
     const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
     const p2 = await phone.newPage();
     await p2.goto(BASE);
+    await p2.waitForTimeout(800);
+    const swLib = await p2.evaluate(() => document.documentElement.scrollWidth);
+    await p2.goto(BASE + '#/sample/opencode');
     await p2.waitForTimeout(2500);
     const sw = await p2.evaluate(() => document.documentElement.scrollWidth);
-    check('no sideways scroll at phone width', sw <= 390, `scrollWidth ${sw}`);
+    check('no sideways scroll at phone width', sw <= 390 && swLib <= 390, `library ${swLib}, story ${sw}`);
     check('overlays start closed on a phone', await p2.locator('#ovFeed').isHidden() && await p2.locator('#ovPeople').isHidden());
     await p2.screenshot({ path: join(OUT, '8-phone.png'), fullPage: true });
     await p2.click('#bFeed');
@@ -259,7 +257,10 @@ try {
   }
 } finally {
   await browser.close();
-  server.close();
+  await app.close();
+  offline.close();
+  removeDir(libRoot);
+  repos.forEach(removeDir);
 }
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} checks passed. Screenshots in e2e/output/.`);

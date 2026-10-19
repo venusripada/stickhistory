@@ -9,7 +9,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@commit-wars/github-fetcher": "*",
     "@commit-wars/player": "*",
     "@commit-wars/story-engine": "*"
   },

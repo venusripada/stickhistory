@@ -9,12 +9,14 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "npm run dev -w @commit-wars/web",
+    "dev": "node scripts/dev.mjs",
     "build": "npm run build -w @commit-wars/web",
     "preview": "npm run preview -w @commit-wars/web",
     "test": "vitest run",
     "cli": "node apps/cli/bin/commit-wars.js",
-    "e2e": "node e2e/app.e2e.mjs"
+    "e2e": "node e2e/app.e2e.mjs",
+    "server": "node apps/server/src/server.js",
+    "serve": "npm run build && node apps/server/src/server.js --static apps/web/dist --port 5173"
   },
   "devDependencies": {
     "vitest": "3.2.4",
