@@ -45,6 +45,8 @@ Phases 0 and 1 are done: separate packages, a browser-only app that builds a fig
 
 ## Phase 2: backend
 
+- [x] **Local library server (owner's request, 2026-10-19).** Built before tasks 7–12 as a single-user, local version: `apps/server` keeps collections and stories as folders (`library/<collection>/<story>/`), clones with `git` (blobless), builds episodes in a one-at-a-time job queue, and serves the web app's library UI. Spec: `docs/superpowers/specs/2026-10-19-library-design.md`. This settles the hosting question for now (this machine), private repos (work through the machine's git credentials) and the in-browser GitHub fetch (removed from the web app). Tasks 7–12 below remain for a hosted, multi-user version.
+
 - [ ] **7. Service skeleton.** Create `apps/server`: a Node HTTP API (Fastify or Hono) with Postgres for repos, episodes and jobs, and Redis + BullMQ for the job queue. Reuse `@commit-wars/github-fetcher` and `@commit-wars/story-engine` unchanged. Add a Dockerfile, health check and local `docker compose up`.
 - [ ] **8. GitHub App auth.** Register a GitHub App with read access to contents, metadata, pull requests and issues. Server-side installation tokens give higher rate limits; with the owner's install, private repos work too. Never send tokens to the browser.
 - [ ] **9. Build jobs.** `POST /api/repos/:owner/:repo/build` queues a job. `GET /api/jobs/:id` (or server-sent events) streams progress messages in the same shape as `onProgress`. `GET /api/episodes/:owner/:repo` returns the latest episode with an ETag.

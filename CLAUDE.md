@@ -19,10 +19,11 @@ The owner's rule: the repositories in the library are not processed by any AI.
 
 ```
 npm install                 # npm workspaces; Node 18.17+
-npm run dev                 # web app on http://localhost:5173
-npm test                    # vitest: story-engine, github-fetcher, player director (64 tests)
+npm run dev                 # library server (127.0.0.1:5174) + web app (http://127.0.0.1:5173, proxies /api)
+npm run serve               # build, then app + API on one port
+npm test                    # vitest: story-engine, github-fetcher, git-source, player director, server (82 tests)
 npm run build               # apps/web/dist
-npm run e2e                 # needs a build first; Chromium + mocked GitHub, 30 checks, screenshots in e2e/output/
+npm run e2e                 # needs a build first; Chromium + the real server on a temp library, 34 checks, screenshots in e2e/output/
 npm run cli -- --help       # commit-wars github|git|rebuild
 ```
 
@@ -31,8 +32,8 @@ Before calling any task done: `npm test`, `npm run build`, `npm run e2e` all pas
 ## Layout and the data flow
 
 ```
-GitHub link ──fetchHistory()──▶ History ──buildEpisode()──▶ Episode ──createPlayer()──▶ canvas + events
-             packages/github-fetcher     packages/story-engine          packages/player       apps/web builds the page UI from the events
+repo link ──apps/server job──▶ clone ──readHistory()──▶ History ──buildEpisode()──▶ Episode ──createPlayer()──▶ canvas + events
+            (library folders)          packages/git-source          packages/story-engine        packages/player     apps/web draws the rest
 ```
 
 - `packages/story-engine`: pure functions, no DOM, no network, no randomness. Same history + options → same episode (except `generatedAt`). Runs in the browser and in Node.
@@ -44,7 +45,9 @@ GitHub link ──fetchHistory()──▶ History ──buildEpisode()──▶ 
   - `validate.js`: `validateEpisode()`.
   - `types.js`: JSDoc for History and Fix.
   - `episode.schema.json`: the Episode contract.
-- `packages/github-fetcher`: `fetchHistory()` uses GraphQL with a token (commits + PR + labels + closing issues + file counts + tags) and REST without one (60 requests an hour, no files or issues). `http.js` holds retries, rate limits and readable errors. Errors are `GitHubError` with a `code` (`not-found`, `rate-limit`, `bad-token`, `network`, …).
+- `packages/git-source` (Node only): `checkGitUrl`, `cloneRepo` (bare, blobless), `fetchRepo`, `headOf`, `readHistory`. Git runs with an allowed-protocol list and no prompts. `test/make-repo.js` builds throwaway repos for tests.
+- `apps/server`: the local library server (127.0.0.1 only, no new dependencies). `library.js` is the folder tree (folders are the database), `jobs.js` runs one build/update/reread at a time, `api.js` the routes and local-only checks, `server.js` the entry point and server-sent events.
+- `packages/github-fetcher` (now used only by the CLI's `github` command): `fetchHistory()` uses GraphQL with a token (commits + PR + labels + closing issues + file counts + tags) and REST without one (60 requests an hour, no files or issues). `http.js` holds retries, rate limits and readable errors. Errors are `GitHubError` with a `code` (`not-found`, `rate-limit`, `bad-token`, `network`, …).
 - `packages/player`: a movie player for an episode. Every calendar day gets the same screen time, and `seek(day)` jumps anywhere. It touches no DOM except its canvas.
   - `player.js`: the clock, seeking, follow mode and the API. It emits `time`, `state`, `spotlight` and `loaded`.
   - `director.js`: turns an episode into one sorted list of stage events (fix, duel, feat, revert, boss, release, chapter). Pure and unit-tested.
@@ -53,9 +56,9 @@ GitHub link ──fetchHistory()──▶ History ──buildEpisode()──▶ 
   - `poses.js`, `theme.js`, `util.js`.
   - Shared state lives in one object `E` (`E.G` holds the stage). Colors come from CSS custom properties (`DEFAULT_THEME` lists them).
   - The stage is decoration. Every number on screen comes from the engine's `timeline.js` helpers, so a seek never has to replay anything.
-- `apps/web`: Vite, plain JS, no framework. `main.js` holds routing (`#/r/owner/repo`, `#/sample/name`, `?embed=1`), the build flow, token handling, controls and keys. `movie-ui.js` draws the overlays (date, people, feed) and the timeline. `store.js` wraps localStorage for settings and IndexedDB for the episode cache.
+- `apps/web`: Vite, plain JS, no framework. `main.js` holds routing (`#/` library, `#/s/collection/story`, `#/sample/name`, `?embed=1`), controls and keys. `library-ui.js` draws collections and story cards, `api.js` talks to the server (including live job events), `movie-ui.js` draws the overlays (date, people, feed) and the timeline. `store.js` keeps small settings in localStorage.
 - `apps/cli`: `bin/commit-wars.js`.
-- `e2e/app.e2e.mjs`: serves `apps/web/dist`, mocks `api.github.com` from `e2e/fixtures/opencode-graphql.json` (1,200 real opencode commits in GraphQL shape; its issue titles are invented test fixtures), and opens `e2e/fixtures/ky-git-log.txt` (real ky `git log` in `GIT_LOG_FORMAT`) as a local history.
+- `e2e/app.e2e.mjs`: starts the real server on a temporary library (serving `apps/web/dist`), drives the library flow with generated repos, checks the no-server fallback, and opens `e2e/fixtures/ky-git-log.txt` (real public ky `git log` in `GIT_LOG_FORMAT`) as a local history.
 
 ## Contracts: change them on purpose
 
@@ -64,7 +67,7 @@ GitHub link ──fetchHistory()──▶ History ──buildEpisode()──▶ 
   - Keep the player able to read the current version, or bump `schemaVersion` and handle the old one (version 1 is refused with a message to rebuild).
   - Regenerate the sample (command below).
 - A Fix record is `{ sha, pr, issues[], t, s, sc, d, files, area, type }`. `files` and `pr` can be null (REST mode), and an issue's `title` is null when it came from a `git log` reference. The player must never print "null" or "0 files" for unknown values.
-- Enemy types are exactly `gremlin | beetle | crawler | wraith | moth | bomb`. Adding one means touching `classify.js`, the schema, `validate.js`, the player's `ETYPES` and its `drawEnemy`, and the legend in `apps/web/src/main.js`.
+- Enemy types are exactly `gremlin | beetle | crawler | wraith | moth | bomb`. Adding one means touching `classify.js`, the schema, `validate.js`, the player's `ETYPES` (`util.js`) and its `drawEnemy` (`draw.js`), and the legend in `apps/web/src/main.js`.
 
 ## Conventions
 
@@ -83,11 +86,8 @@ GitHub link ──fetchHistory()──▶ History ──buildEpisode()──▶ 
 
 ## Known gaps and gotchas
 
-- **The live GitHub fetch has never run against the real API.** It was built and tested only against mocked responses. The owner prefers testing against local clones for now; the live check is deferred (`docs/ROADMAP.md`, task 1b). Specific worries:
-  - GraphQL cost and timeouts from `associatedPullRequests` + `closingIssuesReferences` + `changedFilesIfAvailable` on 100-commit pages.
-  - Browsers only see rate-limit headers that GitHub exposes over CORS.
-  - `changedFilesIfAvailable` returning null on big commits.
-- Big histories are slow in the browser (roughly 1–3 s per 100 commits). The default limit is 2,000.
+- **The GitHub API fetcher (CLI `github` command only) has never run against the real API.** The web app no longer uses it; stories come from `git` through the library server. The live check is deferred (`docs/ROADMAP.md`, task 1b).
+- **Never `rm -rf` a variable built from command output.** On 2026-10-19 that deleted this repo's `.git` (git's error text "…: .git" was captured and word-split). Delete temp folders only by a checked, quoted path, and prefer cleanup inside tests (`removeDir`). Push branches you care about.
 - The player's fight is stateful (physics, random moves). When changing it:
   - Change one thing at a time.
   - Keep the event names and payloads stable.
