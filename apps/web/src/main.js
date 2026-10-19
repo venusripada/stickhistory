@@ -207,9 +207,11 @@ function showNotice(msg, action) {
 }
 
 let serverUp = null;
-const lib = createLibraryUI({ root: $('#collections'), select: $('#addCollection'), onError: (m) => showError(m), onServer: (up) => setServer(up) });
-function setServer(up) {
+const lib = createLibraryUI({ root: $('#collections'), select: $('#addCollection'), onError: (m) => showError(m), onServer: (up, canManage) => setServer(up, canManage) });
+function setServer(up, canManage = true) {
   serverUp = up;
+  // watching from another machine: the page shows the library but no way to change it
+  document.body.classList.toggle('watch-only', up && !canManage);
   $('#offline').hidden = up;
   $('#offlineMsg').textContent = OFFLINE_MESSAGE.replace(/`/g, '');
   document.querySelectorAll('#addForm input, #addForm button, #colForm input, #colForm button').forEach((el) => { el.disabled = !up; });

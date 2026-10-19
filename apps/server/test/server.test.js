@@ -39,7 +39,7 @@ describe('library server', () => {
   it('starts with an empty library', async () => {
     const r = await call('GET', '/api/library');
     expect(r.status).toBe(200);
-    expect(r.json).toEqual({ collections: [] });
+    expect(r.json).toEqual({ collections: [], canManage: true });
   });
 
   it('creates a collection as a folder', async () => {
@@ -157,5 +157,47 @@ describe('library server', () => {
     expect(text).toMatch(/event: job/);
     expect(text).toMatch(/"phase":"(cloning|building)"/);
     expect(text).toMatch(/"state":"done"/);
+  });
+});
+
+describe('LAN mode: other machines can watch, only this machine can change', async () => {
+  const { networkInterfaces } = await import('node:os');
+  const lanIp = Object.values(networkInterfaces()).flat().find((a) => a && a.family === 'IPv4' && !a.internal)?.address;
+  let lan, lanRoot;
+  beforeAll(async () => {
+    lanRoot = tempDir('cw-lan-'); dirs.push(lanRoot);
+    lan = await startServer({ port: 0, library: lanRoot, lan: true, quiet: true });
+  });
+  afterAll(async () => { await lan.close(); });
+  const at = (host) => `http://${host}:${lan.port}`;
+
+  it('lets this machine manage', async () => {
+    const r = await fetch(at('127.0.0.1') + '/api/collections', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Shared' }) });
+    expect(r.status).toBe(201);
+    const lib = await (await fetch(at('127.0.0.1') + '/api/library')).json();
+    expect(lib.canManage).toBe(true);
+  });
+  it.skipIf(!lanIp)('lets another machine watch but not change anything', async () => {
+    const lib = await (await fetch(at(lanIp) + '/api/library')).json();
+    expect(lib.canManage).toBe(false);
+    expect(lib.collections.map((c) => c.slug)).toEqual(['shared']);
+    const add = await fetch(at(lanIp) + '/api/collections', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Nope' }) });
+    expect(add.status).toBe(403);
+    expect((await add.json()).error).toMatch(/only on the machine running the library/);
+    const del = await fetch(at(lanIp) + '/api/collections/shared', { method: 'DELETE' });
+    expect(del.status).toBe(403);
+  });
+  it.skipIf(!lanIp)('refuses names it does not know, so other websites cannot read the library', async () => {
+    // fetch() won't send a custom Host header, so use http.request like a rebinding page would arrive
+    const { request } = await import('node:http');
+    const status = await new Promise((res, rej) => {
+      const q = request({ host: lanIp, port: lan.port, path: '/api/library', headers: { host: `evil.example:${lan.port}` } }, (r) => { r.resume(); res(r.statusCode); });
+      q.on('error', rej); q.end();
+    });
+    expect(status).toBe(403);
+  });
+  it('stays local-only without --lan', async () => {
+    expect((await call('GET', '/api/library')).json.canManage).toBe(true);
+    if (lanIp) await expect(fetch(`http://${lanIp}:${srv.port}/api/library`)).rejects.toThrow();
   });
 });

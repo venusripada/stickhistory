@@ -286,6 +286,11 @@ a.btn { text-decoration: none; }
 .crumbs strong { color: var(--ink); }
 .notice { padding: 8px 12px; border-left: 4px solid var(--orb); background: var(--paper-2); border-radius: 0 8px 8px 0; font-size: 0.9rem; }
 
+/* watch-only (another machine on the network): no way to change the library */
+.watch-note { display: none; }
+body.watch-only .watch-note { display: block; }
+body.watch-only #addForm, body.watch-only .library > .build-opts, body.watch-only .library > .hint, body.watch-only #colForm, body.watch-only #cacheNote button { display: none; }
+
 /* ---------- embed mode: only the movie ---------- */
 body.embed .wrap { padding-block: 0; max-width: none; gap: 0; padding-left: 0; padding-right: 0; }
 body.embed .wrap > :not(.stage-wrap) { display: none !important; }

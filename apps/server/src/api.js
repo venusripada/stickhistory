@@ -1,14 +1,25 @@
 // HTTP API for the library. JSON in and out, errors as { error } in plain
 // sentences. Writes must be JSON (so browsers preflight them, and we never
-// answer preflights) and must come from a page on this machine.
+// answer preflights) and must come from a page on this machine. In LAN mode,
+// other machines can read (watch) but every change still has to come from
+// this machine, judged by the connection's own address.
 
 import { readFileSync, existsSync } from 'node:fs';
+import { hostname } from 'node:os';
 import { join } from 'node:path';
 import { checkGitUrl, repoMeta, GitSourceError } from '@commit-wars/git-source';
 import { LibraryError } from './library.js';
 
 const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
 const MAX_BODY = 64 * 1024;
+const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
+const isLocalClient = (req) => LOOPBACK.has(req.socket.remoteAddress);
+/** LAN mode answers IP addresses and this machine's own name, never other names (that would let any website read the library). */
+function lanHostOk(host) {
+  const h = String(host || '').toLowerCase().replace(/:\d+$/, '');
+  const me = hostname().toLowerCase();
+  return LOCAL.test(host || '') || /^\d{1,3}(\.\d{1,3}){3}$/.test(h) || /^\[[0-9a-f:]+\]$/.test(h) || h === me || h === `${me}.local` || h === `${me}.lan`;
+}
 
 class HttpError extends Error { constructor(status, message) { super(message); this.status = status; } }
 
@@ -32,12 +43,12 @@ function readBody(req) {
 }
 
 /**
- * @param {{ library: any, jobs: any, events: { add: (res: any) => void } }} o
+ * @param {{ library: any, jobs: any, events: { add: (res: any) => void }, lan?: boolean }} o
  * @returns {(req: any, res: any) => Promise<boolean>}  true when the request was an API request
  */
-export function createApi({ library, jobs, events }) {
+export function createApi({ library, jobs, events, lan = false }) {
   const routes = [
-    ['GET', /^\/api\/library$/, () => ({ collections: library.list() })],
+    ['GET', /^\/api\/library$/, (m, body, q, req) => ({ collections: library.list(), canManage: isLocalClient(req) })],
     ['GET', /^\/api\/jobs$/, () => ({ jobs: jobs.list() })],
     ['POST', /^\/api\/collections$/, (m, body) => { events.changed(); return [201, { collection: library.createCollection(body) }]; }],
     ['PATCH', /^\/api\/collections\/([^/]+)$/, ([c], body) => { const collection = library.updateCollection(c, body); events.changed(); return { collection }; }],
@@ -84,9 +95,12 @@ export function createApi({ library, jobs, events }) {
     const url = new URL(req.url, 'http://x');
     if (!url.pathname.startsWith('/api/')) return false;
     try {
-      if (!LOCAL.test(req.headers.host || '')) throw new HttpError(403, 'This server only answers requests made on this machine.');
-      const origin = req.headers.origin;
-      if (origin) { let h = ''; try { h = new URL(origin).host; } catch { /* bad origin */ } if (!LOCAL.test(h)) throw new HttpError(403, 'This server only accepts changes from pages on this machine.'); }
+      if (!(lan ? lanHostOk(req.headers.host) : LOCAL.test(req.headers.host || ''))) throw new HttpError(403, 'This server only answers requests made on this machine or by its address on the local network.');
+      if (req.method !== 'GET') {
+        if (!isLocalClient(req)) throw new HttpError(403, 'Stories can be added and changed only on the machine running the library. From other machines the library is watch-only.');
+        const origin = req.headers.origin;
+        if (origin) { let h = ''; try { h = new URL(origin).host; } catch { /* bad origin */ } if (!LOCAL.test(h)) throw new HttpError(403, 'This server only accepts changes from pages on this machine.'); }
+      }
       const path = url.pathname.split('/').map((p) => { try { return decodeURIComponent(p); } catch { return p; } });
       const route = url.pathname;
 
@@ -111,7 +125,7 @@ export function createApi({ library, jobs, events }) {
         if (method !== req.method || !re.test(route)) continue;
         const params = re.exec(route).slice(1).map((p) => decodeURIComponent(p));
         const body = req.method === 'GET' || req.method === 'DELETE' ? {} : await readBody(req);
-        const out = await fn(params, body, url.searchParams);
+        const out = await fn(params, body, url.searchParams, req);
         if (Array.isArray(out)) send(res, out[0], out[1]); else send(res, 200, out);
         return true;
       }

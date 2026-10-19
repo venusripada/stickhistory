@@ -90,8 +90,20 @@ library/                         ($COMMIT_WARS_LIBRARY overrides; git-ignored)
 ```
 npm run dev          # server on 127.0.0.1:5174 + Vite on 127.0.0.1:5173 (proxies /api)
 npm run serve        # build, then serve the app and the API together on 127.0.0.1:5173
-npm run server       # the library server alone (--port, --library, --static)
+npm run serve:lan    # the same, also reachable from other machines on your network (watch-only for them)
+npm run server       # the library server alone (--port, --library, --static, --lan)
 ```
+
+**Sharing on your network.** `npm run serve:lan` prints the addresses other machines can open. They can browse the library and play stories; adding, updating, renaming, moving and deleting stay on this machine (the server checks each connection's real address, and answers only IP addresses and this machine's own name). Anyone who can open the page sees every story, including commit messages and author names from private repos. On Windows with WSL, also allow the port through the firewall (see below).
+
+On Windows 11 with WSL in mirrored networking mode, open an **administrator** PowerShell once:
+
+```powershell
+New-NetFirewallRule -DisplayName "Commit Wars" -Direction Inbound -Protocol TCP -LocalPort 5173 -Action Allow -Profile Private
+New-NetFirewallHyperVRule -Name CommitWars -DisplayName "Commit Wars (WSL)" -Direction Inbound -VMCreatorId '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}' -Protocol TCP -LocalPorts 5173
+```
+
+The network must be set to Private in Windows settings for the first rule to apply.
 
 ## Command line
 

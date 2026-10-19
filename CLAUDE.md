@@ -21,6 +21,7 @@ The owner's rule: the repositories in the library are not processed by any AI.
 npm install                 # npm workspaces; Node 18.17+
 npm run dev                 # library server (127.0.0.1:5174) + web app (http://127.0.0.1:5173, proxies /api)
 npm run serve               # build, then app + API on one port
+npm run serve:lan           # same, also on the LAN: other machines watch, only this machine changes
 npm test                    # vitest: story-engine, github-fetcher, git-source, player director, server (82 tests)
 npm run build               # apps/web/dist
 npm run e2e                 # needs a build first; Chromium + the real server on a temp library, 34 checks, screenshots in e2e/output/

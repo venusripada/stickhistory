@@ -10,6 +10,7 @@ import { createServer } from 'node:http';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { networkInterfaces } from 'node:os';
 import { chromium } from 'playwright';
 import { buildEpisode, parseGitLog, activeAt, isoOfDay, commitRange, TL } from '../packages/story-engine/src/index.js';
 import { startServer } from '../apps/server/src/server.js';
@@ -207,6 +208,44 @@ try {
     check('odd links are refused with a reason', /isn't a repository link/.test(await page.textContent('#errorBox')), await page.textContent('#errorBox'));
     check('no page errors in the library', errors.length === 0, errors.join(' | '));
     await ctx.close();
+  }
+  // 2b. LAN mode: another machine can watch the library and play stories, but not change anything.
+  {
+    const lanIp = Object.values(networkInterfaces()).flat().find((a) => a && a.family === 'IPv4' && !a.internal)?.address;
+    if (!lanIp) console.log('SKIP  LAN checks: this machine has no network address');
+    else {
+      const lanRoot = tempDir('cw-e2e-lan-');
+      const lanApp = await startServer({ port: 0, library: lanRoot, staticDir: DIST, quiet: true, lan: true });
+      const local = (p, body) => fetch(`http://127.0.0.1:${lanApp.port}/api${p}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      const repo = makeRepo({ n: 14 }); repos.push(repo);
+      await local('/collections', { name: 'Shared' });
+      await local('/collections/shared/stories', { url: repo, name: 'Team Repo' });
+      for (let k = 0; k < 100; k++) {
+        const lib = await (await fetch(`http://127.0.0.1:${lanApp.port}/api/library`)).json();
+        if (lib.collections[0].stories[0].status === 'ready') break;
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      const ctx = await browser.newContext({ viewport: { width: 1100, height: 800 } });
+      const page = await ctx.newPage();
+      await page.goto(`http://${lanIp}:${lanApp.port}/`);
+      await page.waitForSelector('[data-collection="shared"] .story-card');
+      const ui = await page.evaluate(() => ({
+        note: getComputedStyle(document.querySelector('.watch-note')).display !== 'none',
+        add: getComputedStyle(document.querySelector('#addForm')).display,
+        buttons: [...document.querySelectorAll('.story-card button, .col-head button')].length,
+        play: !!document.querySelector('.story-card a.btn.primary'),
+      }));
+      check('another machine on the network sees a watch-only library', ui.note && ui.add === 'none' && ui.buttons === 0 && ui.play, JSON.stringify(ui));
+      await page.click('.story-card a.btn.primary');
+      await page.waitForFunction(() => document.querySelector('#ovDate').textContent.trim().length > 4);
+      check('and can play its stories', (await page.textContent('#crumbStory')) === 'Team Repo');
+      const blocked = await page.evaluate(() => fetch('/api/collections', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"name":"x"}' }).then((r) => r.status));
+      check('but cannot change the library', blocked === 403, `POST answered ${blocked}`);
+      await page.screenshot({ path: join(OUT, '12-lan-watch-only.png') });
+      await ctx.close();
+      await lanApp.close();
+      removeDir(lanRoot);
+    }
   }
   // 3. Without the library server, the page says how to start it and still plays the sample.
   {

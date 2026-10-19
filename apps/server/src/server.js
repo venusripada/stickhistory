@@ -1,15 +1,18 @@
 #!/usr/bin/env node
 // Commit Wars library server. Local only: it listens on 127.0.0.1.
 //
-//   node apps/server/src/server.js [--port 5174] [--library ./library] [--static apps/web/dist]
+//   node apps/server/src/server.js [--port 5174] [--library ./library] [--static apps/web/dist] [--lan]
 //
 // The library folder defaults to $COMMIT_WARS_LIBRARY or ./library. With
 // --static it also serves the built web app, so one port runs everything.
+// --lan listens on the local network too: other machines can watch, and
+// only this machine can add, update or delete stories.
 
 import { createServer } from 'node:http';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve, join, extname, normalize, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { networkInterfaces } from 'node:os';
 import { createLibrary } from './library.js';
 import { createJobs } from './jobs.js';
 import { createApi } from './api.js';
@@ -45,7 +48,7 @@ function serveStatic(dir, req, res) {
 }
 
 /**
- * @param {{ port?: number, library?: string, staticDir?: string|null, quiet?: boolean }} [o]
+ * @param {{ port?: number, library?: string, staticDir?: string|null, quiet?: boolean, lan?: boolean }} [o]
  * @returns {Promise<{ url: string, port: number, close: () => Promise<void> }>}
  */
 export async function startServer(o = {}) {
@@ -53,16 +56,22 @@ export async function startServer(o = {}) {
   const library = createLibrary(root);
   const events = createEvents();
   const jobs = createJobs({ library, emit: (type, data) => events.send(type, data) });
-  const api = createApi({ library, jobs, events });
+  const api = createApi({ library, jobs, events, lan: !!o.lan });
   const server = createServer(async (req, res) => {
     if (await api(req, res)) return;
     if (o.staticDir) serveStatic(o.staticDir, req, res);
     else { res.writeHead(404, { 'content-type': 'text/plain' }); res.end('This is the Commit Wars library API. Open the web app instead.'); }
   });
-  await new Promise((r, j) => { server.once('error', j); server.listen(o.port ?? 5174, '127.0.0.1', r); });
+  await new Promise((r, j) => { server.once('error', j); server.listen(o.port ?? 5174, o.lan ? '0.0.0.0' : '127.0.0.1', r); });
   const port = server.address().port;
   jobs.recover();
-  if (!o.quiet) console.log(`Commit Wars library server on http://127.0.0.1:${port}${o.staticDir ? '' : '/api'}\nLibrary folder: ${root}`);
+  if (!o.quiet) {
+    console.log(`Commit Wars library server on http://127.0.0.1:${port}${o.staticDir ? '' : '/api'}\nLibrary folder: ${root}`);
+    if (o.lan) {
+      const ips = Object.values(networkInterfaces()).flat().filter((a) => a && a.family === 'IPv4' && !a.internal).map((a) => a.address);
+      console.log(`Watch-only on the local network: ${ips.map((ip) => `http://${ip}:${port}`).join('  ') || '(no network address found)'}`);
+    }
+  }
   return {
     url: `http://127.0.0.1:${port}`, port,
     close: () => new Promise((r) => { events.close(); server.close(() => r()); server.closeAllConnections?.(); }),
@@ -72,7 +81,7 @@ export async function startServer(o = {}) {
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const args = process.argv.slice(2);
   const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
-  startServer({ port: opt('--port') ? Number(opt('--port')) : 5174, library: opt('--library'), staticDir: opt('--static') ? resolve(opt('--static')) : null })
+  startServer({ port: opt('--port') ? Number(opt('--port')) : 5174, library: opt('--library'), staticDir: opt('--static') ? resolve(opt('--static')) : null, lan: args.includes('--lan') })
     .catch((e) => {
       console.error(e.code === 'EADDRINUSE' ? `Port ${opt('--port') || 5174} is already in use. Stop the other server or pass --port.` : e.message);
       process.exit(1);

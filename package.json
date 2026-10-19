@@ -16,7 +16,8 @@
     "cli": "node apps/cli/bin/commit-wars.js",
     "e2e": "node e2e/app.e2e.mjs",
     "server": "node apps/server/src/server.js",
-    "serve": "npm run build && node apps/server/src/server.js --static apps/web/dist --port 5173"
+    "serve": "npm run build && node apps/server/src/server.js --static apps/web/dist --port 5173",
+    "serve:lan": "npm run build && node apps/server/src/server.js --static apps/web/dist --port 5173 --lan"
   },
   "devDependencies": {
     "vitest": "3.2.4",

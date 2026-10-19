@@ -31,6 +31,7 @@ const STATUS = { queued: 'Waiting to build', cloning: 'Cloning', building: 'Buil
  */
 export function createLibraryUI({ root, select, onError, onServer }) {
   let collections = [];
+  let canManage = true; // false when watching from another machine on the network
   const jobs = new Map(); // storyId -> latest job
   const open = new Map(); // panel open per card/collection key: 'rename' | 'delete'
   const fail = (e) => onError(e && e.message ? e.message : String(e));
@@ -76,6 +77,7 @@ export function createLibraryUI({ root, select, onError, onServer }) {
       const others = collections.filter((c) => c.slug !== col.slug);
       const move = others.length ? el('select', { class: 'move', 'aria-label': `Move ${st.name} to another collection`, onchange: (e) => { const to = e.target.value; if (to) act(() => api.editStory(col.slug, st.slug, { collection: to })); } },
         el('option', { value: '', text: 'Move to…' }), others.map((c) => el('option', { value: c.slug, text: c.name }))) : null;
+      if (!canManage) { if (playable) card.append(el('div', { class: 'actions' }, el('a', { class: 'btn small primary', href, text: 'Play' }))); return card; }
       card.append(el('div', { class: 'actions' },
         playable ? el('a', { class: 'btn small primary', href, text: 'Play' }) : null,
         st.setUp ? el('button', { class: 'btn small', type: 'button', text: 'Update', onclick: () => act(() => api.updateStory(col.slug, st.slug)) }) : null,
@@ -98,7 +100,7 @@ export function createLibraryUI({ root, select, onError, onServer }) {
       setTimeout(() => input.focus(), 0);
     } else {
       head.append(el('h3', { text: col.name }), el('span', { class: 'eyebrow', text: `${col.stories.length} ${col.stories.length === 1 ? 'story' : 'stories'}` }));
-      head.append(el('div', { class: 'actions' },
+      if (canManage) head.append(el('div', { class: 'actions' },
         col.stories.length ? el('button', { class: 'btn small', type: 'button', text: 'Update all', onclick: () => act(() => api.updateCollectionStories(col.slug)) }) : null,
         el('button', { class: 'btn small', type: 'button', text: 'Rename', onclick: () => { open.set(key, 'rename'); render(); } }),
         el('button', { class: 'btn small', type: 'button', text: 'Delete', onclick: () => { open.set(key, 'delete'); render(); } })));
@@ -128,7 +130,7 @@ export function createLibraryUI({ root, select, onError, onServer }) {
 
   let pending = null;
   async function refresh() {
-    try { collections = (await api.library()).collections; render(); onServer && onServer(true); }
+    try { const lib = await api.library(); collections = lib.collections; canManage = lib.canManage !== false; render(); onServer && onServer(true, canManage); }
     catch (e) { if (e.status === 0) { onServer && onServer(false); render(); } else fail(e); }
   }
 
@@ -145,6 +147,7 @@ export function createLibraryUI({ root, select, onError, onServer }) {
       if (job.state === 'done' || job.state === 'error') this.refreshSoon();
     },
     get collections() { return collections; },
+    get canManage() { return canManage; },
     find(c, s) { const col = collections.find((x) => x.slug === c); return col ? { col, story: col.stories.find((x) => x.slug === s) || null } : null; },
   };
 }
