@@ -8,7 +8,7 @@
 import { existsSync, rmSync, renameSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { cloneRepo, fetchRepo, headOf, readHistory, repoMeta, sshAlternative } from '@commit-wars/git-source';
-import { buildEpisode, validateEpisode } from '@commit-wars/story-engine';
+import { buildEpisode, validateEpisode, ENGINE_VERSION } from '@commit-wars/story-engine';
 
 const now = () => new Date().toISOString();
 
@@ -93,12 +93,14 @@ export function createJobs({ library, emit }) {
       await fetchRepo(repoDir());
       loc = save({ fetchedAt: now() });
       const head = await headOf(repoDir(), loc.story.branch || undefined);
-      if (head === loc.story.head && existsSync(join(loc.dir, 'episode.json')) && loc.story.status !== 'error') {
+      // no new commits and built by this version of the story engine: nothing to do
+      if (head === loc.story.head && existsSync(join(loc.dir, 'episode.json')) && loc.story.status !== 'error' && loc.story.engine === ENGINE_VERSION) {
         job.changed = false;
         step('done', 'Already up to date.', 1);
         return;
       }
-      return rebuild(true);
+      // the engine changed but the commits didn't: rebuild from the saved history
+      return rebuild(head !== loc.story.head);
     }
     return rebuild(false);
 
@@ -120,7 +122,7 @@ export function createJobs({ library, emit }) {
       library.writeJsonFile(where().c, where().s, 'episode.json', episode);
       const tl = episode.timeline;
       const head = await headOf(repoDir(), st.branch || undefined).catch(() => null);
-      st = save({ status: 'ready', error: null, builtAt: now(), head, commits: episode.summary.commits, first: tl.start, last: tl.end, issuesLinked: episode.summary.issuesLinked }).story;
+      st = save({ status: 'ready', error: null, builtAt: now(), engine: ENGINE_VERSION, head, commits: episode.summary.commits, first: tl.start, last: tl.end, issuesLinked: episode.summary.issuesLinked }).story;
       job.changed = true;
       step('done', `Built from ${episode.summary.commits.toLocaleString('en-US')} commits.`, 1);
     }

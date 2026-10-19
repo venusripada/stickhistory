@@ -40,7 +40,7 @@ const checkName = (name, what) => {
 };
 
 /** Story fields the API returns (story.json minus nothing secret; it holds no secrets). */
-const STORY_FIELDS = ['id', 'name', 'url', 'webUrl', 'branch', 'aliases', 'titles', 'createdAt', 'fetchedAt', 'builtAt', 'head', 'commits', 'first', 'last', 'issuesLinked', 'status', 'error'];
+const STORY_FIELDS = ['id', 'name', 'url', 'webUrl', 'branch', 'aliases', 'titles', 'createdAt', 'fetchedAt', 'builtAt', 'engine', 'head', 'commits', 'first', 'last', 'issuesLinked', 'status', 'error'];
 
 export function createLibrary(root) {
   mkdirSync(root, { recursive: true });

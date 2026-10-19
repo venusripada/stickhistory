@@ -2,20 +2,20 @@
 // History in, Episode out. Pure and deterministic: the same history and
 // options always give the same episode (apart from `generatedAt`).
 
-import { kindOf, scopeOf, areaOf, enemyTypeOf, cleanTitle, clip, prFromSubject, fixScore, ENEMY_TYPES } from './classify.js';
+import { kindOf, scopeOf, areaOf, enemyTypeOf, cleanTitle, clip, prFromSubject, fixScore, isCleanup, ENEMY_TYPES } from './classify.js';
 import { resolveIdentities } from './identity.js';
 import { splitChapters, releaseWeight } from './chapters.js';
 import { dayOfIso } from './timeline.js';
 
 export { parseGitLog, closingIssues, GIT_LOG_COMMAND, GIT_LOG_FORMAT } from './git-log.js';
 export { validateEpisode } from './validate.js';
-export { kindOf, scopeOf, areaOf, enemyTypeOf, cleanTitle, fixScore, ENEMY_TYPES } from './classify.js';
+export { kindOf, scopeOf, areaOf, enemyTypeOf, cleanTitle, fixScore, isCleanup, ENEMY_TYPES } from './classify.js';
 export { resolveIdentities, isBot } from './identity.js';
 export { splitChapters, chapterCount, releaseWeight } from './chapters.js';
 export { C as TL, secondsPerDay, isoOfDay, dayOfIso, commitRange, weekBuckets, totalsAt, activeAt, chapterAt, fixOf, commitUrl } from './timeline.js';
 
 export const SCHEMA_VERSION = 2;
-export const ENGINE_VERSION = '0.2.0';
+export const ENGINE_VERSION = '0.3.0';
 const ROSTER_SIZE = 24;
 
 const CREATURE = { gremlin: 'Gremlins', beetle: 'Beetles', crawler: 'Crawlers', wraith: 'Wraiths', moth: 'Moths', bomb: 'Bombs' };
@@ -123,7 +123,9 @@ export function buildEpisode(history, opts = {}) {
     for (const c of feats) { if (seen.has(c.message)) continue; seen.add(c.message); powerups.push({ sha: c.sha, who: c.who, s: clip(c.message), d: c.d, files: c.files }); if (powerups.length === 2) break; }
 
     const rv = pool.find((c) => c.kind === 'revert' && top.includes(c.who));
-    let bossC = pool.filter((c) => c.kind !== 'fix' && c.kind !== 'merge' && (c.files ?? 0) > 0 && !powerups.some((p) => p.s === clip(c.message)))
+    // Tech Debt: the chapter's biggest real cleanup (a refactor, removal, migration…), at least 10 files.
+    // Chapters without one get no boss.
+    let bossC = pool.filter((c) => isCleanup(c.message, c.kind) && (c.files ?? 0) >= 10)
       .sort((a, b) => b.files - a.files || (a.sha < b.sha ? -1 : 1))[0];
     if (!bossC && cc.every((c) => c.files == null)) bossC = pool.filter((c) => c.kind === 'refactor').sort(scoreSort)[0];
     let boss = null;

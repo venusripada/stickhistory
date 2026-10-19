@@ -69,7 +69,7 @@ library/                         ($COMMIT_WARS_LIBRARY overrides; git-ignored)
 3. **Play** (`createPlayer`). The episode plays as a movie, and every calendar day gets the same screen time: the whole history takes about ten minutes at 1×, with speeds from 0.5× to 8×.
    - **Fights:** every fix enters as a bug, and every feature as a gold, half-built Feature to finish, on the day it landed. Each is fought by its author: bugs end FIXED, features end SHIPPED. Fights that don't fit wait at the edge as a "+N" swarm.
    - **Who's on stage:** only people with something to fight (up to six), arriving just before their work does and leaving once it's done. A near-empty stage is topped up with recent committers.
-   - **Story beats:** each chapter's biggest fixes and features are spotlight duels, Tech Debt arrives on the date of the era's largest refactor, and minor and major releases plant a flag and set off fireworks.
+   - **Story beats:** each chapter's biggest fixes and features are spotlight duels, Tech Debt arrives on the date of the chapter's biggest real cleanup (a refactor, removal, migration or consolidation of 10+ files; see `isCleanup`), and minor and major releases plant a flag and set off fireworks.
    - **Seeking:** `seek(day)` jumps anywhere.
    - **Events:** the player emits `time`, `state` and `spotlight`.
 

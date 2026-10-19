@@ -86,6 +86,18 @@ describe('library server', () => {
     expect(st.builtAt).not.toBe(before.builtAt);
   });
 
+  it('rebuilds on Update when the story engine has changed, even with no new commits', async () => {
+    const file = join(root, 'open-source-ai', 'demo-repo', 'story.json');
+    const { writeFileSync } = await import('node:fs');
+    const st = JSON.parse(readFileSync(file, 'utf8'));
+    writeFileSync(file, JSON.stringify({ ...st, engine: '0.0.1' }));
+    const before = st.builtAt;
+    await call('POST', '/api/collections/open-source-ai/stories/demo-repo/update', {});
+    await new Promise((r) => setTimeout(r, 150));
+    const after = await settle('open-source-ai', 'demo-repo');
+    expect(after.builtAt).not.toBe(before);
+    expect(JSON.parse(readFileSync(file, 'utf8')).engine).not.toBe('0.0.1');
+  });
   it('renames and moves stories by moving their folders', async () => {
     await call('POST', '/api/collections', { name: 'Web' });
     let r = await call('PATCH', '/api/collections/open-source-ai/stories/demo-repo', { name: 'Demo Two' });

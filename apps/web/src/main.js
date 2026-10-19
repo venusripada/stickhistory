@@ -55,7 +55,7 @@ player.on('spotlight', (e) => {
   const built = (fx) => fx.kind === 'feat';
   if (e.kind === 'duel') text = built(e.fx) ? `Feature duel: ${e.hero} builds "${player.fixLabel(e.fx, 90)}"${files(e.fx)}` : `Duel: ${e.hero} vs "${player.fixLabel(e.fx, 90)}" · ${e.typeName}${files(e.fx)}`;
   else if (e.kind === 'duel-won') text = `${e.hero} ${built(e.fx) ? 'shipped' : 'fixed'} "${player.fixLabel(e.fx, 90)}"${e.combo > 1 ? ` with a ${e.combo}-hit combo` : ''}${files(e.fx)} · ${fmtDate(e.fx.d)}`;
-  else if (e.kind === 'boss') text = `Tech Debt appears. ${e.who}'s "${e.s}"${e.files != null ? ` (${fmtN(e.files)} files)` : ''} will finish it.`;
+  else if (e.kind === 'boss') text = `Tech Debt: the chapter's biggest cleanup. ${e.who}'s "${e.s}"${e.files != null ? ` (${fmtN(e.files)} files)` : ''} will finish it.`;
   else if (e.kind === 'boss-down') text = `${e.hero} refactored Tech Debt away${e.info.files != null ? `: ${fmtN(e.info.files)} files changed` : ''}.`;
   else if (e.kind === 'release') text = `Release ${e.tag} shipped on ${fmtDate(e.d)}.`;
   else if (e.kind === 'chapter') text = `Chapter ${e.k + 1}: ${e.title}`;
@@ -146,7 +146,7 @@ function buildLegend() {
   const extra = [
     ['duel', 'Duel', 'Every fix enters on the day it landed and is fought by its author. Each chapter\'s biggest fixes become one-on-one duels; fixes that closed an issue are picked first. An enemy\'s health is the files the fix touched.'],
     ['swarm', 'Waiting fixes', 'Busy days bring more fixes than fit on stage. They wait at the right edge; ones left waiting three days count as squashed.'],
-    ['boss', 'Tech Debt', 'The chapter boss arrives on the day of the era\'s largest refactor, and its author throws the finishing move.'],
+    ['boss', 'Tech Debt', 'The chapter boss: it arrives on the day of the chapter\'s biggest cleanup (a refactor, removal, migration or consolidation of at least 10 files), and that commit\'s author throws the finishing move. Features, docs and dependency bumps never count; a chapter without a real cleanup has no boss.'],
     ['release', 'Flag', 'A minor or major release, planted by the release bot. Bot accounts never fight; they ship.'],
   ];
   for (const [k, t, d] of extra) {

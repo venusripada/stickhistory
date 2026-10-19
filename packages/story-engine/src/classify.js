@@ -117,3 +117,18 @@ export function fixScore(c) {
   if (/\b(deps?|dependenc\w*|bump|lockfile|lock|translations?|locale|i18n|docs?|typo|lint|format|generated?|ci)\b/.test(t)) sc -= 25;
   return sc;
 }
+
+const CLEANUP_RE = /\b(refactor(s|ed|ing)?|remov(e|es|ed|ing)|delet(e|es|ed|ing)|drop(s|ped|ping)?|migrat(e|es|ed|ing|ion)|consolidat(e|es|ed|ing|ion)|renam(e|es|ed|ing)|restructur(e|es|ed|ing)|reorgani[sz](e|es|ed|ing)|clean(ed|s|ing)?[ -]?up|cleanup|deprecat(e|ed|ion)|dead code|unused|simplif(y|ies|ied)|extract(s|ed|ing)?|split(s|ting)?|mov(e|es|ed|ing) .+ (to|into)|upgrad(e|es|ed|ing))\b/i;
+const NOT_CLEANUP_RE = /^(docs?|i18n|wip|chore\(deps?\)|build\(deps?\)|release)\b|\b(deps?|dependenc(y|ies)|bump(s|ed)?|lockfile|translations?|i18n|wip)\b/i;
+
+/**
+ * Whether a commit pays off tech debt: a refactor, removal, migration,
+ * consolidation, rename, restructure or similar cleanup. Features, fixes,
+ * merges, docs, translations, work in progress and dependency bumps never do.
+ */
+export function isCleanup(subject, kind) {
+  if (kind === 'fix' || kind === 'feat' || kind === 'merge' || kind === 'revert') return false;
+  const s = String(subject || '');
+  if (NOT_CLEANUP_RE.test(s)) return false;
+  return kind === 'refactor' || CLEANUP_RE.test(s);
+}

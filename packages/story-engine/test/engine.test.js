@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildEpisode, validateEpisode, parseGitLog, kindOf, enemyTypeOf, splitChapters, resolveIdentities, releaseWeight, areaOf, closingIssues, cleanTitle } from '../src/index.js';
+import { buildEpisode, validateEpisode, parseGitLog, kindOf, enemyTypeOf, splitChapters, resolveIdentities, releaseWeight, areaOf, closingIssues, cleanTitle, isCleanup } from '../src/index.js';
 import { syntheticHistory } from './fixtures.js';
 
 describe('classification', () => {
@@ -31,6 +31,29 @@ describe('classification', () => {
     expect(areaOf(['packages/tui/a.ts', 'packages/tui/b.ts', 'README.md'])).toBe('packages/tui');
     expect(areaOf(['docs/a.md'])).toBe('docs');
     expect(areaOf(null)).toBe('');
+  });
+});
+
+describe('isCleanup (what counts as paying off tech debt)', () => {
+  it('counts refactors, removals, migrations and consolidations', () => {
+    expect(isCleanup('refactor(desktop): consolidate desktop-electron into desktop package (#25822)', 'refactor')).toBe(true);
+    expect(isCleanup('refactor(packages): migrate to the opencode npm scope (#47852)', 'refactor')).toBe(true);
+    expect(isCleanup('remove outdated SDKs', 'other')).toBe(true);
+    expect(isCleanup('removed packages/opencode', 'other')).toBe(true);
+    expect(isCleanup('chore: delete unused files', 'other')).toBe(true);
+    expect(isCleanup('Restructure the plugin loader', 'other')).toBe(true);
+    expect(isCleanup('drop deprecated v1 API', 'other')).toBe(true);
+  });
+  it('does not count features, docs, translations, work in progress, syncs or dependency bumps', () => {
+    expect(isCleanup('sync', 'other')).toBe(false);
+    expect(isCleanup('enterprise (#4617)', 'other')).toBe(false);
+    expect(isCleanup('wip(docs): i18n (#12681)', 'other')).toBe(false);
+    expect(isCleanup('zen: track session in usage', 'other')).toBe(false);
+    expect(isCleanup('docs: remove old guide', 'other')).toBe(false);
+    expect(isCleanup('chore(deps): upgrade react to 19', 'other')).toBe(false);
+    expect(isCleanup('feat: remove legacy login in favor of SSO', 'feat')).toBe(false);
+    expect(isCleanup('fix: remove crash on start', 'fix')).toBe(false);
+    expect(isCleanup('Merge branch main into cleanup', 'merge')).toBe(false);
   });
 });
 
@@ -114,6 +137,13 @@ describe('buildEpisode', () => {
   it('ends a chapter on the v1.0.0 release', () => {
     const ep = buildEpisode(syntheticHistory({}), { generatedAt: 'x' });
     expect(ep.chapters.some((c) => c.release && c.release.tag === 'v1.0.0')).toBe(true);
+  });
+  it('only makes real cleanups the chapter boss', () => {
+    const ep = buildEpisode(syntheticHistory());
+    const bosses = ep.chapters.map((c) => c.boss).filter(Boolean);
+    expect(bosses.length).toBeGreaterThan(0);
+    for (const b of bosses) expect(isCleanup(b.s, 'refactor') || /^refactor/.test(b.s)).toBe(true);
+    for (const b of bosses) expect(b.s).not.toMatch(/^(feat|docs|chore)/);
   });
   it('still builds a boss when file counts are unknown', () => {
     const h = syntheticHistory({});
