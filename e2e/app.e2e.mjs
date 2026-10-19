@@ -114,7 +114,9 @@ try {
       for (const h of st.heroes) if (h.leaving) left.add(h.name);
       for (const e of st.enemies) if (e.entered && e.state !== 'dead' && (e.x - e.r < -2 || e.x + e.r > st.width + 2)) outside.push(`enemy at ${Math.round(e.x)} of ${Math.round(st.width)}`);
       for (const h of st.heroes) if (h.entered && !h.leaving && (h.x < 8 || h.x > st.width - 8)) outside.push(`${h.name} at ${Math.round(h.x)} of ${Math.round(st.width)}`);
-      if (st.enemies.some((e) => !e.duel && e.state !== 'dead') && st.zoom > 1.02) outside.push(`zoomed to ${st.zoom.toFixed(2)} during a brawl`);
+      const brawl = st.enemies.some((e) => !e.duel && e.state !== 'dead');
+      // the camera must be heading back to the full frame, and be nearly there, whenever a brawl is on
+      if (brawl && (st.zoomTarget > 1.001 || st.zoom > 1.05)) outside.push(`zoomed to ${st.zoom.toFixed(2)} (target ${st.zoomTarget.toFixed(2)}) during a brawl`);
     }
     check('every fight stays inside the visible frame', outside.length === 0, outside.slice(0, 4).join('; ') || '60 samples at 8x');
     check('features show up as enemies to build', features > 0, `${features} feature sightings`);

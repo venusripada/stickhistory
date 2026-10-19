@@ -374,7 +374,7 @@ export function createPlayer(opts) {
     /** Where everyone is on stage, in world units (for tests and debugging). */
     stageSnapshot() {
       return {
-        width: E.W, zoom: CAM.z,
+        width: E.W, zoom: CAM.z, zoomTarget: CAM.tz,
         heroes: G.heroes.map((h) => ({ name: h.name, x: h.x, leaving: h.leaving, entered: !!h.entered })),
         enemies: G.enemies.map((e) => ({ x: e.x, r: e.r, state: e.state, duel: !!e.duel, entered: !!e.entered, type: e.type, author: e.author })),
       };

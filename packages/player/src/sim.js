@@ -430,7 +430,8 @@ export function makeSim(E) {
   // ---------- one physics step ----------
   function step(dt) {
     CAM.x = lerp(CAM.x, CAM.tx, 1 - Math.exp(-5 * dt));
-    CAM.z = lerp(CAM.z, CAM.tz, 1 - Math.exp(-4 * dt));
+    // zoom in gently, zoom out fast: when a brawl starts, everyone should be on screen again within a few frames
+    CAM.z = lerp(CAM.z, CAM.tz, 1 - Math.exp((CAM.tz < CAM.z ? -18 : -4) * dt));
     for (const h of G.heroes) updHero(h, dt);
     G.heroes = G.heroes.filter((h) => !(h.leaving && h.x < -80));
     for (let i = 0; i < G.heroes.length; i++) for (let j = i + 1; j < G.heroes.length; j++) {
