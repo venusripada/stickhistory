@@ -139,6 +139,11 @@ try {
     await page.waitForFunction(() => document.querySelector('#ovDate').textContent.trim().length > 4);
     check('a story plays from the library', (await page.textContent('#crumbCol')) === 'Side projects' && (await page.textContent('#crumbStory')) === 'Demo' && (await page.evaluate(() => location.hash)) === '#/s/side-projects/demo');
     await page.locator('#movie').screenshot({ path: join(OUT, '5-library-story.png') });
+    for (let k = 0; k < 3; k++) await page.click('#bSpeed');
+    const duel = await page.waitForFunction(() => /^Duel: .+ vs "/.test(document.querySelector('#caption').textContent), null, { timeout: 40000 }).then(() => true, () => false);
+    const cap = await page.textContent('#caption');
+    await page.locator('#movie').screenshot({ path: join(OUT, '5b-duel-label.png') });
+    check('duels name the fix in words, not by commit hash', duel && !/\b[0-9a-f]{7}\b/.test(cap), cap);
 
     addCommits(repo, { n: 3, from: 40 });
     await page.click('#cacheNote button');

@@ -19,7 +19,6 @@ const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct
 const fmtDate = (d) => { if (!d) return ''; const [y, m, dd] = d.split('-'); return `${MON[+m - 1]} ${+dd}, ${y}`; };
 const fmtMonth = (d) => { const [y, m] = d.split('-'); return `${MON[+m - 1]} ${y}`; };
 const range = (ch) => { const a = fmtMonth(ch.first), b = fmtMonth(ch.last); return a === b ? a : `${a} – ${b}`; };
-const fixTitle = (fx) => (fx.issues && fx.issues.length && fx.issues[0].title) || fx.t;
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const params = new URLSearchParams(location.search);
@@ -51,8 +50,9 @@ player.on('state', (s) => {
 // story beats become a one-line caption (and a polite announcement for screen readers)
 player.on('spotlight', (e) => {
   let text = '';
-  if (e.kind === 'duel') text = `Duel: ${e.hero} vs ${player.fixTag(e.fx)} · ${e.typeName} · ${fixTitle(e.fx)}${e.fx.files != null ? ` · ${fmtN(e.fx.files)} files` : ''}`;
-  else if (e.kind === 'duel-won') text = `${e.hero} fixed ${player.fixTag(e.fx)}${e.combo > 1 ? ` with a ${e.combo}-hit combo` : ''} · ${fmtDate(e.fx.d)}`;
+  const files = (fx) => (fx.files != null ? ` · ${fmtN(fx.files)} file${fx.files === 1 ? '' : 's'}` : '');
+  if (e.kind === 'duel') text = `Duel: ${e.hero} vs "${player.fixLabel(e.fx, 90)}" · ${e.typeName}${files(e.fx)}`;
+  else if (e.kind === 'duel-won') text = `${e.hero} fixed "${player.fixLabel(e.fx, 90)}"${e.combo > 1 ? ` with a ${e.combo}-hit combo` : ''}${files(e.fx)} · ${fmtDate(e.fx.d)}`;
   else if (e.kind === 'boss') text = `Tech Debt appears. ${e.who}'s "${e.s}"${e.files != null ? ` (${fmtN(e.files)} files)` : ''} will finish it.`;
   else if (e.kind === 'boss-down') text = `${e.hero} refactored Tech Debt away${e.info.files != null ? `: ${fmtN(e.info.files)} files changed` : ''}.`;
   else if (e.kind === 'release') text = `Release ${e.tag} shipped on ${fmtDate(e.d)}.`;

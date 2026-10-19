@@ -3,7 +3,7 @@
 // decides who enters and when, this module makes them move and hit.
 
 import { POSES, MOVES, CHAINS, zeroPose, springPose, figurePoints } from './poses.js';
-import { clamp, lerp, rand, pick, fmtN, trunc, fixTag, filesLabel, ETYPES, GY } from './util.js';
+import { clamp, lerp, rand, pick, fmtN, trunc, fixLabel, filesLabel, ETYPES, GY } from './util.js';
 
 /**
  * @param {object} E  Shared player state: { G, C, CAM, W, reduceMotion, heroColor(name), say(kind, payload) }.
@@ -235,7 +235,7 @@ export function makeSim(E) {
       G.hitstop = .26; G.slowmo = .7; G.shake = 12;
       impact(e.x, GY - 40 - e.T.hover, c, 46, 'big'); ring(e.x, GY - 40, c); ring(e.x, GY - 40, C.orb, 1.4);
       burst(e.x, GY - 40, C.bug, 26, 260); scraps(e.x, GY - 50, e.fx.files);
-      G.stamp = { text: 'FIXED', sub: [fixTag(e.fx), filesLabel(e.fx.files)].filter(Boolean).join(' · '), col: c, t: 0 };
+      G.stamp = { text: 'FIXED', sub: [fixLabel(e.fx, 32), filesLabel(e.fx.files)].filter(Boolean).join(' · '), col: c, t: 0 };
       G.duelsWon++;
       if (G.duel) { G.duel.won = true; G.duel.t = 0; }
       E.say('duel-won', { hero: h ? h.name : null, fx: e.fx, combo: G.duel ? G.duel.combo : 0 });

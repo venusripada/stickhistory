@@ -3,12 +3,15 @@
 // makes a second one for legend icons.
 
 import { L, hash, figurePoints } from './poses.js';
-import { clamp, lerp, rand, fmtN, fmtDate, trunc, fixTag, fixKind, ETYPES, H, GY } from './util.js';
+import { clamp, lerp, rand, fmtN, fmtDate, trunc, fixLabel, fixKind, ETYPES, H, GY } from './util.js';
 import { FD, FM } from './theme.js';
 
 export function makeDraw(E) {
   const { ctx, C, G, CAM } = E;
   const alive = (e) => e.state !== 'dead';
+  let labelBoxes = [];
+  /** Call once per frame before drawing enemies. */
+  const resetLabels = () => { labelBoxes = []; };
   // the page may cover strips at the sides with overlays; cards and bars centre in what's left
   const mid = () => (E.inset.l + E.W - E.inset.r) / 2;
   const span = () => Math.max(160, E.W - E.inset.l - E.inset.r);
@@ -162,8 +165,18 @@ export function makeDraw(E) {
     if (e.state !== 'dead') {
       const top = by - (e.type === 'bomb' ? 66 : e.type === 'beetle' ? 44 : e.type === 'crawler' ? 42 : e.type === 'wraith' ? 50 : e.type === 'moth' ? 34 : 50) * s;
       if (e.state === 'tele') haloText('!', e.x, top - 18, C.bug, `700 30px ${FD}`, 'center', 5);
-      if (!e.duel) haloText(fixTag(e.fx), e.x, top, C.bug, `10px ${FM}`, 'center', 3);
-      if (e.author && !e.duel) { ctx.fillStyle = E.heroColor(e.author); ctx.beginPath(); ctx.arc(e.x - fixTag(e.fx).length * 3.2 - 6, top - 4, 3, 0, 7); ctx.fill(); }
+      if (!e.duel) {
+        // in a crowd, only labels with room are drawn, so the ones you see stay readable
+        const tag = fixLabel(e.fx, 22);
+        ctx.font = `10px ${FM}`;
+        const w = ctx.measureText(tag).width, box = [e.x - w / 2 - 10, top - 10, e.x + w / 2 + 2, top + 3];
+        const taken = labelBoxes.some((b) => box[0] < b[2] && box[2] > b[0] && box[1] < b[3] && box[3] > b[1]);
+        if (!taken) {
+          labelBoxes.push(box);
+          haloText(tag, e.x, top, C.bug, `10px ${FM}`, 'center', 3);
+          if (e.author) { ctx.fillStyle = E.heroColor(e.author); ctx.beginPath(); ctx.arc(e.x - w / 2 - 6, top - 4, 3, 0, 7); ctx.fill(); }
+        }
+      }
     }
   }
   function drawBoss(B) {
@@ -301,6 +314,24 @@ export function makeDraw(E) {
     ctx.restore();
     ctx.fillStyle = C.hlInk; ctx.textAlign = 'center'; ctx.fillText(text, x, y);
   }
+  /** Split text into at most `maxLines` lines that fit `maxW` in the current font; the last line gets an ellipsis if cut. */
+  function wrapLines(text, maxW, maxLines) {
+    const words = String(text).split(/\s+/), lines = [];
+    let line = '';
+    for (const w of words) {
+      const next = line ? line + ' ' + w : w;
+      if (ctx.measureText(next).width <= maxW || !line) line = next;
+      else { lines.push(line); line = w; if (lines.length === maxLines) break; }
+    }
+    if (lines.length < maxLines && line) lines.push(line);
+    const used = lines.join(' ').length;
+    let last = lines[lines.length - 1] || '';
+    if (used < String(text).length || ctx.measureText(last).width > maxW) {
+      while (last.length > 1 && ctx.measureText(last + '…').width > maxW) last = last.slice(0, -1);
+      lines[lines.length - 1] = last.trimEnd() + '…';
+    }
+    return lines;
+  }
   function fitSize(text, max, size, font) { ctx.font = `700 ${size}px ${font}`; const w = ctx.measureText(text).width; return w > max ? Math.floor(size * max / w) : size; }
   function drawCard(lines) {
     ctx.globalAlpha = lines.alpha ?? 1;
@@ -321,12 +352,12 @@ export function makeDraw(E) {
     const w = Math.min(span() * .6, 260), x = mid() - w / 2, y = 40;
     const units = fx.files != null ? fx.files : e.need;
     const left = alive(e) ? Math.max(0, Math.ceil(units * e.hp / e.need)) : 0;
-    haloText(`${D.hero.name} vs ${fixTag(fx)} · ${ETYPES[e.type].name}`, mid(), y - 8, C.bug, `600 12px ${FM}`, 'center', 4);
+    haloText(trunc(`${D.hero.name} vs ${fixLabel(fx, 60)}`, Math.floor(span() / 7.2)), mid(), y - 8, C.bug, `600 12px ${FM}`, 'center', 4);
     ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.fillStyle = C.paper; ctx.fillRect(x, y, w, 14); ctx.strokeRect(x, y, w, 14);
     ctx.fillStyle = C.bug; ctx.fillRect(x + 2, y + 2, (w - 4) * clamp(e.hp / e.need, 0, 1), 10);
     haloText(fx.files != null ? `${left} of ${fmtN(fx.files)} file${fx.files === 1 ? '' : 's'} left` : `${left} of ${e.need} hits left`, mid(), y + 30, C.muted, `11px ${FM}`, 'center', 3);
     haloText(trunc(fx.t, Math.floor((span() - 24) / 7.4)), mid(), H - 14, C.ink, `600 12px ${FM}`, 'center', 4);
-    if (D.combo >= 2) {
+    if (D.combo >= 2 && !D.won) {
       const pop = 1 + D.comboPop * 1.4;
       ctx.save(); ctx.translate(mid(), 104); ctx.scale(pop, pop);
       haloText(`${D.combo} HIT COMBO`, 0, 0, col, `700 24px ${FD}`, 'center', 5);
@@ -335,7 +366,7 @@ export function makeDraw(E) {
     const B = G.banner;
     if (B) {
       const t = B.t, slide = t < .35 ? 1 - Math.pow(1 - t / .35, 3) : t > 1.8 ? 1 - (t - 1.8) / .4 : 1;
-      const bw = Math.min(span() - 20, 420), bh = 64, by = 128, x0 = mid() - bw / 2;
+      const bw = Math.min(span() - 20, 440), bh = 78, by = 122, x0 = mid() - bw / 2;
       ctx.save(); ctx.globalAlpha = clamp(slide, 0, 1);
       ctx.translate(0, by); ctx.rotate(-.02);
       ctx.fillStyle = C.paper; ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
@@ -344,8 +375,11 @@ export function makeDraw(E) {
       ctx.fillStyle = col; ctx.fillRect(bx, 0, 8, bh);
       ctx.font = `700 ${fitSize(B.hero, bw * .32, 32, FD)}px ${FD}`; ctx.fillStyle = col; ctx.textAlign = 'left'; ctx.fillText(B.hero, bx + 18, 42);
       ctx.font = `700 22px ${FD}`; ctx.fillStyle = C.ink; ctx.textAlign = 'center'; ctx.fillText('vs', bx + bw * .4, 40);
-      ctx.font = `700 ${fitSize(fixTag(fx), bw * .5, 24, FM)}px ${FM}`; ctx.fillStyle = C.bug; ctx.textAlign = 'left'; ctx.fillText(fixTag(fx), bx + bw * .47, 30);
-      ctx.font = `11px ${FM}`; ctx.fillStyle = C.muted; ctx.fillText(trunc(`${fixKind(fx)} · ${ETYPES[e.type].name} · ${fmtDate(fx.d)}`, Math.floor((bw * .5) / 6.8)), bx + bw * .47, 50);
+      const num = fx.issues && fx.issues.length ? fx.issues[0].number : fx.pr;
+      const lx = bx + bw * .47, lw = bw * .5;
+      ctx.font = `700 14px ${FM}`; ctx.fillStyle = C.bug; ctx.textAlign = 'left';
+      wrapLines(fixLabel(fx, 80), lw, 2).forEach((line, i) => ctx.fillText(line, lx, 26 + i * 17));
+      ctx.font = `11px ${FM}`; ctx.fillStyle = C.muted; ctx.fillText(trunc(`${fixKind(fx)}${num ? ' #' + num : ''} · ${ETYPES[e.type].name} · ${fmtDate(fx.d)}`, Math.floor(lw / 6.8)), lx, 66);
       ctx.restore();
     }
   }
@@ -382,5 +416,5 @@ export function makeDraw(E) {
     haloText('fixes waiting', x, y + 14, C.muted, `10px ${FM}`, 'right', 3);
   }
 
-  return { worldTransform, screenTransform, haloText, drawPaper, drawGrid, drawGround, drawFigure, drawEnemy, drawBoss, drawBeam, drawOrb, drawBolt, drawFlag, drawBot, drawFx, drawParts, highlight, fitSize, drawCard, drawDuelHud, drawStamp, drawBossBar, drawSwarm };
+  return { resetLabels, worldTransform, screenTransform, haloText, drawPaper, drawGrid, drawGround, drawFigure, drawEnemy, drawBoss, drawBeam, drawOrb, drawBolt, drawFlag, drawBot, drawFx, drawParts, highlight, fitSize, drawCard, drawDuelHud, drawStamp, drawBossBar, drawSwarm };
 }

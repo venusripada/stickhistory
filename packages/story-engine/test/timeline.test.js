@@ -115,6 +115,12 @@ describe('fix records from the timeline', () => {
     expect(fx.t).not.toMatch(/^fix|\(#\d+\)|null/);
     expect(fx.s).toBe(t2.commits[i][C.s]);
   });
+  it('keeps the conventional-commit scope for labels', () => {
+    const i = tl.commits.findIndex((c) => /^fix\(tui\):/.test(c[C.s]));
+    expect(fixOf(tl, i).sc).toBe('tui');
+    const j = tl.commits.findIndex((c) => /^fix: /.test(c[C.s]));
+    expect(fixOf(tl, j).sc).toBeNull();
+  });
   it('links to the issue, else the pull request, else the commit', () => {
     const u = 'https://github.com/acme/rocket';
     expect(commitUrl(u, { sha: 'abc', pr: 5, issues: [{ number: 9 }] })).toBe(`${u}/issues/9`);

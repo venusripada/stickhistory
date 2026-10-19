@@ -16,7 +16,7 @@ import { DEFAULT_THEME, HERO_COLORS, readTheme } from './theme.js';
 import { makeSim } from './sim.js';
 import { makeDraw } from './draw.js';
 import { buildEvents, firstEventAt } from './director.js';
-import { clamp, rand, fmtN, fmtDate, range, fixTag, fixKind, ETYPES, ENEMY_NAMES, H, GY } from './util.js';
+import { clamp, rand, fmtN, fmtDate, range, fixTag, fixKind, fixLabel, ETYPES, ENEMY_NAMES, H, GY } from './util.js';
 
 export { DEFAULT_THEME, ENEMY_NAMES };
 export const SPEEDS = [0.5, 1, 2, 4, 8];
@@ -217,7 +217,7 @@ export function createPlayer(opts) {
     if (!G.duel && !G.boss && !G.finisher && G.bigQ.length) { const ev = G.bigQ.shift(); if (ev.t > G.day - 10) startBoss(ev); }
     G.lineupT -= dt;
     if (G.lineupT <= 0) { lineup(false); G.lineupT = .6; }
-    if (G.cards.length) { G.cards[0].t += dt; if (G.cards[0].t > 2.8 && G.cards[0].kind !== 'end') G.cards.shift(); }
+    if (G.cards.length && !G.banner) { G.cards[0].t += dt; if (G.cards[0].t > 2.8 && G.cards[0].kind !== 'end') G.cards.shift(); }
     sim.step(dt);
   }
 
@@ -251,7 +251,9 @@ export function createPlayer(opts) {
     dr.drawGround();
     for (const f of G.flags) dr.drawFlag(f);
     if (G.boss) dr.drawBoss(G.boss);
-    for (const e of G.enemies) dr.drawEnemy(e);
+    dr.resetLabels();
+    // newest enemies first, so fresh arrivals get their label when the crowd is thick
+    for (let k = G.enemies.length - 1; k >= 0; k--) dr.drawEnemy(G.enemies[k]);
     if (G.bot) dr.drawBot(G.bot);
     for (const h of G.heroes) dr.drawFigure(h);
     dr.drawBeam();
@@ -265,7 +267,8 @@ export function createPlayer(opts) {
     if (G.duel) dr.drawDuelHud();
     dr.drawStamp();
     dr.drawSwarm(G.pending.length);
-    if (G.cards.length) drawCardFor(G.cards[0]);
+    // a duel's banner takes the middle of the screen; the chapter card waits until it slides away
+    if (G.cards.length && !G.banner) drawCardFor(G.cards[0]);
     if (!G.playing && !G.ended) {
       ctx.fillStyle = C.ink; ctx.globalAlpha = .82;
       ctx.beginPath(); ctx.arc(E.W - 34, H - 34, 20, 0, 7); ctx.fill();
@@ -372,6 +375,8 @@ export function createPlayer(opts) {
     },
     enemyTypeName(type) { return (ETYPES[type] || ETYPES.crawler).name; },
     fixTag, fixKind,
+    /** A fix in words: "tui · cursor jumps", "#51 crash on start" (see util.js). */
+    fixLabel,
     /** Link to the issue, pull request or commit behind a fix record. */
     fixUrl(fx) { return commitUrl(EP && EP.summary.repoUrl, fx); },
     redraw() { readTheme(canvas, C); resize(); },

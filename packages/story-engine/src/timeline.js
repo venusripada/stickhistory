@@ -4,7 +4,7 @@
 // A timeline commit is a tuple; C names its slots:
 //   [day, who, kind, files, type, sha, subject, pr, issues]
 
-import { cleanTitle } from './classify.js';
+import { cleanTitle, scopeOf } from './classify.js';
 
 export const C = { day: 0, who: 1, kind: 2, files: 3, type: 4, sha: 5, s: 6, pr: 7, issues: 8 };
 
@@ -104,15 +104,16 @@ export function chapterAt(ep, day) {
 }
 
 /**
- * A timeline commit as a display record: { i, sha, who, pr, issues, t, s, d, files, type, kind }.
- * `t` is the short title, `s` the subject; issue titles are not kept in the timeline.
+ * A timeline commit as a display record: { i, sha, who, pr, issues, t, s, sc, d, files, type, kind }.
+ * `t` is the short title, `s` the subject, `sc` the conventional-commit scope (or null);
+ * issue titles are not kept in the timeline.
  */
 export function fixOf(tl, i) {
   const c = tl.commits[i];
   return {
     i, sha: c[C.sha], who: tl.people[c[C.who]].name, kind: c[C.kind],
     pr: c[C.pr], issues: (c[C.issues] || []).map((number) => ({ number, title: null })),
-    t: cleanTitle(c[C.s]) || c[C.s], s: c[C.s], d: isoOfDay(tl, c[C.day]), files: c[C.files], type: c[C.type],
+    t: cleanTitle(c[C.s]) || c[C.s], s: c[C.s], sc: scopeOf(c[C.s]) || null, d: isoOfDay(tl, c[C.day]), files: c[C.files], type: c[C.type],
   };
 }
 
