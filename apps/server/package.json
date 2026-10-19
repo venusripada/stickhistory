@@ -1,0 +1,12 @@
+{
+  "name": "@commit-wars/server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local library server: collections of stories, each a cloned repository built into an episode.",
+  "type": "module",
+  "bin": { "commit-wars-server": "src/server.js" },
+  "dependencies": {
+    "@commit-wars/git-source": "*",
+    "@commit-wars/story-engine": "*"
+  }
+}
