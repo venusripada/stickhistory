@@ -67,7 +67,8 @@ repo link ──apps/server job──▶ clone ──readHistory()──▶ Hist
   - Keep the player able to read the current version, or bump `schemaVersion` and handle the old one (version 1 is refused with a message to rebuild).
   - Regenerate the sample (command below).
 - A Fix record is `{ sha, pr, issues[], t, s, sc, d, files, area, type }`. `files` and `pr` can be null (REST mode), and an issue's `title` is null when it came from a `git log` reference. The player must never print "null" or "0 files" for unknown values.
-- Enemy types are exactly `gremlin | beetle | crawler | wraith | moth | bomb`. Adding one means touching `classify.js`, the schema, `validate.js`, the player's `ETYPES` (`util.js`) and its `drawEnemy` (`draw.js`), and the legend in `apps/web/src/main.js`.
+- Bug enemy types are exactly `gremlin | beetle | crawler | wraith | moth | bomb` (the episode's `type` for fix commits). Adding one means touching `classify.js`, the schema, `validate.js`, the player's `ETYPES` (`util.js`) and its `drawEnemy` (`draw.js`), and the legend in `apps/web/src/main.js`.
+- `feature` is a player-only enemy type for feature commits (`kind: 'feat'`); it is not in the episode schema. Big chapter features (`powerups`) become feature duels (`featduel` in `director.js`).
 
 ## Conventions
 

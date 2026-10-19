@@ -97,7 +97,8 @@ export function makeDraw(E) {
     const s = e.s, f = e.f, T = e.T;
     const bob = T.hover ? Math.sin(e.phase * .5) * 4 : 0;
     const by = GY - e.z - T.hover - bob;
-    const col = e.flash > 0 ? C.ink : C.bug;
+    const main = e.type === 'feature' ? C.gold : C.bug; // features are gold, bugs red
+    const col = e.flash > 0 ? C.ink : main;
     const sq = clamp(e.sq * .05, -.3, .3);
     // shadow
     ctx.fillStyle = C.rule; ctx.beginPath(); ctx.ellipse(e.x, GY - 1, e.r * (1 - Math.min(e.z + T.hover, 120) / 240), 3, 0, 0, 7); ctx.fill();
@@ -108,7 +109,7 @@ export function makeDraw(E) {
     ctx.scale(1 + sq, 1 - sq);
     if (e.type === 'moth' && !E.reduceMotion && Math.random() < .04) ctx.globalAlpha *= .4;
     ctx.strokeStyle = col; ctx.lineWidth = 2.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    const tint = () => { ctx.save(); ctx.globalAlpha *= .2; ctx.fillStyle = C.bug; ctx.fill(); ctx.restore(); };
+    const tint = () => { ctx.save(); ctx.globalAlpha *= .2; ctx.fillStyle = main; ctx.fill(); ctx.restore(); };
     const shell = () => { ctx.fillStyle = C.paper; ctx.fill(); tint(); ctx.stroke(); };
     const eye = (x, y, r) => { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); };
     const ph = e.phase;
@@ -152,6 +153,15 @@ export function makeDraw(E) {
       ctx.beginPath(); ctx.arc(f * 12 * s, -11 * s, 5.5 * s, 0, 7); shell();
       eye(f * 14 * s, -12 * s, 1.8 * s);
       ctx.beginPath(); ctx.moveTo(f * 14 * s, -16 * s); ctx.quadraticCurveTo(f * 18 * s, -26 * s, f * 26 * s, -26 * s); ctx.stroke();
+    } else if (e.type === 'feature') {
+      // a half-built feature: stacked crates on legs, a scaffold, and a dashed outline still to fill in
+      for (const i of [-1, 1]) { ctx.beginPath(); ctx.moveTo(i * 10 * s, -8 * s); ctx.lineTo(i * 12 * s + Math.sin(ph + i) * 2, 0); ctx.stroke(); }
+      ctx.beginPath(); ctx.rect(-18 * s, -30 * s, 36 * s, 22 * s); shell();
+      ctx.beginPath(); ctx.rect(-12 * s, -50 * s, 24 * s, 20 * s); shell();
+      ctx.beginPath(); ctx.moveTo(-18 * s, -19 * s); ctx.lineTo(18 * s, -19 * s); ctx.moveTo(-12 * s, -40 * s); ctx.lineTo(12 * s, -40 * s); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-f * 22 * s, -8 * s); ctx.lineTo(-f * 22 * s, -64 * s); ctx.lineTo(-f * 4 * s, -64 * s); ctx.lineTo(-f * 4 * s, -58 * s + Math.sin(ph) * 2); ctx.stroke();
+      ctx.save(); ctx.setLineDash([3 * s, 3 * s]); ctx.beginPath(); ctx.rect(-8 * s, -66 * s, 16 * s, 14 * s); ctx.stroke(); ctx.restore();
+      eye(f * 5 * s, -42 * s, 2.3 * s); eye(-f * 2 * s, -42 * s, 2 * s);
     } else if (e.type === 'bomb') {
       for (const i of [-1, 1]) { ctx.beginPath(); ctx.moveTo(i * 7 * s, -6 * s); ctx.lineTo(i * 9 * s + Math.sin(ph + i * 2) * 3, 0); ctx.stroke(); }
       ctx.beginPath(); ctx.arc(0, -22 * s, 17 * s, 0, 7); ctx.fillStyle = C.paper; ctx.fill(); ctx.save(); ctx.globalAlpha *= .4; ctx.fillStyle = C.bug; ctx.fill(); ctx.restore(); ctx.stroke();
@@ -163,7 +173,7 @@ export function makeDraw(E) {
     }
     ctx.restore();
     if (e.state !== 'dead') {
-      const top = by - (e.type === 'bomb' ? 66 : e.type === 'beetle' ? 44 : e.type === 'crawler' ? 42 : e.type === 'wraith' ? 50 : e.type === 'moth' ? 34 : 50) * s;
+      const top = by - (e.type === 'feature' ? 70 : e.type === 'bomb' ? 66 : e.type === 'beetle' ? 44 : e.type === 'crawler' ? 42 : e.type === 'wraith' ? 50 : e.type === 'moth' ? 34 : 50) * s;
       if (e.state === 'tele') haloText('!', e.x, top - 18, C.bug, `700 30px ${FD}`, 'center', 5);
       if (!e.duel) {
         // in a crowd, only labels with room are drawn, so the ones you see stay readable
@@ -173,7 +183,7 @@ export function makeDraw(E) {
         const taken = labelBoxes.some((b) => box[0] < b[2] && box[2] > b[0] && box[1] < b[3] && box[3] > b[1]);
         if (!taken) {
           labelBoxes.push(box);
-          haloText(tag, e.x, top, C.bug, `10px ${FM}`, 'center', 3);
+          haloText(tag, e.x, top, main, `10px ${FM}`, 'center', 3);
           if (e.author) { ctx.fillStyle = E.heroColor(e.author); ctx.beginPath(); ctx.arc(e.x - w / 2 - 6, top - 4, 3, 0, 7); ctx.fill(); }
         }
       }
@@ -216,16 +226,6 @@ export function makeDraw(E) {
     ctx.globalAlpha = 1; ctx.strokeStyle = E.heroColor(h.name); ctx.lineWidth = 6;
     ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
     ctx.restore();
-  }
-  function drawOrb(o) {
-    const r = 10 + Math.sin(G.time * 8) * 1.2;
-    ctx.save();
-    ctx.globalAlpha = .3; ctx.fillStyle = C.orb; ctx.beginPath(); ctx.arc(o.x, o.y, r * 2.2, 0, 7); ctx.fill();
-    ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(o.x, o.y, r, 0, 7); ctx.fill();
-    ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.stroke();
-    ctx.fillStyle = C.ink; ctx.font = `700 14px ${FD}`; ctx.textAlign = 'center'; ctx.fillText('★', o.x, o.y + 5);
-    ctx.restore();
-    haloText(trunc(o.info.s, 34), o.x, o.y - 20, C.gold, `600 11px ${FM}`, o.x < 120 ? 'left' : o.x > E.W - 120 ? 'right' : 'center');
   }
   function drawBolt(b) {
     ctx.save(); ctx.strokeStyle = C.bug; ctx.lineCap = 'round';
@@ -348,14 +348,15 @@ export function makeDraw(E) {
   function drawDuelHud() {
     const D = G.duel; if (!D) return;
     const e = D.enemy, fx = D.fx, col = E.heroColor(D.hero.name);
+    const feature = e.type === 'feature', main = feature ? C.gold : C.bug, verb = feature ? 'builds' : 'vs';
     // enemy bar, centred so the side overlays never cover it: files left to clean up
     const w = Math.min(span() * .6, 260), x = mid() - w / 2, y = 40;
     const units = fx.files != null ? fx.files : e.need;
     const left = alive(e) ? Math.max(0, Math.ceil(units * e.hp / e.need)) : 0;
-    haloText(trunc(`${D.hero.name} vs ${fixLabel(fx, 60)}`, Math.floor(span() / 7.2)), mid(), y - 8, C.bug, `600 12px ${FM}`, 'center', 4);
+    haloText(trunc(`${D.hero.name} ${verb} ${fixLabel(fx, 60)}`, Math.floor(span() / 7.2)), mid(), y - 8, main, `600 12px ${FM}`, 'center', 4);
     ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.fillStyle = C.paper; ctx.fillRect(x, y, w, 14); ctx.strokeRect(x, y, w, 14);
-    ctx.fillStyle = C.bug; ctx.fillRect(x + 2, y + 2, (w - 4) * clamp(e.hp / e.need, 0, 1), 10);
-    haloText(fx.files != null ? `${left} of ${fmtN(fx.files)} file${fx.files === 1 ? '' : 's'} left` : `${left} of ${e.need} hits left`, mid(), y + 30, C.muted, `11px ${FM}`, 'center', 3);
+    ctx.fillStyle = main; ctx.fillRect(x + 2, y + 2, (w - 4) * clamp(e.hp / e.need, 0, 1), 10);
+    haloText(fx.files != null ? `${left} of ${fmtN(fx.files)} file${fx.files === 1 ? '' : 's'} ${feature ? 'to go' : 'left'}` : `${left} of ${e.need} hits left`, mid(), y + 30, C.muted, `11px ${FM}`, 'center', 3);
     haloText(trunc(fx.t, Math.floor((span() - 24) / 7.4)), mid(), H - 14, C.ink, `600 12px ${FM}`, 'center', 4);
     if (D.combo >= 2 && !D.won) {
       const pop = 1 + D.comboPop * 1.4;
@@ -374,10 +375,10 @@ export function makeDraw(E) {
       ctx.fillRect(bx, 0, bw, bh); ctx.strokeRect(bx, 0, bw, bh);
       ctx.fillStyle = col; ctx.fillRect(bx, 0, 8, bh);
       ctx.font = `700 ${fitSize(B.hero, bw * .32, 32, FD)}px ${FD}`; ctx.fillStyle = col; ctx.textAlign = 'left'; ctx.fillText(B.hero, bx + 18, 42);
-      ctx.font = `700 22px ${FD}`; ctx.fillStyle = C.ink; ctx.textAlign = 'center'; ctx.fillText('vs', bx + bw * .4, 40);
+      ctx.font = `700 22px ${FD}`; ctx.fillStyle = C.ink; ctx.textAlign = 'center'; ctx.fillText(verb, bx + bw * .4, 40);
       const num = fx.issues && fx.issues.length ? fx.issues[0].number : fx.pr;
       const lx = bx + bw * .47, lw = bw * .5;
-      ctx.font = `700 14px ${FM}`; ctx.fillStyle = C.bug; ctx.textAlign = 'left';
+      ctx.font = `700 14px ${FM}`; ctx.fillStyle = main; ctx.textAlign = 'left';
       wrapLines(fixLabel(fx, 80), lw, 2).forEach((line, i) => ctx.fillText(line, lx, 26 + i * 17));
       ctx.font = `11px ${FM}`; ctx.fillStyle = C.muted; ctx.fillText(trunc(`${fixKind(fx)}${num ? ' #' + num : ''} · ${ETYPES[e.type].name} · ${fmtDate(fx.d)}`, Math.floor(lw / 6.8)), lx, 66);
       ctx.restore();
@@ -413,8 +414,8 @@ export function makeDraw(E) {
     for (let k = 0; k < Math.min(6, n); k++) { const a = G.time * 3 + k * 1.3; ctx.fillStyle = C.bug; ctx.beginPath(); ctx.arc(x - 18 + Math.cos(a) * 10, y + 30 + Math.sin(a * 1.3) * 8, 2.4, 0, 7); ctx.fill(); }
     ctx.restore();
     haloText(`+${fmtN(n)}`, x, y, C.bug, `700 20px ${FD}`, 'right', 4);
-    haloText('fixes waiting', x, y + 14, C.muted, `10px ${FM}`, 'right', 3);
+    haloText('waiting to fight', x, y + 14, C.muted, `10px ${FM}`, 'right', 3);
   }
 
-  return { resetLabels, worldTransform, screenTransform, haloText, drawPaper, drawGrid, drawGround, drawFigure, drawEnemy, drawBoss, drawBeam, drawOrb, drawBolt, drawFlag, drawBot, drawFx, drawParts, highlight, fitSize, drawCard, drawDuelHud, drawStamp, drawBossBar, drawSwarm };
+  return { resetLabels, worldTransform, screenTransform, haloText, drawPaper, drawGrid, drawGround, drawFigure, drawEnemy, drawBoss, drawBeam, drawBolt, drawFlag, drawBot, drawFx, drawParts, highlight, fitSize, drawCard, drawDuelHud, drawStamp, drawBossBar, drawSwarm };
 }

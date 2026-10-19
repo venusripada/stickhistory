@@ -52,12 +52,12 @@ player.on('state', (s) => {
 player.on('spotlight', (e) => {
   let text = '';
   const files = (fx) => (fx.files != null ? ` · ${fmtN(fx.files)} file${fx.files === 1 ? '' : 's'}` : '');
-  if (e.kind === 'duel') text = `Duel: ${e.hero} vs "${player.fixLabel(e.fx, 90)}" · ${e.typeName}${files(e.fx)}`;
-  else if (e.kind === 'duel-won') text = `${e.hero} fixed "${player.fixLabel(e.fx, 90)}"${e.combo > 1 ? ` with a ${e.combo}-hit combo` : ''}${files(e.fx)} · ${fmtDate(e.fx.d)}`;
+  const built = (fx) => fx.kind === 'feat';
+  if (e.kind === 'duel') text = built(e.fx) ? `Feature duel: ${e.hero} builds "${player.fixLabel(e.fx, 90)}"${files(e.fx)}` : `Duel: ${e.hero} vs "${player.fixLabel(e.fx, 90)}" · ${e.typeName}${files(e.fx)}`;
+  else if (e.kind === 'duel-won') text = `${e.hero} ${built(e.fx) ? 'shipped' : 'fixed'} "${player.fixLabel(e.fx, 90)}"${e.combo > 1 ? ` with a ${e.combo}-hit combo` : ''}${files(e.fx)} · ${fmtDate(e.fx.d)}`;
   else if (e.kind === 'boss') text = `Tech Debt appears. ${e.who}'s "${e.s}"${e.files != null ? ` (${fmtN(e.files)} files)` : ''} will finish it.`;
   else if (e.kind === 'boss-down') text = `${e.hero} refactored Tech Debt away${e.info.files != null ? `: ${fmtN(e.info.files)} files changed` : ''}.`;
   else if (e.kind === 'release') text = `Release ${e.tag} shipped on ${fmtDate(e.d)}.`;
-  else if (e.kind === 'feature') text = `${e.who} powers up: ${e.fx.s}`;
   else if (e.kind === 'chapter') text = `Chapter ${e.k + 1}: ${e.title}`;
   if (text) $('#caption').textContent = text;
 });
@@ -131,6 +131,7 @@ function buildLegend() {
     ['wraith', 'Path Wraith', 'A Windows or file-path fix. Floats just out of reach.'],
     ['moth', 'Glitch Moth', 'A visual fix: layout, theme, scroll, rendering.'],
     ['bomb', 'Crash Bomb', 'A crash, hang, freeze or infinite-loop fix. Hits hardest.'],
+    ['feature', 'Feature', 'Not a bug: a feature its author is building. Gold, heavy and slow; its health is the files it touched, and finishing it shows SHIPPED. Each chapter\'s biggest features become duels.'],
   ];
   for (const [type, t, d] of items) {
     const div = document.createElement('div');
@@ -146,7 +147,6 @@ function buildLegend() {
     ['duel', 'Duel', 'Every fix enters on the day it landed and is fought by its author. Each chapter\'s biggest fixes become one-on-one duels; fixes that closed an issue are picked first. An enemy\'s health is the files the fix touched.'],
     ['swarm', 'Waiting fixes', 'Busy days bring more fixes than fit on stage. They wait at the right edge; ones left waiting three days count as squashed.'],
     ['boss', 'Tech Debt', 'The chapter boss arrives on the day of the era\'s largest refactor, and its author throws the finishing move.'],
-    ['feat', 'Power-up', 'A feature. The chapter\'s biggest ones drop as orbs; the rest make their author glow.'],
     ['release', 'Flag', 'A minor or major release, planted by the release bot. Bot accounts never fight; they ship.'],
   ];
   for (const [k, t, d] of extra) {

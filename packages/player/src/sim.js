@@ -1,4 +1,4 @@
-// The fight itself: heroes, enemies, the Tech Debt boss, power-up orbs,
+// The fight itself: heroes, enemies (bugs and unfinished features), the Tech Debt boss,
 // revert bolts and particle effects. Everything lives in E.G; the player
 // decides who enters and when, this module makes them move and hit.
 
@@ -49,8 +49,10 @@ export function makeSim(E) {
     const files = Math.max(1, fx.files || 1);
     const s = duel ? 1.05 + Math.min(files, 60) / 60 * 0.75 : 0.82 + Math.min(files, 30) / 30 * 0.35;
     const need = duel ? clamp(Math.round(3 + Math.log2(files + 1) * 1.3), 4, 11) : (files > 8 ? 2 : 1);
-    const T = ETYPES[fx.type] || ETYPES.crawler;
-    return { kind: 'enemy', type: fx.type in ETYPES ? fx.type : 'crawler', T, fx, owner, author: fx.who || null, duel, s, r: 22 * s,
+    // a feature commit is unfinished work to build; a fix commit is a bug to squash
+    const type = fx.kind === 'feat' ? 'feature' : fx.type in ETYPES ? fx.type : 'crawler';
+    const T = ETYPES[type];
+    return { kind: 'enemy', type, T, fx, owner, author: fx.who || null, duel, s, r: 22 * s,
              x: side > 0 ? E.W + 50 : -50, f: side > 0 ? -1 : 1, z: 0, vz: 0, kx: 0, hp: need, need,
              state: 'enter', timer: 0, cd: rand(1.2, 2.0), phase: Math.random() * 6, flash: 0, sq: 0, sqv: 0,
              tx: null, seed: Math.random() * 100, alpha: 1, rot: 0 };
@@ -237,14 +239,15 @@ export function makeSim(E) {
       G.hitstop = .26; G.slowmo = .7; G.shake = 12;
       impact(e.x, GY - 40 - e.T.hover, c, 46, 'big'); ring(e.x, GY - 40, c); ring(e.x, GY - 40, C.orb, 1.4);
       burst(e.x, GY - 40, C.bug, 26, 260); scraps(e.x, GY - 50, e.fx.files);
-      G.stamp = { text: 'FIXED', sub: [fixLabel(e.fx, 32), filesLabel(e.fx.files)].filter(Boolean).join(' · '), col: c, t: 0 };
+      G.stamp = { text: e.type === 'feature' ? 'SHIPPED' : 'FIXED', sub: [fixLabel(e.fx, 32), filesLabel(e.fx.files)].filter(Boolean).join(' · '), col: c, t: 0 };
       G.duelsWon++;
       if (G.duel) { G.duel.won = true; G.duel.t = 0; }
       E.say('duel-won', { hero: h ? h.name : null, fx: e.fx, combo: G.duel ? G.duel.combo : 0 });
     } else {
-      impact(e.x, GY - 28 - e.T.hover, c, 22, 'big'); burst(e.x, GY - 22, C.bug, 14, 170);
+      const feature = e.type === 'feature';
+      impact(e.x, GY - 28 - e.T.hover, c, 22, 'big'); burst(e.x, GY - 22, feature ? C.orb : C.bug, 14, 170);
       G.hitstop = Math.max(G.hitstop, .05);
-      if (Math.random() < .5) floater(e.x, GY - 80, pick(['fixed!', 'squashed!', 'patched!', 'merged!']), C.bug, 20);
+      if (Math.random() < .5) floater(e.x, GY - 80, pick(feature ? ['shipped!', 'built!', 'done!', 'landed!'] : ['fixed!', 'squashed!', 'patched!', 'merged!']), feature ? C.gold : C.bug, 20);
     }
   }
   function heroThink(h, dt) {
@@ -326,7 +329,6 @@ export function makeSim(E) {
       case 'dodge': target = 'backstep'; k = 520; if (h.timer <= 0) { h.state = 'idle'; h.cool = .05; } break;
       case 'parry': target = 'parry'; k = 600; if (h.timer <= 0) h.state = 'idle'; break;
       case 'attack': target = attackPose(h, dt); k = 640; break;
-      case 'catch': target = 'catch'; k = 300; break;
       case 'cast': target = heroThink(h, dt); k = 300; break;
       default: target = heroThink(h, dt);
     }
@@ -399,25 +401,7 @@ export function makeSim(E) {
     if (F.phase === 'done' && F.t > 1.8) G.finisher = null;
   }
 
-  // ---------- features, reverts ----------
-  function dropOrb(hero, info) { G.orbs.push({ x: hero.x, y: -20, vy: 30, info, hero, jumped: false }); }
-  function updOrb(o, dt) {
-    o.vy = Math.min(o.vy + 60 * dt, 120); o.y += o.vy * dt;
-    o.x = lerp(o.x, o.hero.x, 1 - Math.exp(-3 * dt));
-    const h = o.hero, headY = GY - 95 - h.z;
-    if (o.y > headY - 90 && h.state !== 'down' && h.state !== 'catch' && h.state !== 'attack') { h.state = 'catch'; h.atk = null; }
-    if (h.state === 'catch' && !o.jumped && o.y > headY - 50) { o.jumped = true; h.vz = 240; }
-    if ((Math.abs(o.x - h.x) < 22 && o.y > headY - 22 - h.z) || o.y > GY - 10) {
-      o.done = true; h.aura = 8; if (h.state === 'catch') h.state = 'idle';
-      ring(o.x, o.y, C.orb, 1.2); burst(o.x, o.y, C.orb, 22, 200);
-      floater(h.x, GY - 140, '+ feature', C.gold, 22);
-    }
-  }
-  function sparkFeature(hero) {
-    hero.aura = Math.max(hero.aura, 3);
-    burst(hero.x, GY - 70 - hero.z, C.orb, 8, 120);
-    if (Math.random() < .35) floater(hero.x, GY - 130, '+ feat', C.gold, 16);
-  }
+  // ---------- reverts ----------
   function fireRevert(hero, info) { G.bolts.push({ x: E.W + 20, y: GY - 70, hero, info, trail: [] }); }
   function updBolt(b, dt) {
     const h = b.hero, ty = GY - 70 - h.z;
@@ -463,8 +447,6 @@ export function makeSim(E) {
     G.enemies = G.enemies.filter((e) => !(e.state === 'dead' && e.timer <= 0));
     if (G.boss) updBoss(G.boss, dt);
     updFinisher(dt);
-    for (const o of G.orbs) updOrb(o, dt);
-    G.orbs = G.orbs.filter((o) => !o.done);
     for (const x of G.bolts) updBolt(x, dt);
     G.bolts = G.bolts.filter((x) => !x.done);
     if (G.bot) updBot(G.bot, dt);
@@ -488,6 +470,6 @@ export function makeSim(E) {
 
   return {
     camTarget, camReset, step, makeEnemy, makeHero, makeBoss, homeX, alive, finishEnemy, startFinisher,
-    dropOrb, sparkFeature, fireRevert, burst, dust, ring, floater, impact,
+    fireRevert, burst, dust, ring, floater, impact,
   };
 }

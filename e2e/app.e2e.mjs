@@ -103,14 +103,22 @@ try {
     await page.click('#bPlay');
     for (let k = 0; k < 3; k++) await page.click('#bSpeed');
     const outside = [];
+    let features = 0;
+    const fought = new Set(), left = new Set();
     for (let k = 0; k < 60; k++) {
       await page.waitForTimeout(150);
       const st = await page.evaluate(() => window.__cwPlayer.stageSnapshot());
+      features += st.enemies.filter((e) => e.type === 'feature').length;
+      for (const e of st.enemies) if (e.author) fought.add(e.author);
+      for (const h of st.heroes) if (h.leaving) left.add(h.name);
       for (const e of st.enemies) if (e.entered && e.state !== 'dead' && (e.x - e.r < -2 || e.x + e.r > st.width + 2)) outside.push(`enemy at ${Math.round(e.x)} of ${Math.round(st.width)}`);
       for (const h of st.heroes) if (h.entered && !h.leaving && (h.x < 8 || h.x > st.width - 8)) outside.push(`${h.name} at ${Math.round(h.x)} of ${Math.round(st.width)}`);
       if (st.enemies.some((e) => !e.duel && e.state !== 'dead') && st.zoom > 1.02) outside.push(`zoomed to ${st.zoom.toFixed(2)} during a brawl`);
     }
     check('every fight stays inside the visible frame', outside.length === 0, outside.slice(0, 4).join('; ') || '60 samples at 8x');
+    check('features show up as enemies to build', features > 0, `${features} feature sightings`);
+    const idle = [...left].filter((n) => !fought.has(n));
+    check('people leave only after they had something to fight', idle.length <= Math.max(1, Math.floor(left.size * 0.2)), `${left.size} left, ${idle.length} without a fight seen${idle.length ? ': ' + idle.slice(0, 3).join(', ') : ''}`);
     await page.click('#bSpeed'); await page.click('#bSpeed');
     if ((await page.textContent('#playLabel')) === 'Pause') await page.click('#bPlay');
 

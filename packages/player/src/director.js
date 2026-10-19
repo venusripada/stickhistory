@@ -2,9 +2,10 @@
 // each at a fractional day `t`, so the player only has to walk a cursor
 // along it. Pure: the same episode always gives the same events.
 //
-//   fix      { i, who }            a fix commit: one enemy, fought by its author
+//   fix      { i, who }            a fix commit: one bug, fought by its author
 //   duel     { i, who }            a chapter hero's biggest fix: a spotlight duel
-//   feat     { i, who, big }       a feature: a power-up orb (big = a chapter highlight)
+//   feat     { i, who }            a feature commit: one unfinished feature, built (fought) by its author
+//   featduel { i, who }            a chapter's biggest feature: a spotlight duel that ends SHIPPED
 //   revert   { i, who }            a revert: the time-warp bolt
 //   boss     { i, who, k }         chapter k's largest refactor: Tech Debt arrives
 //   release  { tag, weight }       a minor or major release: flag and fireworks
@@ -41,7 +42,7 @@ export function buildEvents(ep, o = {}) {
     const t = c[TL.day] + (i - dayStart + 0.5) / n;
     if (bosses.has(i)) ev.push({ t, type: 'boss', i, who: p, k: bosses.get(i) });
     else if (c[TL.kind] === 'fix') ev.push({ t, type: duels.has(i) ? 'duel' : 'fix', i, who: p });
-    else if (c[TL.kind] === 'feat') ev.push({ t, type: 'feat', i, who: p, big: big.has(i) });
+    else if (c[TL.kind] === 'feat') ev.push({ t, type: big.has(i) ? 'featduel' : 'feat', i, who: p });
     else if (c[TL.kind] === 'revert') ev.push({ t, type: 'revert', i, who: p });
   }
   for (const r of tl.releases) if (r.weight >= 2) ev.push({ t: r.day + 0.95, type: 'release', tag: r.tag, weight: r.weight });
@@ -60,4 +61,29 @@ export function firstEventAt(events, day) {
 /** Events with from <= t < to. */
 export function eventsBetween(events, from, to) {
   return events.slice(firstEventAt(events, from), firstEventAt(events, to));
+}
+
+/**
+ * Who should be on stage. People with something to fight come on, busiest
+ * first, preferring those already there so the lineup doesn't churn. If fewer
+ * than two qualify, recent committers fill in. People leave only when they have
+ * no enemy left and have stayed at least `minStay` seconds. Forced heroes (a
+ * duel's hero, the boss finisher) always come on, even past the limit.
+ *
+ * @param {{ busy: Map<string, number>, onStage: { name: string, arrivedAt: number, hasEnemy: boolean }[],
+ *           fill: string[], forced: string[], max: number, now: number, minStay: number }} o
+ * @returns {{ add: string[], leave: string[] }}
+ */
+export function chooseLineup({ busy, onStage, fill, forced, max, now, minStay }) {
+  const here = new Set(onStage.map((h) => h.name));
+  const ranked = [...busy.entries()].sort((a, b) => (here.has(b[0]) - here.has(a[0])) || b[1] - a[1]).map(([n]) => n);
+  const want = ranked.slice(0, max);
+  for (const n of fill) { if (want.length >= 2) break; if (!want.includes(n)) want.push(n); }
+  const keep = new Set([...want, ...forced]);
+  const leave = onStage.filter((h) => !keep.has(h.name) && !h.hasEnemy && now - h.arrivedAt >= minStay).map((h) => h.name);
+  let count = onStage.length - leave.length;
+  const add = [];
+  for (const n of want) if (!here.has(n) && count < max) { add.push(n); count++; }
+  for (const n of forced) if (!here.has(n) && !add.includes(n)) add.push(n);
+  return { add, leave };
 }

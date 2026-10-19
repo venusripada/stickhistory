@@ -11,7 +11,7 @@ export const fmtMonth = (d) => { const [y, m] = d.split('-'); return `${MON[+m -
 export const range = (a, b) => { const x = fmtMonth(a), y = fmtMonth(b); return x === y ? x : `${x} – ${y}`; };
 export const trunc = (s, n) => (s.length > n ? s.slice(0, Math.max(1, n - 1)) + '…' : s);
 export const fixTag = (fx) => (fx.issues && fx.issues.length ? `#${fx.issues[0].number}` : fx.pr ? `#${fx.pr}` : String(fx.sha || '').slice(0, 7));
-export const fixKind = (fx) => (fx.issues && fx.issues.length ? 'Issue' : fx.pr ? 'Pull request' : 'Commit');
+export const fixKind = (fx) => (fx.kind === 'feat' ? 'Feature' : fx.issues && fx.issues.length ? 'Issue' : fx.pr ? 'Pull request' : 'Commit');
 /**
  * What a fix was, in words: its short title, led by the code area when the commit names one
  * ("tui · cursor jumps") and by its issue or pull request number when it has one ("#51 crash on start").
@@ -34,6 +34,8 @@ export const ETYPES = {
   wraith:  { name: 'Path Wraith', hover: 24, speed: 50, launch: true },
   moth:    { name: 'Glitch Moth', hover: 34, speed: 62, launch: true },
   bomb:    { name: 'Crash Bomb', hover: 0, speed: 48, launch: true },
+  // not a bug: unfinished work. Heavy and slow; its author builds it by hitting it.
+  feature: { name: 'Feature', hover: 0, speed: 38, launch: false },
 };
 export const ENEMY_NAMES = Object.fromEntries(Object.entries(ETYPES).map(([k, v]) => [k, v.name]));
 

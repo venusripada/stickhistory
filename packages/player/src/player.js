@@ -15,7 +15,7 @@ import { validateEpisode, secondsPerDay, isoOfDay, activeAt, chapterAt, fixOf, c
 import { DEFAULT_THEME, HERO_COLORS, readTheme } from './theme.js';
 import { makeSim } from './sim.js';
 import { makeDraw } from './draw.js';
-import { buildEvents, firstEventAt } from './director.js';
+import { buildEvents, firstEventAt, chooseLineup } from './director.js';
 import { clamp, rand, fmtN, fmtDate, range, fixTag, fixKind, fixLabel, ETYPES, ENEMY_NAMES, H, GY } from './util.js';
 
 export { DEFAULT_THEME, ENEMY_NAMES };
@@ -65,7 +65,7 @@ export function createPlayer(opts) {
 
   function resetStage() {
     Object.assign(G, {
-      time: G.time || 0, heroes: [], enemies: [], boss: null, finisher: null, bot: null, orbs: [], bolts: [], parts: [], fx: [], floaters: [], flags: [],
+      time: G.time || 0, heroes: [], enemies: [], boss: null, finisher: null, bot: null, bolts: [], parts: [], fx: [], floaters: [], flags: [],
       duel: null, banner: null, stamp: null, cards: [], pending: [], bigQ: [], shake: 0, hitstop: 0, slowmo: 0, kills: 0, duelsWon: 0, bestCombo: 0,
       cheer: 0, fw: 0, fwT: 0, lineupT: 0, spawnT: 0, ended: false, endT: 0,
     });
@@ -100,23 +100,35 @@ export function createPlayer(opts) {
   function freeSlot() { const used = new Set(G.heroes.filter((h) => !h.leaving).map((h) => h.k)); let k = 0; while (used.has(k)) k++; return k; }
   function addHero(name, placed) {
     const h = sim.makeHero(name, freeSlot());
+    h.arrivedAt = G.time;
     if (placed) h.x = sim.homeX(h);
     G.heroes.push(h);
     return h;
   }
   const ensureHero = (name) => onStage(name) || addHero(name, false);
-  /** Bring on the people busiest over the last two weeks; send the rest home. */
+  /**
+   * Put on stage the people who have something to fight (on stage, waiting, or due in
+   * the next day and a half); see chooseLineup in director.js for the rules.
+   */
   function lineup(placed) {
-    const max = E.W < 600 ? 4 : 6;
-    const want = activeAt(TLN, G.day, { window: 14, who: followWho, limit: max }).map((a) => a.name);
-    if (!want.length) return;
-    const keep = new Set(want);
-    if (G.duel) keep.add(G.duel.hero.name);
-    if (G.finisher && G.finisher.hero) keep.add(G.finisher.hero.name);
-    if (G.boss) keep.add(G.boss.info.who);
-    for (const h of G.heroes) if (!keep.has(h.name) && !h.leaving) { if (placed) h.gone = true; else { h.leaving = true; h.atk = null; h.state = 'idle'; } }
+    const busy = new Map();
+    const add = (name) => { if (name) busy.set(name, (busy.get(name) || 0) + 1); };
+    for (const e of G.enemies) if (sim.alive(e)) add(e.author);
+    for (const ev of G.pending) add(TLN.people[ev.who].name);
+    for (let k = cursor; k < events.length && events[k].t < G.day + 1.5; k++) {
+      const ev = events[k];
+      if (ev.who != null && ['fix', 'duel', 'feat', 'featduel'].includes(ev.type)) add(TLN.people[ev.who].name);
+    }
+    const forced = [G.duel && G.duel.hero.name, G.finisher && G.finisher.hero && G.finisher.hero.name, G.boss && G.boss.info.who].filter(Boolean);
+    const here = G.heroes.filter((h) => !h.leaving);
+    const r = chooseLineup({
+      busy, forced, max: E.W < 600 ? 4 : 6, now: G.time, minStay: placed ? 0 : 4,
+      fill: activeAt(TLN, G.day, { window: 14, who: followWho, limit: 6 }).map((a) => a.name),
+      onStage: here.map((h) => ({ name: h.name, arrivedAt: h.arrivedAt ?? 0, hasEnemy: G.enemies.some((e) => e.owner === h && sim.alive(e)) })),
+    });
+    for (const h of here) if (r.leave.includes(h.name)) { if (placed) h.gone = true; else { h.leaving = true; h.atk = null; h.state = 'idle'; } }
     G.heroes = G.heroes.filter((h) => !h.gone);
-    for (const name of want) if (!onStage(name)) addHero(name, placed);
+    for (const name of r.add) addHero(name, placed);
   }
 
   // ---------- story beats ----------
@@ -129,7 +141,7 @@ export function createPlayer(opts) {
     G.enemies.push(e);
     G.duel = { hero, fx, enemy: e, t: 0, combo: 0, comboT: 0, comboPop: 0, won: false };
     G.banner = { hero: hero.name, fx, t: 0 };
-    E.say('duel', { hero: hero.name, fx, typeName: ETYPES[e.type].name });
+    E.say('duel', { hero: hero.name, fx, typeName: ETYPES[e.type].name, feature: e.type === 'feature' });
   }
   function startBoss(ev) {
     const fx = fixOf(TLN, ev.i);
@@ -146,14 +158,10 @@ export function createPlayer(opts) {
       else G.bot = { x: -50, state: 'enter', t: 0, carry: true, tag: ev.tag };
       G.cheer = 3;
       E.say('release', { tag: ev.tag, d: isoOfDay(TLN, ev.t) });
-    } else if (ev.type === 'fix') G.pending.push(ev);
-    else if (ev.type === 'duel') { if (G.duel || G.boss) G.pending.push(ev); else startDuel(ev); }
+    } else if (ev.type === 'fix' || ev.type === 'feat') G.pending.push(ev);
+    else if (ev.type === 'duel' || ev.type === 'featduel') { if (G.duel || G.boss) G.pending.push(ev); else startDuel(ev); }
     else if (ev.type === 'boss') { if (G.duel || G.boss) G.bigQ.push(ev); else startBoss(ev); }
-    else if (ev.type === 'feat') {
-      const fx = fixOf(TLN, ev.i);
-      if (ev.big) { sim.dropOrb(ensureHero(fx.who), fx); E.say('feature', { who: fx.who, fx }); }
-      else { const h = onStage(fx.who); if (h) sim.sparkFeature(h); }
-    } else if (ev.type === 'revert') {
+    else if (ev.type === 'revert') {
       const fx = fixOf(TLN, ev.i);
       const h = onStage(fx.who) || G.heroes.find((x) => !x.leaving);
       if (h) sim.fireRevert(h, fx);
@@ -201,7 +209,11 @@ export function createPlayer(opts) {
     const living = G.enemies.filter((e) => sim.alive(e) && !e.duel).length;
     if (!G.boss && !G.finisher && G.pending.length && living < (E.W < 600 ? 6 : 10) && G.spawnT <= 0) {
       const fx = fixOf(TLN, G.pending.shift().i);
-      G.enemies.push(sim.makeEnemy(fx, onStage(fx.who), Math.random() < .8 ? 1 : -1, false));
+      const side = Math.random() < .8 ? 1 : -1;
+      const e = sim.makeEnemy(fx, onStage(fx.who), side, false);
+      // walk well into the stage before engaging, so fights spread out instead of piling up at the edges
+      e.tx = side > 0 ? rand(E.W * .4, E.W * .85) : rand(E.W * .15, E.W * .55);
+      G.enemies.push(e);
       G.spawnT = rand(.12, .35);
     }
     const D = G.duel;
@@ -261,7 +273,6 @@ export function createPlayer(opts) {
     if (G.bot) dr.drawBot(G.bot);
     for (const h of G.heroes) dr.drawFigure(h);
     dr.drawBeam();
-    for (const o of G.orbs) dr.drawOrb(o);
     for (const x of G.bolts) dr.drawBolt(x);
     dr.drawFx();
     dr.drawParts();
@@ -365,7 +376,7 @@ export function createPlayer(opts) {
       return {
         width: E.W, zoom: CAM.z,
         heroes: G.heroes.map((h) => ({ name: h.name, x: h.x, leaving: h.leaving, entered: !!h.entered })),
-        enemies: G.enemies.map((e) => ({ x: e.x, r: e.r, state: e.state, duel: !!e.duel, entered: !!e.entered })),
+        enemies: G.enemies.map((e) => ({ x: e.x, r: e.r, state: e.state, duel: !!e.duel, entered: !!e.entered, type: e.type, author: e.author })),
       };
     },
     get episode() { return EP; },

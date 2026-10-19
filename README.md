@@ -1,6 +1,6 @@
 # Commit Wars
 
-Keep a library of repositories and watch each one's history as a stick-figure fight. Every hero is someone who wrote the commits. Every enemy is a bug or issue they actually fixed, labeled with its issue or pull request and sized by how many files the fix touched. The history plays as a movie you can scrub: every fix enters on the day it landed, each chapter's biggest fixes become duels, and Tech Debt arrives with the era's largest refactor.
+Keep a library of repositories and watch each one's history as a stick-figure fight. Every hero is someone who wrote the commits. Every enemy is a bug they actually fixed or a feature they built, named by what it was and sized by how many files it touched. The history plays as a movie you can scrub: every fix enters on the day it landed, each chapter's biggest fixes become duels, and Tech Debt arrives with the era's largest refactor.
 
 ```
 npm install
@@ -67,8 +67,9 @@ library/                         ($COMMIT_WARS_LIBRARY overrides; git-ignored)
    - Each hero's duel is their highest-scoring fix of the chapter. Fixes that closed an issue score highest, then size, a linked PR, a scope and bug words; chores like dependency bumps, docs and translations are pushed down.
    - Enemy type comes from labels first, then words in the subject, then the code area: Crash Bomb, Perf Beetle, Path Wraith, Glitch Moth, Gremlin (terminal UI), Logic Crawler.
 3. **Play** (`createPlayer`). The episode plays as a movie, and every calendar day gets the same screen time: the whole history takes about ten minutes at 1×, with speeds from 0.5× to 8×.
-   - **Fights:** every fix enters on the day it landed and is fought by its author. The six busiest people of the last two weeks are on stage. Fixes that don't fit wait at the edge as a "+N" swarm.
-   - **Story beats:** each chapter's biggest fixes are spotlight duels, Tech Debt arrives on the date of the era's largest refactor, and minor and major releases plant a flag and set off fireworks.
+   - **Fights:** every fix enters as a bug, and every feature as a gold, half-built Feature to finish, on the day it landed. Each is fought by its author: bugs end FIXED, features end SHIPPED. Fights that don't fit wait at the edge as a "+N" swarm.
+   - **Who's on stage:** only people with something to fight (up to six), arriving just before their work does and leaving once it's done. A near-empty stage is topped up with recent committers.
+   - **Story beats:** each chapter's biggest fixes and features are spotlight duels, Tech Debt arrives on the date of the era's largest refactor, and minor and major releases plant a flag and set off fireworks.
    - **Seeking:** `seek(day)` jumps anywhere.
    - **Events:** the player emits `time`, `state` and `spotlight`.
 
