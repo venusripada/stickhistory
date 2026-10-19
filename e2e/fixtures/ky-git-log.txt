@@ -1,0 +1,3427 @@
+@@@3541888878c4d303a8bc2ad61815f4e048f55a5d2026-10-09Sindre Sorhussindresorhus@gmail.com242c32728a4be7eacfa08bca1ae0b209444f83d1HEAD -> main, tag: v2.2.02.2.0
+
+package.json
+@@@242c32728a4be7eacfa08bca1ae0b209444f83d12026-10-09Sindre Sorhussindresorhus@gmail.comd9ddb03b444cbb6c10601003ede9269f3885a665Let a `beforeRetry` hook change per-attempt optionsFixes #885
+
+
+readme.md
+source/core/Ky.ts
+source/core/constants.ts
+source/index.ts
+source/types/hooks.ts
+source/types/options.ts
+test-d/hooks.ts
+test/browser.ts
+test/retry-options.ts
+@@@d9ddb03b444cbb6c10601003ede9269f3885a6652026-10-09Sindre Sorhussindresorhus@gmail.comd93adf85d1a992eb3b0390200c7d19e37d16b890Fix CI
+
+test-d/fetch-extensions.ts
+test/request-construction.ts
+test/resilience.ts
+test/retry.ts
+@@@d93adf85d1a992eb3b0390200c7d19e37d16b8902026-10-09Sindre Sorhussindresorhus@gmail.coma5ed57b1898d5eba75f1b0ffc8752518a75e0f07Run the browser tests and static checks once in CIFixes #886
+
+
+.github/workflows/main.yml
+@@@a5ed57b1898d5eba75f1b0ffc8752518a75e0f072026-10-08Sindre Sorhussindresorhus@gmail.com7f0137dc42bbebc8652649a8139065c0dd4dff0bRefactor
+
+readme.md
+source/core/Ky.ts
+source/core/constants.ts
+source/core/retry-timing.ts
+source/errors/ForceRetryError.ts
+source/errors/NonError.ts
+source/index.ts
+source/types/options.ts
+source/utils/body.ts
+source/utils/is.ts
+source/utils/merge.ts
+source/utils/normalize.ts
+source/utils/options.ts
+source/utils/timeout.ts
+source/utils/type-guards.ts
+source/utils/types.ts
+test/bytes.ts
+test/error-data.ts
+test/errors.ts
+test/fetch.ts
+test/hooks.ts
+test/http-error.ts
+test/main.ts
+test/merge.ts
+test/normalize.ts
+test/request-construction.ts
+test/resilience.ts
+test/response-handling.ts
+test/retry-decisions.ts
+test/retry-timing.ts
+test/retry.ts
+test/stream.ts
+test/validation.ts
+@@@7f0137dc42bbebc8652649a8139065c0dd4dff0b2026-09-29Sindre Sorhussindresorhus@gmail.com13c8da559c940c4abd9c741a56ea4603c25a0383Report the sent request for a hook's response, and finish the cross-realm and `null` checks
+
+readme.md
+source/core/Ky.ts
+source/core/constants.ts
+source/errors/ForceRetryError.ts
+source/types/ky.ts
+source/types/options.ts
+source/utils/body.ts
+source/utils/merge.ts
+test/hooks.ts
+test/retry.ts
+test/validation.ts
+@@@13c8da559c940c4abd9c741a56ea4603c25a03832026-09-29Sindre Sorhussindresorhus@gmail.com55599c89809c83bdae7f56b56ac8e2a5bd57b8d3Stop surfacing progress callback errors
+
+readme.md
+source/core/Ky.ts
+source/types/hooks.ts
+source/types/options.ts
+source/utils/body.ts
+test/browser.ts
+test/context.ts
+test/hooks.ts
+test/response-size.ts
+test/stream.ts
+test/type-guards.ts
+@@@55599c89809c83bdae7f56b56ac8e2a5bd57b8d32026-09-27Sindre Sorhussindresorhus@gmail.com3ded2aad45a1ef06eef5a91e3d853dd056376bf6Run `beforeError` for a `beforeRetry` abort and share the body-wrapping check
+
+readme.md
+source/core/Ky.ts
+source/index.ts
+source/types/options.ts
+source/types/retry.ts
+source/utils/body.ts
+test/retry.ts
+test/stream.ts
+@@@3ded2aad45a1ef06eef5a91e3d853dd056376bf62026-09-26Sindre Sorhussindresorhus@gmail.com692c43575422c7251baea01ef4179100e0215e1bTweaks
+
+AGENTS.md
+readme.md
+source/core/Ky.ts
+source/index.ts
+source/types/ResponsePromise.ts
+source/types/hooks.ts
+source/types/ky.ts
+source/types/options.ts
+source/utils/body.ts
+source/utils/merge.ts
+source/utils/normalize.ts
+source/utils/options.ts
+test-d/hooks.ts
+test/base-url.ts
+test/body-size.ts
+test/browser.ts
+test/context.ts
+test/fetch.ts
+test/hooks.ts
+test/main.ts
+test/prefix.ts
+test/response-size.ts
+test/retry.ts
+test/validation.ts
+@@@692c43575422c7251baea01ef4179100e0215e1b2026-09-26Sindre Sorhussindresorhus@gmail.com58233f13203747698c99cc94a8b1b20a6c9925bfRestore the retry-only marker condition and cover the remaining cases
+
+source/core/Ky.ts
+source/utils/merge.ts
+test/body-size.ts
+test/hooks.ts
+test/http-error.ts
+test/response-consumption.ts
+test/response-size.ts
+test/stream.ts
+test/validation.ts
+@@@58233f13203747698c99cc94a8b1b20a6c9925bf2026-09-26Sindre Sorhussindresorhus@gmail.com33462fcbf8f9001fc3d7a08576992098e571c5ffExplain both causes of a missing response and document the new validation
+
+readme.md
+source/core/Ky.ts
+source/core/constants.ts
+source/types/ResponsePromise.ts
+source/types/ky.ts
+source/types/options.ts
+source/utils/merge.ts
+test-d/fetch-extensions.ts
+test/hooks.ts
+test/main.ts
+@@@33462fcbf8f9001fc3d7a08576992098e571c5ff2026-09-26Sindre Sorhussindresorhus@gmail.com4cc6698cf35873f288177f4073cbc0bdbbf83374Reject a nullish hook list instead of treating it as absent
+
+source/types/options.ts
+source/utils/merge.ts
+test/hooks.ts
+@@@4cc6698cf35873f288177f4073cbc0bdbbf833742026-09-26Sindre Sorhussindresorhus@gmail.comdeb5a331d07b82dbc7eed308804626ea7f1d6383Recognise a cross-realm `beforeRetry` error and keep the retried error as the cause
+
+source/core/Ky.ts
+test/hooks.ts
+test/main.ts
+test/retry.ts
+@@@deb5a331d07b82dbc7eed308804626ea7f1d63832026-09-26Sindre Sorhussindresorhus@gmail.com6e275943bf7635e49f28d3b96e804ccd2c58f156Release the body when a predicate throws, an abort wins, or a response cannot be decorated
+
+readme.md
+source/core/Ky.ts
+source/utils/merge.ts
+test/hooks.ts
+test/http-error.ts
+test/response-size.ts
+test/retry.ts
+@@@6e275943bf7635e49f28d3b96e804ccd2c58f1562026-09-26Sindre Sorhussindresorhus@gmail.comd4ce7b12c5864a4af1427c573ce31a3c3d9a809bType-check `onDownloadProgress` before the request is sent
+
+source/core/Ky.ts
+test/validation.ts
+@@@d4ce7b12c5864a4af1427c573ce31a3c3d9a809b2026-09-26Sindre Sorhussindresorhus@gmail.com16b5936d6a275ce380c710e52e56c60f88850a3aFix docs
+
+readme.md
+source/core/Ky.ts
+source/types/ky.ts
+source/types/options.ts
+test-d/fetch-extensions.ts
+test/fetch.ts
+@@@16b5936d6a275ce380c710e52e56c60f88850a3a2026-09-26Sindre Sorhussindresorhus@gmail.com74224d8b277147371ed6a6321e21c775dd941c71Check the callbacks before the constructor uses them and reject an array `hooks`
+
+readme.md
+source/core/Ky.ts
+source/types/options.ts
+source/utils/body.ts
+source/utils/merge.ts
+test/hooks.ts
+test/stream.ts
+test/validation.ts
+@@@74224d8b277147371ed6a6321e21c775dd941c712026-09-26Sindre Sorhussindresorhus@gmail.com619c42765fa22b02966f39443fbc28167b707caaMake a non-Error progress-callback throw non-retriable too
+
+source/core/Ky.ts
+test/stream.ts
+@@@619c42765fa22b02966f39443fbc28167b707caa2026-09-26Sindre Sorhussindresorhus@gmail.com8a3a9cfecc72f034b5777c7dff913999bb1ad938Name the request that was sent on every `TimeoutError`
+
+source/core/Ky.ts
+test/retry.ts
+@@@8a3a9cfecc72f034b5777c7dff913999bb1ad9382026-09-26Sindre Sorhussindresorhus@gmail.com6b6756935c2d62897c89eaeb79cc30bc8cf1f5daAdvertise the shortcut media type on the attempt that produced the response
+
+source/core/Ky.ts
+test/main.ts
+@@@6b6756935c2d62897c89eaeb79cc30bc8cf1f5da2026-09-26Sindre Sorhussindresorhus@gmail.com01b0839916e88f131c61222a18c394263828dd51Validate the callbacks and the input
+
+readme.md
+source/core/Ky.ts
+source/core/constants.ts
+source/types/options.ts
+source/utils/body.ts
+source/utils/merge.ts
+test/response-consumption.ts
+test/retry.ts
+test/stream.ts
+test/validation.ts
+@@@01b0839916e88f131c61222a18c394263828dd512026-09-26Sindre Sorhussindresorhus@gmail.com0b1f462c6d8976cfb67a9b4e6dad824b2409b44aRecognise another copy of Ky: the stop symbol and the retry marker
+
+source/core/Ky.ts
+source/core/constants.ts
+test/hooks.ts
+@@@0b1f462c6d8976cfb67a9b4e6dad824b2409b44a2026-09-26Sindre Sorhussindresorhus@gmail.combd0e26f27c2d94fafb01e981424e33d976a41655Progress from a declared content-length, and a throwing callback is never retried
+
+readme.md
+source/core/Ky.ts
+source/types/options.ts
+source/utils/body.ts
+test/stream.ts
+@@@bd0e26f27c2d94fafb01e981424e33d976a416552026-09-26Sindre Sorhussindresorhus@gmail.com0a9cbb1a3f09f67f69cc4b45057fb38988881f49Accept a cross-realm `beforeError` error and validate a `ky.retry({delay})`
+
+source/core/Ky.ts
+source/core/constants.ts
+source/errors/ForceRetryError.ts
+source/utils/is-network-error.ts
+source/utils/is.ts
+test/hooks.ts
+test/retry.ts
+@@@0a9cbb1a3f09f67f69cc4b45057fb38988881f492026-09-26Sindre Sorhussindresorhus@gmail.com3f0e330dba1bcce4900316857bd2d3087e79f95bReport a `hooks` option that is not an object
+
+source/utils/merge.ts
+test/hooks.ts
+@@@3f0e330dba1bcce4900316857bd2d3087e79f95b2026-09-26Sindre Sorhussindresorhus@gmail.coma0eeae216e1d40deb7c43cb9db03e581a27d8c6eHonour a late abort, count a no-op `content-encoding`, and keep wrapped headers immutableCount a no-op content-encoding and keep wrapped headers immutable
+
+A `content-length` header is valid for a response whose `content-encoding` is the registered no-op `identity`, so it is not discarded the way a real coding is.
+
+The `Response` constructor also rebuilds the header list under the mutable "response" guard, so a network response that arrived immutable would silently become mutable once wrapped. Reusing the original headers object keeps the guard.
+
+
+source/core/Ky.ts
+source/utils/body.ts
+source/utils/merge.ts
+test/response-size.ts
+test/retry.ts
+test/stream.ts
+@@@a0eeae216e1d40deb7c43cb9db03e581a27d8c6e2026-09-26Sindre Sorhussindresorhus@gmail.com23ca56439a82408169788dadac52717d5c6324b9Resolve leftover `replaceOption()` wrappers, name the request behind a response, and advertise the media types
+
+source/core/Ky.ts
+source/core/constants.ts
+source/utils/merge.ts
+test/hooks.ts
+test/response-consumption.ts
+test/retry.ts
+@@@23ca56439a82408169788dadac52717d5c6324b92026-09-26Sindre Sorhussindresorhus@gmail.comd89c8c8d700544deda79c2c7cc13f17171cfb398Skip wrapping a body a hook read, and read a past reset epoch as a timestamp
+
+readme.md
+source/core/retry-timing.ts
+source/types/options.ts
+source/utils/body.ts
+test/response-size.ts
+test/retry-timing.ts
+test/retry.ts
+@@@d89c8c8d700544deda79c2c7cc13f17171cfb3982026-09-26Sindre Sorhussindresorhus@gmail.com5b7080a13557e69f79c143c3ac029e58d3b4ed38Count a compressed response as unknown, deep-copy context, and isolate `init` hook assignments
+
+readme.md
+source/core/Ky.ts
+source/types/options.ts
+source/utils/body.ts
+source/utils/merge.ts
+source/utils/normalize.ts
+source/utils/options.ts
+test/hooks.ts
+test/main.ts
+test/retry.ts
+test/stream.ts
+@@@5b7080a13557e69f79c143c3ac029e58d3b4ed382026-09-26Sindre Sorhussindresorhus@gmail.comf3b1f7d9c688ca5d450475c8f57b1e92543cf7b6Explain a missing response and give `extend(fn)` a deep copy of the parent defaults
+
+readme.md
+source/core/Ky.ts
+source/index.ts
+test/context.ts
+test/hooks.ts
+@@@f3b1f7d9c688ca5d450475c8f57b1e92543cf7b62026-09-26Sindre Sorhussindresorhus@gmail.com38bbe4ede31cadbf1e7d11787a22af424db33251Skip upload progress wrapping for Request-like results and use the cross-realm guards
+
+source/core/Ky.ts
+source/utils/body.ts
+test/hooks.ts
+test/main.ts
+test/type-guards.ts
+@@@38bbe4ede31cadbf1e7d11787a22af424db332512026-09-26Sindre Sorhussindresorhus@gmail.comd9774cf8d557a16f902263aea75a3bd112fb0b37Treat a null `searchParams` assigned by an `init` hook as absent
+
+source/utils/options.ts
+test/main.ts
+@@@d9774cf8d557a16f902263aea75a3bd112fb0b372026-09-26Sindre Sorhussindresorhus@gmail.comf44674586a2f11317c1ea908fd7b2ec5d0a3eb40Validate the retry options and forward every fetch-only extension
+
+package.json
+source/core/Ky.ts
+source/utils/normalize.ts
+source/utils/options.ts
+test/fetch.ts
+test/retry.ts
+test/validation.ts
+@@@f44674586a2f11317c1ea908fd7b2ec5d0a3eb402026-09-26Sindre Sorhussindresorhus@gmail.com8d8e7a4db6bcb64a5922128995d311c63092fb6cReject invalid `timeout` and `totalTimeout` values
+
+.gitignore
+source/core/Ky.ts
+test/validation.ts
+@@@8d8e7a4db6bcb64a5922128995d311c63092fb6c2026-09-25Sindre Sorhussindresorhus@gmail.comff0155d6e99ec3ba6661189add9baa79ff4a52f4Harden
+
+readme.md
+source/core/Ky.ts
+source/types/hooks.ts
+source/types/options.ts
+source/utils/merge.ts
+test/context.ts
+test/hooks.ts
+test/http-error.ts
+test/main.ts
+@@@ff0155d6e99ec3ba6661189add9baa79ff4a52f42026-09-21Sindre Sorhussindresorhus@gmail.com8778439c9ff51a50875b166bca1c40f94290be0aNormalize mutable init hook options
+
+source/core/Ky.ts
+source/types/options.ts
+source/utils/merge.ts
+test-d/hooks.ts
+test/hooks.ts
+@@@8778439c9ff51a50875b166bca1c40f94290be0a2026-09-21Sindre Sorhussindresorhus@gmail.comfa0eac4cee101ed15649f09c4cd7a58aedb0be6dImprove docs
+
+readme.md
+source/core/Ky.ts
+source/types/options.ts
+source/types/retry.ts
+source/utils/body.ts
+test-d/normalized-options.ts
+test/browser.ts
+test/formdata-searchparams.ts
+test/hooks.ts
+test/main.ts
+test/retry.ts
+test/stream.ts
+@@@fa0eac4cee101ed15649f09c4cd7a58aedb0be6d2026-09-21Sindre Sorhussindresorhus@gmail.coma2dfbd7ec108e733d665957ebf945ed7657a52ffSkip a needless request rebuild, report an unknown total as zero, and fix two stale tests
+
+source/core/Ky.ts
+source/utils/body.ts
+test/headers.ts
+test/main.ts
+test/methods.ts
+test/stream.ts
+@@@a2dfbd7ec108e733d665957ebf945ed7657a52ff2026-09-21Sindre Sorhussindresorhus@gmail.com83c711cb7f051beb4533a601d54f28eeb0ad1eb3Surface progress callback errors instead of a NetworkErrorA throwing `onUploadProgress` callback errors the request body stream. The runtime reports that stream failure as a generic network error, so Ky wrapped it in a `NetworkError` and the callback error was replaced by a misleading message. `isNetworkError()` then returned true for a user error, which also made the failure retriable.
+
+
+source/core/Ky.ts
+source/utils/body.ts
+test/browser.ts
+test/stream.ts
+@@@83c711cb7f051beb4533a601d54f28eeb0ad1eb32026-09-18Sindre Sorhussindresorhus@gmail.comde278ae6e003a5a7d7e3c5dba24da5587ac28752Detect request stream support in Bun and Deno, and cover the pipeline with tests
+
+source/core/constants.ts
+source/utils/body.ts
+source/utils/merge.ts
+test/abort-retry.ts
+test/body-regressions.ts
+test/fetch.ts
+test/forced-retry-body.ts
+test/formdata-boundary.ts
+test/formdata-searchparams.ts
+test/hooks.ts
+test/main.ts
+test/network-error.ts
+test/option-regressions.ts
+test/request-replacement-cleanup.ts
+test/request-stream-support-runtimes.ts
+test/response-size.ts
+test/retry-request-body.ts
+test/retry.ts
+test/stream-replacement.ts
+test/stream.ts
+test/upload-cleanup.ts
+@@@de278ae6e003a5a7d7e3c5dba24da5587ac287522026-09-17Sindre Sorhussindresorhus@gmail.comec3d17f90943d99aec96da2021d69155c95a19b8Preserve a user cancellation across retry decisions and report the bytes that arrived
+
+readme.md
+source/core/Ky.ts
+source/types/options.ts
+source/utils/body.ts
+test/abort-retry.ts
+test/body-regressions.ts
+test/browser.ts
+test/retry.ts
+@@@ec3d17f90943d99aec96da2021d69155c95a19b82026-09-17Sindre Sorhussindresorhus@gmail.comd1c921f3b8d4b934d2dc0b1cc6a51738126099a7Release the bodies a caller cannot reach and stop sharing search parameters
+
+source/core/Ky.ts
+source/utils/merge.ts
+source/utils/timeout.ts
+test/fetch.ts
+test/forced-retry-body.ts
+test/network-error.ts
+test/option-regressions.ts
+test/request-replacement-cleanup.ts
+test/retry-request-body.ts
+test/retry.ts
+test/stream-replacement.ts
+test/upload-cleanup.ts
+@@@d1c921f3b8d4b934d2dc0b1cc6a51738126099a72026-09-17Sindre Sorhussindresorhus@gmail.com0d59458a0a58e1c3d7c6db0ab17ed5c7cd671e47Honour a server retry-timing header when `shouldRetry` allows the retry
+
+readme.md
+source/core/Ky.ts
+source/types/retry.ts
+test/formdata-boundary.ts
+test/retry.ts
+@@@0d59458a0a58e1c3d7c6db0ab17ed5c7cd671e472026-09-14Sindre Sorhussindresorhus@gmail.com071a9b97d3d149a576c91e0b92532f11aab456c5Add `maxResponseSize` option
+
+readme.md
+source/core/Ky.ts
+source/core/constants.ts
+source/errors/HTTPError.ts
+source/errors/KyError.ts
+source/errors/ResponseSizeError.ts
+source/index.ts
+source/types/hooks.ts
+source/types/options.ts
+source/utils/body.ts
+source/utils/type-guards.ts
+test-d/response-size.ts
+test/browser.ts
+test/response-size.ts
+test/stream.ts
+@@@071a9b97d3d149a576c91e0b92532f11aab456c52026-09-14Sindre Sorhussindresorhus@gmail.comd6e049a690c7562a72e22d0b1eb57a2d4d19745ePreserve Request input abort signals
+
+source/core/Ky.ts
+@@@d6e049a690c7562a72e22d0b1eb57a2d4d19745e2026-09-12Sindre Sorhussindresorhus@gmail.com323b98f0a326f3967dc16acd34f2755da3ebd63aResolve retry replacements without parent retry options
+
+source/utils/merge.ts
+test/retry.ts
+@@@323b98f0a326f3967dc16acd34f2755da3ebd63a2026-09-12Sindre Sorhussindresorhus@gmail.coma8753dcc9a4e8771d4226f9b6d196064325a0fbcRun beforeError hooks for body reader failures
+
+source/core/Ky.ts
+test/response-consumption.ts
+@@@a8753dcc9a4e8771d4226f9b6d196064325a0fbc2026-09-12Sindre Sorhussindresorhus@gmail.comb28ba903c322b84b5d9cf47a6fc0af6a61d5954fPreserve symbol-keyed context in init hooks
+
+source/utils/merge.ts
+test/context.ts
+test/headers.ts
+@@@b28ba903c322b84b5d9cf47a6fc0af6a61d5954f2026-09-12Sindre Sorhussindresorhus@gmail.comcd1dba0e4502d95be93846e6c77bf0479dc0e385Simplify request state and retry normalization
+
+source/core/Ky.ts
+source/types/common.ts
+source/types/options.ts
+source/utils/normalize.ts
+@@@cd1dba0e4502d95be93846e6c77bf0479dc0e3852026-09-12Sindre Sorhussindresorhus@gmail.come58817d490cba99c97820a39f239272ffdb92881More tests
+
+AGENTS.md
+test/http-metadata.ts
+test/http-redirects.ts
+test/http-response-bodies.ts
+test/http-semantics.ts
+test/normalize.ts
+test/request-body-serialization.ts
+test/response-consumption.ts
+test/retry-timing.ts
+@@@e58817d490cba99c97820a39f239272ffdb928812026-09-12Sindre Sorhussindresorhus@gmail.com52b8f93e076e1614a3f62162052a8723b10ca5acType custom fetch callbacks with Request inputs
+
+source/types/options.ts
+source/utils/timeout.ts
+test-d/fetch-request.ts
+test/fetch.ts
+@@@52b8f93e076e1614a3f62162052a8723b10ca5ac2026-09-12Sindre Sorhussindresorhus@gmail.comf4886ca8f58c1f9f950124d9edef6bb0f60bb6efAllow customizing error names in TypeScript
+
+source/errors/ForceRetryError.ts
+source/errors/HTTPError.ts
+source/errors/NetworkError.ts
+source/errors/SchemaValidationError.ts
+source/errors/TimeoutError.ts
+test-d/error-names.ts
+test/type-guards.ts
+@@@f4886ca8f58c1f9f950124d9edef6bb0f60bb6ef2026-09-12Sindre Sorhussindresorhus@gmail.com51b31777058c13f24b640a0ef1a47565f011e080Preserve JSON types when cloning requests and responses
+
+source/types/request.ts
+source/types/response.ts
+test-d/request-clone.ts
+test-d/response-clone.ts
+test/hooks.ts
+test/main.ts
+@@@51b31777058c13f24b640a0ef1a47565f011e0802026-09-12Sindre Sorhussindresorhus@gmail.com481f6f731b0c311bc2f677604aca3595558b22d1Support readonly inputs and explicit undefined in TypeScript options
+
+source/core/Ky.ts
+source/core/constants.ts
+source/errors/NetworkError.ts
+source/types/ResponsePromise.ts
+source/types/hooks.ts
+source/types/options.ts
+source/types/retry.ts
+source/utils/normalize.ts
+test-d/fetch-options.ts
+test-d/forced-retry.ts
+test-d/headers.ts
+test-d/hooks.ts
+test-d/init-search-params.ts
+test-d/json-undefined-schema.ts
+test-d/method-options.ts
+test-d/network-error-cause.ts
+test-d/normalized-options.ts
+test-d/request-options.ts
+test-d/retry.ts
+test-d/search-params.ts
+test-d/timeout-options.ts
+test-d/url-options.ts
+test/base-url.ts
+test/fetch.ts
+test/headers.ts
+test/hooks.ts
+test/main.ts
+test/methods.ts
+test/network-error.ts
+test/prefix.ts
+test/request-options.ts
+test/retry.ts
+test/stream.ts
+@@@481f6f731b0c311bc2f677604aca3595558b22d12026-09-12Sindre Sorhussindresorhus@gmail.com96a25cce552a0128653ca8833e95291ae5082509Fix bytes shortcut return type for Blob and Response compatibility
+
+source/types/ResponsePromise.ts
+test-d/response-promise.ts
+test/bytes.ts
+@@@96a25cce552a0128653ca8833e95291ae50825092026-09-12Sindre Sorhussindresorhus@gmail.come4269f070384e60e1c3fd3be4de9e199c07814c9Preserve abort reasons while reading HTTP error bodies
+
+source/core/Ky.ts
+test/http-error.ts
+@@@e4269f070384e60e1c3fd3be4de9e199c07814c92026-09-12Sindre Sorhussindresorhus@gmail.com82fa84c7d114f7987ed019be61417288ccc0876eRespect custom HTTP method case when matching retries
+
+source/core/Ky.ts
+source/utils/normalize.ts
+test/retry.ts
+@@@82fa84c7d114f7987ed019be61417288ccc0876e2026-09-12Sindre Sorhussindresorhus@gmail.comd636438b2dde678f153af2c21f37116f4d064271Enforce total timeout after fetch and body processing
+
+source/core/Ky.ts
+test/http-error.ts
+test/main.ts
+test/retry.ts
+@@@d636438b2dde678f153af2c21f37116f4d0642712026-09-12Sindre Sorhussindresorhus@gmail.com87a96db81480f1cb71e2cd51bce8c454d32b29eeAvoid misidentifying unrelated errors as Ky errors
+
+source/utils/type-guards.ts
+test/type-guards.ts
+@@@87a96db81480f1cb71e2cd51bce8c454d32b29ee2026-09-12Sindre Sorhussindresorhus@gmail.com06ebf18e1927b3772726037bda5a78d4b7eb6dbaPreserve non-Error values in retry errors and hooks
+
+source/core/Ky.ts
+source/errors/ForceRetryError.ts
+test/hooks.ts
+test/retry.ts
+@@@06ebf18e1927b3772726037bda5a78d4b7eb6dba2026-09-12Sindre Sorhussindresorhus@gmail.comf87efe6f5d8d6067756a80c5120e7782f4ed847eHandle unsupported streaming uploads gracefully
+
+readme.md
+source/core/constants.ts
+source/types/options.ts
+source/utils/body.ts
+test/request-stream-support.ts
+test/stream.ts
+@@@f87efe6f5d8d6067756a80c5120e7782f4ed847e2026-09-12Sindre Sorhussindresorhus@gmail.com8cf26e0e78d7a734f5e2846bdd65b66a936c13b3Preserve request referrer options
+
+source/core/Ky.ts
+source/utils/body.ts
+test/fetch.ts
+test/stream.ts
+@@@8cf26e0e78d7a734f5e2846bdd65b66a936c13b32026-09-12Sindre Sorhussindresorhus@gmail.com854608078545442344a29a0714a50b978e6d77e9Fix stale array entries when merging JSON objects
+
+source/utils/merge.ts
+test/main.ts
+@@@854608078545442344a29a0714a50b978e6d77e92026-09-12Sindre Sorhussindresorhus@gmail.com3e2d81ab7c4d80f0f22741c64bdc3923bcba4427Fix UTF-8 decoding of JSON error responses
+
+source/core/Ky.ts
+test/http-error.ts
+@@@3e2d81ab7c4d80f0f22741c64bdc3923bcba44272026-09-12Sindre Sorhussindresorhus@gmail.com6520f642c2a237ac39cde0ce8ce02b6e1ecf4db9Simulate unsupported request streams in browser tests
+
+test/browser.ts
+@@@6520f642c2a237ac39cde0ce8ce02b6e1ecf4db92026-09-12Sindre Sorhussindresorhus@gmail.com88e24329ed447b46f73183352e6fbce800f585d1Fix retry abort propagation and uploads without request stream support
+
+source/core/Ky.ts
+test/browser.ts
+test/retry.ts
+@@@88e24329ed447b46f73183352e6fbce800f585d12026-09-09Sindre Sorhussindresorhus@gmail.com830ab472fa18e1ba48861b2f36214d4c20a10f5dFix `init` hook mutations to nested `json` and `context` values leaking across requests`cloneInitHookOptions` shallow-cloned `json` and `context`, so an `init` hook that mutated a nested object or array in place (for example `options.json.user.id++`) changed the instance defaults and leaked into every later request. Nested `retry` arrays are already deep-cloned for exactly this reason, so the shortcoming was inconsistent.
+
+Deep-clone `json` and `context` instead. Plain objects and arrays are cloned recursively while non-plain values (functions, class instances, `Date`, `URLSearchParams`) are kept by reference, so function-valued `json` and class-instance context bindings still work, and shared or cyclic references stay intact.
+
+
+source/core/Ky.ts
+source/utils/merge.ts
+test/hooks.ts
+@@@830ab472fa18e1ba48861b2f36214d4c20a10f5d2026-09-12Sindre Sorhussindresorhus@gmail.com0e2501bc9dbb7da2ed46d51504873a5a7fda1c40Tweaks
+
+readme.md
+test/main.ts
+@@@0e2501bc9dbb7da2ed46d51504873a5a7fda1c402026-09-08Sindre Sorhussindresorhus@gmail.comd5bacefa0bf46315aa9964f7df02726bee3c3469Fix `init` hooks receiving `undefined` for `headers` when no headers were providedThe docs promise that `options.headers` in `init` hooks is always a plain object, but it was `undefined` unless some option layer set headers. Adding a header in place in an `init` hook then threw.
+
+
+source/core/Ky.ts
+test/hooks.ts
+@@@d5bacefa0bf46315aa9964f7df02726bee3c34692026-09-07Sindre Sorhussindresorhus@gmail.com91ea8a947747b406273df45777a62f2d91fef5c3Fix headers set to `undefined` not removing the header from a `Request` input
+
+readme.md
+source/core/Ky.ts
+source/types/hooks.ts
+source/types/ky.ts
+source/types/options.ts
+source/utils/merge.ts
+test/headers.ts
+test/hooks.ts
+@@@91ea8a947747b406273df45777a62f2d91fef5c32026-09-07Sindre Sorhussindresorhus@gmail.com7c1272ba0100feab8d62ccb913e7b5c8123dda99Fix a search parameter removed with `undefined` staying in the input URL when a later layer re-adds itRe-adding a key in a later `searchParams` layer dropped the deletion marker, so the key was never removed from the input URL and the old value was sent alongside the new one. The marker now persists, and a merged `URLSearchParams` layer applies its own deletions before its entries so re-added values are kept.
+
+
+readme.md
+source/types/options.ts
+source/utils/merge.ts
+test/main.ts
+@@@7c1272ba0100feab8d62ccb913e7b5c8123dda992026-09-07Sindre Sorhussindresorhus@gmail.com92ef60e2eea5b2a1aa5999937a7536924407ce00Fix a user abort in Chromium being reported as `NetworkError` and retriedChromium surfaces a user abort during a fetch or a body read as `TypeError: Failed to fetch` instead of an `AbortError`. Ky matched that message as a dropped connection, so an aborted request was wrapped in `NetworkError` and, for retriable methods, retried instead of failing. When a network-looking error arrives and the user-provided signal is aborted, Ky now throws the signal's reason instead, so a user abort surfaces consistently across runtimes, including custom reasons passed to `abort()`. This also makes the existing `aborting a request with onDownloadProgress` browser test pass again.
+
+
+source/core/Ky.ts
+test/browser.ts
+test/retry.ts
+@@@92ef60e2eea5b2a1aa5999937a7536924407ce002026-09-07Sindre Sorhussindresorhus@gmail.com0f2e28172c3f29c5cc97caed7e160efb23ca4b20Fix `fetch: window.fetch` throwing "Illegal invocation" in browsersThe `fetch` option was invoked as a method of Ky's internal options object, so a native `window.fetch` passed as-is was called with that object as `this`. Chromium rejects this with "Failed to execute 'fetch' on 'Window': Illegal invocation" and WebKit with "Can only call Window.fetch on instances of Window". The function is now called unbound, which native fetch accepts.
+
+
+source/core/Ky.ts
+source/utils/timeout.ts
+test/browser.ts
+test/fetch.ts
+@@@0f2e28172c3f29c5cc97caed7e160efb23ca4b202026-09-07Sindre Sorhussindresorhus@gmail.come1b088e3c1e9c66e68c66ed8fffa821ce3cfbcfbFix a stale timeout timer aborting the retried attempt when a custom `fetch` throws synchronously`timeout()` only cleared its timer through the promise chain of the `fetch` result, so a `fetch` option that threw synchronously left the timer running. When the request was then retried, the stale timer fired mid-flight and aborted the shared `AbortController`, cancelling the new attempt or its body read. The timer is now cleared in a `finally` block so it is always released.
+
+
+source/utils/timeout.ts
+test/fetch.ts
+@@@e1b088e3c1e9c66e68c66ed8fffa821ce3cfbcfb2026-09-07Sindre Sorhussindresorhus@gmail.comee3dec1ac01db18a6ea245109d2f616433b25660Fix timeouts and user aborts not cancelling a `Request` returned from `beforeRequest` or `beforeRetry` hooksA fresh `Request` returned from these hooks carried its own signal, so Ky's managed signal never reached the fetch. User `signal` aborts left the request pending forever, and per-attempt, body-read, and total timeouts threw `TimeoutError` without cancelling the in-flight fetch. The returned request now gets the managed signal re-attached, the same way `ky.retry({request})` already did. Only `Request` instances get the managed signal; `Request`-like objects are used as-is since the `Request` constructor cannot copy them, so resetting the aborted signal before a retry reuses the same helper instead of rebuilding the request and throwing a `TypeError`.
+
+
+readme.md
+source/core/Ky.ts
+source/types/hooks.ts
+test/hooks.ts
+@@@ee3dec1ac01db18a6ea245109d2f616433b256602026-09-07Sindre Sorhussindresorhus@gmail.com0655b9d581869ff3ac0e2ecae432b605c2f45199Fix extending an object `retry` with a number dropping the other retry options
+
+source/utils/merge.ts
+test/retry.ts
+@@@0655b9d581869ff3ac0e2ecae432b605c2f451992026-09-07Sindre Sorhussindresorhus@gmail.comb99fb794bcd8ded50df73d0c7aa161c432577284Fix header overrides and removals in `.extend()` ignoring header name case with plain objectsHTTP header names are case-insensitive, but merging plain header objects used key-sensitive object spreading. Setting a header with a different spelling kept both entries, so the earlier value could win or both were sent, and deleting with `undefined` did nothing unless the spelling matched exactly. Merged plain header objects now keep lowercase keys, like `Headers` does, so overrides and `undefined` deletions match regardless of spelling and `init` hooks can rely on lowercase keys like `options.headers['content-type']`.
+
+
+readme.md
+source/types/ky.ts
+source/types/options.ts
+source/utils/merge.ts
+test/headers.ts
+@@@b99fb794bcd8ded50df73d0c7aa161c4325772842026-09-07Sindre Sorhussindresorhus@gmail.come087b0cebcb2c2931b6b3047df59eadc7427b70cDocument that `null` is intentionally rejected by the `searchParams` typeThe runtime sends `null` values as the string `'null'`, but the type stays strict so accidental nulls are caught at compile time. Add a type test for the rejection and runtime tests for the string conversion through direct calls, `.extend()`, and the tuple form.
+
+
+source/types/options.ts
+test-d/normalized-options.ts
+test/main.ts
+@@@e087b0cebcb2c2931b6b3047df59eadc7427b70c2026-09-06Sindre Sorhussindresorhus@gmail.com178767e4a0307c2d6bc95adcbde0164391eea7a8Fix `beforeError` hooks running again when a body fails after the body read timed outThe network error wrapping for body reads was attached to the body promise itself, so a body that failed after the timeout had already won the race processed the discarded error and ran `beforeError` hooks a second time in the background. The wrapping now happens only on the awaited path.
+
+
+source/core/Ky.ts
+test/retry.ts
+@@@178767e4a0307c2d6bc95adcbde0164391eea7a82026-09-06Sindre Sorhussindresorhus@gmail.com224034d10df5cd47db23adb3aa78efe26274fc1fFix `shouldRetry` type rejecting functions that return nothing
+
+readme.md
+source/types/retry.ts
+test-d/normalized-options.ts
+@@@224034d10df5cd47db23adb3aa78efe26274fc1f2026-09-06Sindre Sorhussindresorhus@gmail.com50c381041bdc66f2ed8636cda216ad4fd05f57f1Fix headers set to `undefined` in `init` hooks being sent as the string `"undefined"`Headers modified by `init` hooks skip the option merging that filters `undefined` values, and the `Headers` constructor turns `undefined` into the string `'undefined'`, so `options.headers.foo = undefined` in an `init` hook sent `foo: undefined` instead of removing the header. Plain header objects are now applied entry by entry so `undefined` deletes the header, matching the documented behavior for `.extend()`.
+
+The check for a user-provided `Content-Type` had the same problem: it built a `Headers` instance from the raw header object, so removing the header in an `init` hook counted as providing one and the JSON body was sent without `application/json`. The check now uses the same header merging as the request.
+
+
+source/core/Ky.ts
+source/utils/merge.ts
+test/headers.ts
+@@@50c381041bdc66f2ed8636cda216ad4fd05f57f12026-09-06Sindre Sorhussindresorhus@gmail.com4e0bf0bdbe373f0158b51ebb5113cf5279c54b8aFix a connection dropped while reading the body through shortcuts surfacing as a raw `TypeError`When the connection dropped while `.json()`, `.text()`, or another shortcut was reading the response body, the runtime's raw `TypeError` (for example, `terminated` from undici) escaped unchanged, so `isNetworkError()` was false and `beforeError` hooks were skipped, unlike body-read timeouts which are processed. Such errors are now wrapped in `NetworkError` with the original error as `cause` and run through `beforeError`. They are still not retried, matching body-read timeouts.
+
+
+readme.md
+source/core/Ky.ts
+source/errors/NetworkError.ts
+test/retry.ts
+@@@4e0bf0bdbe373f0158b51ebb5113cf5279c54b8a2026-09-06Sindre Sorhussindresorhus@gmail.comfa9f6a7389369935557fd908f0998a24621adc73Fix `searchParams` dropping request options inherited from a `Request` inputWhen `searchParams` is set, the request is rebuilt with the new URL from the options alone, so `credentials`, `cache`, `redirect`, `integrity`, `referrer`, and `referrerPolicy` set on a `Request` input were reset to their defaults. In browsers this silently stopped sending cookies for `credentials: 'include'` requests. The rebuilt request now reads those options back from the request that was already constructed, so inherited values survive and explicit options still win.
+
+
+source/core/Ky.ts
+test/main.ts
+@@@fa9f6a7389369935557fd908f0998a24621adc732026-09-06Sindre Sorhussindresorhus@gmail.comee806e0085374bbbe203c907bab5ed2dba804d6eFix `context` being `undefined` in `init` hooksThe `context` option is documented to be available in all hooks and to always be an object, but `init` hooks received the raw options where a missing `context` stayed `undefined`, so `options.context.key = value` threw. Init hooks now get an empty object when no context was provided, matching every other hook.
+
+
+source/core/Ky.ts
+test/context.ts
+@@@ee806e0085374bbbe203c907bab5ed2dba804d6e2026-09-06Sindre Sorhussindresorhus@gmail.comc6c5dbfedd648c94fefe35a06267b31c52dd9b82Fix `hooks: {x: undefined}` and `signal: undefined` failing to type-check with `exactOptionalPropertyTypes`
+
+source/core/Ky.ts
+source/types/hooks.ts
+source/types/options.ts
+source/utils/merge.ts
+test-d/normalized-options.ts
+@@@c6c5dbfedd648c94fefe35a06267b31c52dd9b822026-09-06Sindre Sorhussindresorhus@gmail.comc5dc4e6a923cbadd6385d01f35a468295b17b23cFix `parseJson` being ignored by `response.clone().json()`The custom `json()` was set as an own property on the response, so every clone fell back to the native parser. This affected `response.clone()` on the returned response, on the streamed `onDownloadProgress` response, and on the response passed to `afterResponse` hooks. Clones are now decorated too and keep the same request context.
+
+
+source/core/Ky.ts
+test/main.ts
+@@@c5dc4e6a923cbadd6385d01f35a468295b17b23c2026-09-06Sindre Sorhussindresorhus@gmail.comcc9b5a330d04623052bf90aa09c9ffd938472a56Fix `ky.extend()` callback mutations leaking into the parent instanceThe function form of `extend()` passed the parent's live defaults object to the callback, so mutating `headers`, `hooks`, `context`, or `searchParams` there changed every later request of the parent instance. The callback now receives a merged copy. The copy is shallow for nested values in unmerged options like `retry` or `json`, so those should be replaced instead of mutated in place. Option merging also shallow-clones the first `searchParams` source instead of keeping the caller's object by reference.
+
+
+source/index.ts
+source/utils/merge.ts
+test/main.ts
+@@@cc9b5a330d04623052bf90aa09c9ffd938472a562026-09-06Sindre Sorhussindresorhus@gmail.come893f1630888c630ac5050f8be96c254c9759b0eFix `replaceOption()` crashing when wrapping a single hook type`{hooks: {beforeRequest: replaceOption([...])}}` threw "hooks.beforeRequest is not iterable" because the hook merge path deep-merged the marker object itself instead of unwrapping it. The marker is now unwrapped per hook type, so a single hook array can be replaced while the other hook types keep merging.
+
+
+source/utils/merge.ts
+test/main.ts
+@@@e893f1630888c630ac5050f8be96c254c9759b0e2026-09-06Sindre Sorhussindresorhus@gmail.come06d351070314670526711e79d1a66ce0b932a50Fix `onDownloadProgress` dropping response `url`, `redirected`, and `type`The progress wrapper builds a new `Response`, and the `Response` constructor cannot set these properties. With `onDownloadProgress` enabled, `response.url` was empty and `response.redirected` was `false` even after a redirect. They are now copied from the original response.
+
+
+source/utils/body.ts
+test/stream.ts
+@@@e06d351070314670526711e79d1a66ce0b932a502026-09-05Sindre Sorhussindresorhus@gmail.come68ea7ad3080fa25ce2eba6a367c00dfff74f0f3Fix option merging rewriting nested user data and flattening class instancesDeep merging recursed into any object value. Nested user data whose keys matched option names was rewritten as if it were options, and a class instance provided both as an instance default and again per request or via `.extend()` was merged into a plain object and lost its prototype. For example, an undici `Agent` passed as `dispatcher` ended up without `dispatch()`, and a `Date` inside `json` was sent as `{}`.
+
+Only plain objects and arrays are merged now. Anything else replaces the parent value.
+
+
+source/utils/merge.ts
+test/fetch.ts
+test/main.ts
+test/retry.ts
+@@@e68ea7ad3080fa25ce2eba6a367c00dfff74f0f32026-09-06Sindre Sorhussindresorhus@gmail.com33682a7749c197fdb3e851d2efe99b67c7b8f89fPreserve caller stack for schema validation errors (#883)
+
+source/core/Ky.ts
+test/hooks.ts
+test/main.ts
+@@@33682a7749c197fdb3e851d2efe99b67c7b8f89f2026-09-02Sindre Sorhussindresorhus@gmail.comc2ac4a1ac858cd8b423756c6c686b64071e834ebMeta tweaks
+
+readme.md
+@@@c2ac4a1ac858cd8b423756c6c686b64071e834eb2026-09-02Sindre Sorhussindresorhus@gmail.com0f2de4755c2c688dff05bf595a549e1385f33c75Fix CI
+
+test/http-error.ts
+@@@0f2de4755c2c688dff05bf595a549e1385f33c752026-09-02Sindre Sorhussindresorhus@gmail.com895086407b7165eb4d46cce470a3ffa27a23bac7Fix `json` option keeping the content-type inherited from a `Request` input bodyA `Request` input constructed with a body gets an automatic `text/plain;charset=UTF-8` content-type. That header was merged in before the `json` option set its own, so the JSON body was sent with the wrong content-type. Only a content-type explicitly passed via `options.headers` now takes precedence over `application/json`.
+
+
+readme.md
+source/core/Ky.ts
+source/types/options.ts
+test/headers.ts
+@@@895086407b7165eb4d46cce470a3ffa27a23bac72026-09-01Sindre Sorhussindresorhus@gmail.com2f0a3fb6235e680afb35ddebd8b94d303aa7b4b7Fix mixed-case standard `method` values not being uppercasedThe readme documents that standard methods are uppercased to avoid server errors due to case sensitivity, but the check only matched lowercase input, so `method: 'Patch'` was sent verbatim and rejected by servers.
+
+
+source/utils/normalize.ts
+test/methods.ts
+@@@2f0a3fb6235e680afb35ddebd8b94d303aa7b4b72026-09-01Sindre Sorhussindresorhus@gmail.com015ef95890e26ad9f49d5be9485a0c75b2581222Fix hooks receiving an aborted `signal` after retrying a timeoutThe abort controller was only replaced right before the next fetch, so `beforeRetry` ran with the signal that the timeout had already aborted. The replacement also bypassed the request assignment helper, leaving the cached normalized options pointing at the old signal for `afterResponse` and `beforeError`.
+
+The reset now happens before the `beforeRetry` hooks and goes through the assignment helper, so every hook sees the signal that the retry actually uses.
+
+
+source/core/Ky.ts
+test/hooks.ts
+@@@015ef95890e26ad9f49d5be9485a0c75b25812222026-09-01Sindre Sorhussindresorhus@gmail.comb4bdeccfc3fd349d7055c646913078e6bded1a2eFix `parseJson` being ignored by `response.json()` when using `onDownloadProgress`The progress wrapper returns a new `Response`, which never received the decorated `json()` method, so the custom parser was skipped and the native one ran instead.
+
+The streamed response is now mapped to the request that produced it and then decorated, so `parseJson` also gets the correct `request` context.
+
+
+source/core/Ky.ts
+test/main.ts
+@@@b4bdeccfc3fd349d7055c646913078e6bded1a2e2026-09-01Sindre Sorhussindresorhus@gmail.comd27ad21266d162ee218d4ea69dce192b84b6f967Fix `Request` input body being dropped when using `searchParams`The request was recreated from the normalized options to apply the new URL, but those options carry no body for a `Request` input, so the body was silently lost and the server received an empty request.
+
+The input body is now carried over as a stream, which requires request stream support.
+
+
+readme.md
+source/core/Ky.ts
+source/types/options.ts
+test/main.ts
+@@@d27ad21266d162ee218d4ea69dce192b84b6f9672026-08-28Sindre Sorhussindresorhus@gmail.com99644d0169138eb0c42718f06862061288f05a96tag: v2.1.02.1.0
+
+package.json
+@@@99644d0169138eb0c42718f06862061288f05a962026-08-28Sindre Sorhussindresorhus@gmail.com0bda554d448c1b57c17a5c18114432c02465d467Fix progress callbacks for empty request and response bodies (#881)
+
+readme.md
+source/types/options.ts
+source/utils/body.ts
+test/browser.ts
+test/stream.ts
+@@@0bda554d448c1b57c17a5c18114432c02465d4672026-08-26Sindre Sorhussindresorhus@gmail.com294fe63be57d73bda18194b7e23ab7225c054643Fix `signal` replacement when extending instances (#880)
+
+readme.md
+source/types/ky.ts
+source/utils/merge.ts
+test/main.ts
+@@@294fe63be57d73bda18194b7e23ab7225c0546432026-08-25Seth Holladayme@seth-holladay.comc426f19597777ba0c060250ba55f166422e8832bAllow `parseJson` to handle empty bodies (#877)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+readme.md
+source/core/Ky.ts
+source/types/ResponsePromise.ts
+test/main.ts
+test/retry.ts
+@@@c426f19597777ba0c060250ba55f166422e8832b2026-07-10Sindre Sorhussindresorhus@gmail.combe60db582496ce4a662a4e55df3d07d4b9aac5d5Harden retry
+
+.github/security.md
+package.json
+readme.md
+source/core/Ky.ts
+source/errors/HTTPError.ts
+source/types/hooks.ts
+source/types/options.ts
+source/types/retry.ts
+source/utils/normalize.ts
+test-d/normalized-options.ts
+test/hooks.ts
+test/main.ts
+test/retry.ts
+tsconfig.test.json
+@@@be60db582496ce4a662a4e55df3d07d4b9aac5d52026-07-09Sindre Sorhussindresorhus@gmail.com3419113b48e034fdcf8fa6bd3be3da7b3d0d758fReject malformed HTTP URLs with `baseUrl`ecurity regression test
+
+
+source/core/Ky.ts
+test/base-url.ts
+@@@3419113b48e034fdcf8fa6bd3be3da7b3d0d758f2026-07-07Sindre Sorhussindresorhus@gmail.com06375efbacfc1bdc96f7a4de7560684b765e1274Improve `Retry-After` handling (#874)
+
+readme.md
+source/core/Ky.ts
+source/core/retry-timing.ts
+source/errors/HTTPError.ts
+source/types/hooks.ts
+source/types/options.ts
+source/types/retry.ts
+test/main.ts
+test/retry.ts
+@@@06375efbacfc1bdc96f7a4de7560684b765e12742026-07-06Alexander Kireyevak.chatman.media@gmail.com6edddd986f2f6a9c7d91e851d9b9a48df439d328Fix `extend()` dropping numeric `retry` limit when merging with an object (#867)
+
+source/utils/merge.ts
+test/retry.ts
+@@@6edddd986f2f6a9c7d91e851d9b9a48df439d3282026-07-06Sindre Sorhussindresorhus@gmail.comf37e82cda0df4001d7da7d029f235aa570df111aAdd QUERY method support (#873)
+
+readme.md
+source/core/constants.ts
+source/types/ky.ts
+source/types/options.ts
+source/types/retry.ts
+source/utils/normalize.ts
+test/browser.ts
+test/main.ts
+test/methods.ts
+test/retry.ts
+@@@f37e82cda0df4001d7da7d029f235aa570df111a2026-07-06Sindre Sorhussindresorhus@gmail.comb1012515602768026ae6f27adb76b7bc657764e1Fix flaky totalTimeout retry test
+
+test/retry.ts
+@@@b1012515602768026ae6f27adb76b7bc657764e12026-06-22Sara Andersonxiaojs157@gmail.com61d6d66d27911001b9b4d57ab93139f9ad61384bFix docs typo (#870)
+
+readme.md
+source/types/options.ts
+@@@61d6d66d27911001b9b4d57ab93139f9ad61384b2026-05-08Sindre Sorhussindresorhus@gmail.come0fcf780de2bd69af2528e4b7b87ccae6bb727b1Fix handling of Safari errors with domainsSee sindresorhus/is-network-error#12
+
+
+source/utils/is-network-error.ts
+test/retry.ts
+@@@e0fcf780de2bd69af2528e4b7b87ccae6bb727b12026-04-21Sindre Sorhussindresorhus@gmail.com0a24c44fe4a15d0545c840facc56e473dd0b315bFix CI
+
+test/retry.ts
+@@@0a24c44fe4a15d0545c840facc56e473dd0b315b2026-04-21Sindre Sorhussindresorhus@gmail.comadd0703b7ea2e20f5afe16ab5d9507a16e275f20tag: v2.0.22.0.2
+
+package.json
+@@@add0703b7ea2e20f5afe16ab5d9507a16e275f202026-04-21Sindre Sorhussindresorhus@gmail.com8f28eac337e1e9a02187ef57b3b918dfe50bd2cfFix init hook URLSearchParams deletions
+
+source/core/Ky.ts
+source/utils/merge.ts
+test/main.ts
+@@@8f28eac337e1e9a02187ef57b3b918dfe50bd2cf2026-04-20Sindre Sorhussindresorhus@gmail.com346f8986f98b3b6769034e28d5095922670a7ed6Tweaks
+
+readme.md
+source/core/Ky.ts
+source/core/constants.ts
+source/types/hooks.ts
+@@@346f8986f98b3b6769034e28d5095922670a7ed62026-04-21Atharva Singh162712062+atharvasingh7007@users.noreply.github.come9eeb35770bdf6d894998c6c9f9a3fb090c8b5d2Fix tuple `searchParams` mutations leaking across init-hook requests (#861)
+
+source/core/Ky.ts
+test/hooks.ts
+@@@e9eeb35770bdf6d894998c6c9f9a3fb090c8b5d22026-04-14Sindre Sorhussindresorhus@gmail.com29719915cf96e73a9cd0852d3cfb568a39ab6e5atag: v2.0.12.0.1
+
+package.json
+@@@29719915cf96e73a9cd0852d3cfb568a39ab6e5a2026-04-14Sindre Sorhussindresorhus@gmail.com4ba8c15feaca524b4a716413db21a481c494721bImprove compatibility with custom `fetch` implementations (#858)
+
+source/core/Ky.ts
+test/hooks.ts
+@@@4ba8c15feaca524b4a716413db21a481c494721b2026-04-14Sindre Sorhussindresorhus@gmail.com2df9b7e71963b8d0bb7edd172a5d3518c2778330Fix flaky test
+
+source/core/Ky.ts
+test/retry.ts
+@@@2df9b7e71963b8d0bb7edd172a5d3518c27783302026-04-10Sindre Sorhussindresorhus@gmail.com7f2eade94249f5c459af010a4f6911a29b6de2e8Fix hook state leaks and fetch option forwardingClone nested retry options before init hooks run so hook mutations do not leak across requests.
+
+Avoid canceling shared response bodies when an `afterResponse` hook wraps an existing body in a new `Response`.
+
+Forward all non-standard, non-Ky options directly to `fetch()` instead of filtering against `Request`, which removes the obsolete vendor allowlist and preserves fetch-only extensions like dispatcher and Next.js next.
+
+
+source/core/Ky.ts
+source/core/constants.ts
+source/utils/normalize.ts
+source/utils/options.ts
+test/fetch.ts
+test/hooks.ts
+test/main.ts
+@@@7f2eade94249f5c459af010a4f6911a29b6de2e82026-04-08Sindre Sorhussindresorhus@gmail.com7d23d68e2614777f240896060f31d77f74f1a0d2Readme tweaks
+
+readme.md
+source/core/constants.ts
+source/errors/HTTPError.ts
+source/errors/KyError.ts
+source/errors/NetworkError.ts
+source/errors/SchemaValidationError.ts
+source/errors/TimeoutError.ts
+source/types/hooks.ts
+source/types/ky.ts
+source/types/options.ts
+source/types/retry.ts
+source/utils/merge.ts
+@@@7d23d68e2614777f240896060f31d77f74f1a0d22026-04-06Sindre Sorhussindresorhus@gmail.coma376fc45eb9d647ebcf0a04f790fbc8c223265c8tag: v2.0.02.0.0
+
+package.json
+@@@a376fc45eb9d647ebcf0a04f790fbc8c223265c82026-04-04Rohit Nair Prohitnairmuttathethu@gmail.comd3750141ce7540fcb68137e3b73536dd0e9cec3dFix minor typos and improve backtick consistency (#853)
+
+readme.md
+source/core/Ky.ts
+source/types/options.ts
+source/utils/type-guards.ts
+@@@d3750141ce7540fcb68137e3b73536dd0e9cec3d2026-04-02Sindre Sorhussindresorhus@gmail.com1b8e1ff777e31382165500ae2965d79a4ee4f63dMeta tweaks
+
+readme.md
+@@@1b8e1ff777e31382165500ae2965d79a4ee4f63d2026-04-02Sindre Sorhussindresorhus@gmail.combbc98fc6970ce52e9a88b8af31c01c15c6f363a3Make `json()` throw on empty responses (#854)
+
+readme.md
+source/core/Ky.ts
+source/types/ResponsePromise.ts
+test/main.ts
+@@@bbc98fc6970ce52e9a88b8af31c01c15c6f363a32026-03-31Sindre Sorhussindresorhus@gmail.com6d12e2d02d93c2ba923a40ac7cde52291230ef8cFix typos
+
+readme.md
+source/core/Ky.ts
+source/core/constants.ts
+source/errors/HTTPError.ts
+source/types/ResponsePromise.ts
+source/types/options.ts
+source/utils/type-guards.ts
+@@@6d12e2d02d93c2ba923a40ac7cde52291230ef8c2026-03-31Rohit Nair Prohitnairmuttathethu@gmail.comb324279a02150cb8e888d8150d26033997f45816Fix typos (#852)
+
+readme.md
+source/types/options.ts
+@@@b324279a02150cb8e888d8150d26033997f458162026-03-30Ayush ShuklaAyush.Shukla@adypu.edu.in7f0b6a939b5515bb9177fdb2d9ac66461e7a642dFix typo (#850)
+
+test/main.ts
+@@@7f0b6a939b5515bb9177fdb2d9ac66461e7a642d2026-03-29Sindre Sorhussindresorhus@gmail.com87aafbac8688f8dc55e3c0a0606b41ec5f5bc009tag: v2.0.0-02.0.0-0
+
+package.json
+@@@87aafbac8688f8dc55e3c0a0606b41ec5f5bc0092026-03-29Sindre Sorhussindresorhus@gmail.com29e78fe8e6977f62268c757e9e192677c6a35147Fix CI
+
+test/retry.ts
+@@@29e78fe8e6977f62268c757e9e192677c6a351472026-03-29AkaHarshit104684660+AkaHarshit@users.noreply.github.com2481afdbc2a6eefd468f2bf6c08c39a4ea5b3535Merge `searchParams` with input URL (#840)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+readme.md
+source/core/Ky.ts
+source/types/options.ts
+source/utils/merge.ts
+source/utils/options.ts
+test/fetch.ts
+test/main.ts
+@@@2481afdbc2a6eefd468f2bf6c08c39a4ea5b35352026-03-26Sindre Sorhussindresorhus@gmail.com0dd95224e9d104282b6c9c0adcd75c1caee1bd7aDocument paginationCloses #129
+
+
+readme.md
+@@@0dd95224e9d104282b6c9c0adcd75c1caee1bd7a2026-03-27Sindre Sorhussindresorhus@gmail.comc20d7c78da256a89d56138e9091d0253b83cde99Various tweaks
+
+readme.md
+source/core/Ky.ts
+source/errors/KyError.ts
+source/types/hooks.ts
+source/types/options.ts
+source/utils/body.ts
+source/utils/merge.ts
+source/utils/type-guards.ts
+test/base-url.ts
+test/hooks.ts
+test/main.ts
+@@@c20d7c78da256a89d56138e9091d0253b83cde992026-03-27Sindre Sorhussindresorhus@gmail.com3713ce8d4bc50db655837bb1dd79550df24219fcAdd `totalTimeout` option and make `timeout` be per retry (#848)
+
+readme.md
+source/core/Ky.ts
+source/core/constants.ts
+source/types/options.ts
+test/hooks.ts
+test/http-error.ts
+test/retry.ts
+@@@3713ce8d4bc50db655837bb1dd79550df24219fc2026-03-26Sindre Sorhussindresorhus@gmail.com1d15eb6d33360f751421b5cc64a36151fd4d3c07Add request/response context to `parseJson` option (#849)
+
+readme.md
+source/core/Ky.ts
+source/types/options.ts
+test/http-error.ts
+test/main.ts
+@@@1d15eb6d33360f751421b5cc64a36151fd4d3c072026-03-26Sindre Sorhussindresorhus@gmail.com86b15196b50cf9a9e7e7e17b7261cd671279c790Don't throw `HTTPError` for opaque responses from `no-cors` requests (#847)
+
+readme.md
+source/core/Ky.ts
+source/types/options.ts
+test/main.ts
+@@@86b15196b50cf9a9e7e7e17b7261cd671279c7902026-03-26Sindre Sorhussindresorhus@gmail.com75d6f0a0fba46d4f39e79c044ac8fe6f5f9ae7b7Improve `onUploadProgress` test to verify body receipt and callback silence
+
+test/browser.ts
+@@@75d6f0a0fba46d4f39e79c044ac8fe6f5f9ae7b72026-03-26Sindre Sorhussindresorhus@gmail.com7565d947daf4fb82a52c8583bf53dbcf8a734306Document HTTP/2 requirement for `onUploadProgress` on HTTPSFixes #739
+
+
+readme.md
+source/types/options.ts
+@@@7565d947daf4fb82a52c8583bf53dbcf8a7343062026-03-26Sindre Sorhussindresorhus@gmail.combb8412ee37bde3ca9b6067ef643f03002069764cImprove body size estimation- Reuse a single TextEncoder instance instead of creating new ones per call
+- Use `ArrayBuffer.isView()` to properly handle TypedArrays
+- Use `.byteLength` consistently on encode results
+- Remove unreachable code paths for non-BodyInit types
+
+Closes #734
+
+
+source/core/constants.ts
+source/utils/body.ts
+test/body-size.ts
+@@@bb8412ee37bde3ca9b6067ef643f03002069764c2026-03-25Sindre Sorhussindresorhus@gmail.com1e38ff424d3a12529606d7593886ea3694a2ced6Add `replaceOption` helper for `.extend()` (#846)
+
+readme.md
+source/index.ts
+source/utils/merge.ts
+test/main.ts
+@@@1e38ff424d3a12529606d7593886ea3694a2ced62026-03-25Sindre Sorhussindresorhus@gmail.comeaf0b80b23b7b85e4040f525a12521d727395420Gracefully ignore `onUploadProgress` when request streams are unsupported (#845)
+
+readme.md
+source/core/Ky.ts
+source/types/options.ts
+test/browser.ts
+@@@eaf0b80b23b7b85e4040f525a12521d7273954202026-03-25Sindre Sorhussindresorhus@gmail.com87c6740ca236f58822f922322c7b183c18214a1bAdd `NetworkError` class and tighten retry logic (#842)
+
+readme.md
+source/core/Ky.ts
+source/errors/HTTPError.ts
+source/errors/KyError.ts
+source/errors/NetworkError.ts
+source/index.ts
+source/types/hooks.ts
+source/types/options.ts
+source/types/retry.ts
+source/utils/is-network-error.ts
+source/utils/type-guards.ts
+test/headers.ts
+test/hooks.ts
+test/memory-leak.ts
+test/retry.ts
+@@@87c6740ca236f58822f922322c7b183c18214a1b2026-03-25Sindre Sorhussindresorhus@gmail.com191057d135c1cfe07f9fa16978c2482969ccac20Add `init` hook (#841)
+
+readme.md
+source/core/Ky.ts
+source/index.ts
+source/types/hooks.ts
+source/utils/merge.ts
+test/hooks.ts
+@@@191057d135c1cfe07f9fa16978c2482969ccac202026-03-03Sindre Sorhussindresorhus@gmail.com01e0b856475123edbd9a599a27790f7e0065b25eTweaks
+
+readme.md
+source/core/constants.ts
+source/errors/ForceRetryError.ts
+source/errors/HTTPError.ts
+source/errors/TimeoutError.ts
+source/types/hooks.ts
+source/types/options.ts
+source/utils/merge.ts
+@@@01e0b856475123edbd9a599a27790f7e0065b25e2026-03-03Sindre Sorhussindresorhus@gmail.com90c6d00c990b35be4d6f5567796e4e99ad3f40f0Add `request` and `options` to `beforeError` hook state (#835)
+
+readme.md
+source/core/Ky.ts
+source/types/hooks.ts
+test/hooks.ts
+@@@90c6d00c990b35be4d6f5567796e4e99ad3f40f02026-03-03Sindre Sorhussindresorhus@gmail.com94741a9471eb32644aa81a9672cf36486ab9a9bdTreat hook errors as fatal outside retry handling (#834)
+
+readme.md
+source/core/Ky.ts
+source/types/hooks.ts
+source/types/retry.ts
+test/context.ts
+test/hooks.ts
+test/retry.ts
+test/stream.ts
+@@@94741a9471eb32644aa81a9672cf36486ab9a9bd2026-03-03Sindre Sorhussindresorhus@gmail.com4b37c9636a601b8f121d47485f794dcd404d0984Add Standard Schema validation for `.json()` (#830)
+
+readme.md
+source/core/Ky.ts
+source/errors/SchemaValidationError.ts
+source/index.ts
+source/types/ResponsePromise.ts
+source/types/standard-schema.ts
+source/utils/type-guards.ts
+test/main.ts
+@@@4b37c9636a601b8f121d47485f794dcd404d09842026-03-03Sindre Sorhussindresorhus@gmail.com648e25df5890a5992335aac429076aa392b373a4Minor tweaks
+
+readme.md
+source/core/Ky.ts
+source/types/options.ts
+test/base-url.ts
+test/prefix.ts
+@@@648e25df5890a5992335aac429076aa392b373a42026-02-27Sindre Sorhussindresorhus@gmail.com1f2ad7f20dcb778a4f0758432e8a8eb5c597a3e9Document and test URL modification in `beforeRequest` hookFixes #640
+
+
+readme.md
+source/types/hooks.ts
+test/hooks.ts
+@@@1f2ad7f20dcb778a4f0758432e8a8eb5c597a3e92026-03-03Seth Holladayme@seth-holladay.coma541fc08b8c078a835b4ffc146226107aba375feAdd `baseUrl` option, rename `prefixUrl` to `prefix`, and allow leading slashes in input (#606)
+
+readme.md
+source/core/Ky.ts
+source/core/constants.ts
+source/types/ky.ts
+source/types/options.ts
+test/base-url.ts
+test/browser.ts
+test/context.ts
+test/fetch.ts
+test/main.ts
+test/prefix-url.ts
+test/prefix.ts
+@@@a541fc08b8c078a835b4ffc146226107aba375fe2026-03-02이진혁rntqhdl10@naver.comc168a7ccd44d11bfc44390faca1e01cfc8895658Ignore non-Errors returned by beforeError hooks (#833)
+
+source/core/Ky.ts
+test/hooks.ts
+@@@c168a7ccd44d11bfc44390faca1e01cfc88956582026-02-27Sindre Sorhussindresorhus@gmail.comaec65dbdb196860260851bb33c0988aa75e9b2a8Document streaming request body behavior and retry memory implications
+
+readme.md
+@@@aec65dbdb196860260851bb33c0988aa75e9b2a82026-02-27Sindre Sorhussindresorhus@gmail.com6f3d1bdb9ee928b88bb2901fd2e84c190542f583Fix `beforeRequest` hooks being skipped when a `Request` is returned (#832)
+
+readme.md
+source/core/Ky.ts
+source/types/hooks.ts
+test/hooks.ts
+test/stream.ts
+@@@6f3d1bdb9ee928b88bb2901fd2e84c190542f5832026-02-27Sindre Sorhussindresorhus@gmail.com101c74ba1a133622c8c04975c414d83e5e7593c3Skip request cloning when retries are disabled to prevent buffering large streaming bodiesFixes #831
+
+
+source/core/Ky.ts
+test/retry.ts
+@@@101c74ba1a133622c8c04975c414d83e5e7593c32026-02-27Sindre Sorhussindresorhus@gmail.com51e35528894d679295cf22c3f363e7df14b97609Make `beforeError` hook receive all errors (#829)
+
+readme.md
+source/core/Ky.ts
+source/errors/ForceRetryError.ts
+source/errors/HTTPError.ts
+source/errors/KyError.ts
+source/errors/TimeoutError.ts
+source/index.ts
+source/types/hooks.ts
+source/utils/type-guards.ts
+test/context.ts
+test/hooks.ts
+test/http-error.ts
+@@@51e35528894d679295cf22c3f363e7df14b976092026-02-24Sindre Sorhussindresorhus@gmail.com6ed304d26a84177841bc5c6f858de0b806e2b4bdReturn `undefined` instead of empty string from `.json()` on empty responses (#828)
+
+readme.md
+source/core/Ky.ts
+source/types/ResponsePromise.ts
+test/main.ts
+@@@6ed304d26a84177841bc5c6f858de0b806e2b4bd2026-02-23Sindre Sorhussindresorhus@gmail.com953698e65ad0e2989f82b59a791738b744f07a1bAdd regression for custom fetch POST body hangCloses #689
+
+
+test/fetch.ts
+@@@953698e65ad0e2989f82b59a791738b744f07a1b2026-02-23Sindre Sorhussindresorhus@gmail.comc3c304bf4f5a48c484aabc6e9573a7d15dfe15b7Improve flaky browser tests
+
+test/helpers/with-page.ts
+test/with-page.ts
+@@@c3c304bf4f5a48c484aabc6e9573a7d15dfe15b72026-02-22Sindre Sorhussindresorhus@gmail.com433febd55cc19c98c7a643be934693927ac38503Minor tweak
+
+test/retry.ts
+@@@433febd55cc19c98c7a643be934693927ac385032026-02-22Sindre Sorhussindresorhus@gmail.comaac83fa9403355d628e8c1bdc505311b6a8683e7Strip Ky-specific properties from normalized options passed to hooks (#826)
+
+source/core/Ky.ts
+test/hooks.ts
+test/http-error.ts
+test/main.ts
+@@@aac83fa9403355d628e8c1bdc505311b6a8683e72026-02-22Sindre Sorhussindresorhus@gmail.comecdd45eeaa48cbcbabaa53898dd4a39d1296a694Fix timeout to apply to total operation including retries (#825)
+
+source/core/Ky.ts
+test/hooks.ts
+test/http-error.ts
+test/retry.ts
+@@@ecdd45eeaa48cbcbabaa53898dd4a39d1296a6942026-02-22Sindre Sorhussindresorhus@gmail.comdfa3f59c9cd53ab5d7812367a9eff0398ad046baUnify hook signatures around a single state object (#827)
+
+readme.md
+source/core/Ky.ts
+source/core/constants.ts
+source/types/hooks.ts
+source/types/ky.ts
+source/types/options.ts
+test/context.ts
+test/formdata-searchparams.ts
+test/hooks.ts
+test/http-error.ts
+test/main.ts
+test/methods.ts
+test/stream.ts
+@@@dfa3f59c9cd53ab5d7812367a9eff0398ad046ba2026-02-22Sindre Sorhussindresorhus@gmail.comf1da0fc60ddb4b1c7a468517044e7c8e832a7f06Simplify tests
+
+test/bytes.ts
+test/context.ts
+test/fetch.ts
+test/formdata-searchparams.ts
+test/headers.ts
+test/helpers/create-http-test-server.ts
+test/hooks.ts
+test/http-error.ts
+test/main.ts
+test/memory-leak.ts
+test/methods.ts
+test/prefix-url.ts
+test/retry.ts
+test/stream.ts
+@@@f1da0fc60ddb4b1c7a468517044e7c8e832a7f062026-02-21Sindre Sorhussindresorhus@gmail.com7003a19f813a8b3bfa849d46de5116517e18e95fRequire Node.js 22
+
+.github/workflows/main.yml
+package.json
+source/core/Ky.ts
+source/core/constants.ts
+source/types/common.ts
+source/types/options.ts
+source/types/response.ts
+source/utils/body.ts
+source/utils/is.ts
+source/utils/normalize.ts
+test/browser.ts
+test/headers.ts
+test/helpers/create-http-test-server.ts
+test/helpers/parse-body.ts
+test/helpers/with-page.ts
+test/hooks.ts
+test/main.ts
+test/memory-leak.ts
+@@@7003a19f813a8b3bfa849d46de5116517e18e95f2026-02-21Sindre Sorhussindresorhus@gmail.com1341f5ca56c96c9440e6e8d0d624c871bb1b7929Add note about readme being dev version
+
+readme.md
+@@@1341f5ca56c96c9440e6e8d0d624c871bb1b79292026-02-21Sindre Sorhussindresorhus@gmail.comeb5c3eba37451b7a6d598efa23d33c97919ae9e6Add `data` property to `HTTPError` with pre-parsed response body (#823)
+
+readme.md
+source/core/Ky.ts
+source/errors/HTTPError.ts
+source/types/hooks.ts
+test/hooks.ts
+test/http-error.ts
+@@@eb5c3eba37451b7a6d598efa23d33c97919ae9e62026-01-26Sindre Sorhussindresorhus@gmail.comd7f7e73ceede6232e3fc4b835f2ff26361531d34tag: v1.14.31.14.3
+
+package.json
+@@@d7f7e73ceede6232e3fc4b835f2ff26361531d342026-01-26Sindre Sorhussindresorhus@gmail.com51b012949a27c4eb976ea6979a4ad35e724734a3Fix empty `context` object being added to merged `json` bodyFixes #820
+
+
+source/utils/merge.ts
+test/main.ts
+@@@51b012949a27c4eb976ea6979a4ad35e724734a32025-12-26Sindre Sorhussindresorhus@gmail.com2bdbd591aedfc2be2a2837e1c2390a1c8fcad442tag: v1.14.21.14.2
+
+package.json
+@@@2bdbd591aedfc2be2a2837e1c2390a1c8fcad4422025-12-26Sindre Sorhussindresorhus@gmail.come673eaa6e42e5d96399db7996c9fd940a1cf02c8Fix response body cleanup after hooks (#809)
+
+source/core/Ky.ts
+test/hooks.ts
+test/stream.ts
+@@@e673eaa6e42e5d96399db7996c9fd940a1cf02c82025-12-22Sindre Sorhussindresorhus@gmail.com5791b664a07ab9533c1261984a623d2d5bb60ee2Avoid awaiting response cancel on forced retry (#806)
+
+source/core/Ky.ts
+test/hooks.ts
+@@@5791b664a07ab9533c1261984a623d2d5bb60ee22025-12-22Hichemfantar.hichem@gmail.comcec10a9d99729058795b51f8da1f3d7a20dbf936Make `isKyError` type guard include `ForceRetryError` (#801)
+
+source/utils/type-guards.ts
+@@@cec10a9d99729058795b51f8da1f3d7a20dbf9362025-12-22Martin Vokrinekvokrik@gmail.com4b6cd2fe28b3b80a95b011de3ad227f89cced25bFix handling of uppercase `retry.methods` and improve typing (#789)
+
+source/core/constants.ts
+source/types/options.ts
+source/types/retry.ts
+source/utils/normalize.ts
+test/retry.ts
+@@@4b6cd2fe28b3b80a95b011de3ad227f89cced25b2025-12-07Sindre Sorhussindresorhus@gmail.com6fa6bcefadef76a17f632a078cb604f5c76d4e50tag: v1.14.11.14.1
+
+package.json
+@@@6fa6bcefadef76a17f632a078cb604f5c76d4e502025-12-04Sindre Sorhussindresorhus@gmail.com4fd8c285b6a55f45301833342008a4246c0bbbf8Normalize retry option defaults when undefined
+
+source/utils/normalize.ts
+test/retry.ts
+@@@4fd8c285b6a55f45301833342008a4246c0bbbf82025-12-04AkaHarshit104684660+AkaHarshit@users.noreply.github.comd8d6cfed4e0d69f1b923f1f7b2e00e5f81345172Fix: Handle `backoffLimit` being `undefined` (#796)
+
+source/core/Ky.ts
+test/retry.ts
+@@@d8d6cfed4e0d69f1b923f1f7b2e00e5f813451722025-11-23Antareep Sarkarsarkar.antareep.9035@gmail.com337a1b2cf565d1e327d70377c65ef6c1a6318e70Fix typo (#792)
+
+readme.md
+source/types/hooks.ts
+@@@337a1b2cf565d1e327d70377c65ef6c1a6318e702025-11-07Sindre Sorhussindresorhus@gmail.comc52a694d0bbf368a532a249ae3802437e5743f40Add 401 token refresh pattern tests and examples
+
+readme.md
+source/types/hooks.ts
+test/hooks.ts
+@@@c52a694d0bbf368a532a249ae3802437e5743f402025-11-04Sindre Sorhussindresorhus@gmail.com68a5228840de271858c83a043d8fe7032df4a929tag: v1.14.01.14.0
+
+package.json
+@@@68a5228840de271858c83a043d8fe7032df4a9292025-11-04Sindre Sorhussindresorhus@gmail.com5d3684ed0e27c1a89f9d13f09523367d86cbabfeAdd `ky.retry()` to force retries from `afterResponse` hooks (#779)
+
+readme.md
+source/core/Ky.ts
+source/core/constants.ts
+source/errors/ForceRetryError.ts
+source/index.ts
+source/types/hooks.ts
+source/types/ky.ts
+source/utils/type-guards.ts
+test/hooks.ts
+test/stream.ts
+@@@5d3684ed0e27c1a89f9d13f09523367d86cbabfe2025-10-30Sindre Sorhussindresorhus@gmail.com836feb45599e937f50f0d1e51ce4b791188a8c3cDocument type extension patternCloses #643
+
+
+readme.md
+@@@836feb45599e937f50f0d1e51ce4b791188a8c3c2025-10-30Sindre Sorhussindresorhus@gmail.com84ff3b9d0d4ccb745e9c68e882a331588bf0d868Remove unnecessary double Request wrapping in searchParams handling (#773)
+
+source/core/Ky.ts
+@@@84ff3b9d0d4ccb745e9c68e882a331588bf0d8682025-10-30Sindre Sorhussindresorhus@gmail.com2fe20cb0964ed60db5cb08ba74c184475c630c47Allow `throwHttpErrors` option to be a function (#781)
+
+readme.md
+source/core/Ky.ts
+source/types/options.ts
+test/main.ts
+@@@2fe20cb0964ed60db5cb08ba74c184475c630c472025-10-26Sindre Sorhussindresorhus@gmail.comb0951789929ddb08e423db2a134a1dcad308031fFix flaky test
+
+test/headers.ts
+@@@b0951789929ddb08e423db2a134a1dcad308031f2025-10-25Sindre Sorhussindresorhus@gmail.comfec6c43500681f2a59a8b5ddd7d35d9f23c4a130Document how to do SSEFixes #777
+
+
+readme.md
+@@@fec6c43500681f2a59a8b5ddd7d35d9f23c4a1302025-10-24Sindre Sorhussindresorhus@gmail.comeeaf7271b390a8cfd3f5b29ea8e36929ccf386c2Fix flaky tests
+
+test/helpers/with-performance.ts
+@@@eeaf7271b390a8cfd3f5b29ea8e36929ccf386c22025-10-22Sindre Sorhussindresorhus@gmail.coma51bb1e4cfde0190d569da683ffb3e46e0253cddtag: v1.13.01.13.0
+
+package.json
+@@@a51bb1e4cfde0190d569da683ffb3e46e0253cdd2025-10-22Sindre Sorhussindresorhus@gmail.comcaf78d2456649288a47df752c378e6ba7a3eb402Allow `beforeRetry` hooks to return a `Request` or `Response` (#774)
+
+readme.md
+source/core/Ky.ts
+source/types/hooks.ts
+test/hooks.ts
+@@@caf78d2456649288a47df752c378e6ba7a3eb4022025-10-22Sindre Sorhussindresorhus@gmail.com1e749ba065b4912e9db5b3517320f4ead4adec74Fix Next.js edge runtime `next` option support (#775)
+
+source/core/constants.ts
+source/utils/options.ts
+test/fetch.ts
+@@@1e749ba065b4912e9db5b3517320f4ead4adec742025-10-21Sindre Sorhussindresorhus@gmail.comc488be025f9e9fa604febde72274104edbb55376Add `context` option (#772)
+
+readme.md
+source/core/Ky.ts
+source/core/constants.ts
+source/types/options.ts
+source/utils/merge.ts
+test/context.ts
+@@@c488be025f9e9fa604febde72274104edbb553762025-10-20Lukas Hroch223967+lukashroch@users.noreply.github.comf0fdbd407504e3d3ed60db7b6460972d5134aef8Add X-RateLimit variant of Retry-After header (#771)
+
+source/core/Ky.ts
+@@@f0fdbd407504e3d3ed60db7b6460972d5134aef82025-10-19Sindre Sorhussindresorhus@gmail.com081c924d0c5aae4c18056ed414d633cd996f9fa9Add `retryOnTimeout` and `shouldRetry` options (#767)
+
+readme.md
+source/core/Ky.ts
+source/errors/NonError.ts
+source/index.ts
+source/types/options.ts
+source/types/retry.ts
+source/utils/normalize.ts
+test/helpers/with-performance.ts
+test/retry.ts
+@@@081c924d0c5aae4c18056ed414d633cd996f9fa92025-10-16Sindre Sorhussindresorhus@gmail.comc0ff507a4a1b6ede3410983d2c74ee37e3768bfdAdd `retry.jitter` option (#760)
+
+readme.md
+source/core/Ky.ts
+source/types/retry.ts
+source/utils/normalize.ts
+test/retry.ts
+@@@c0ff507a4a1b6ede3410983d2c74ee37e3768bfd2025-10-15Sindre Sorhussindresorhus@gmail.com3a4457b5c6d42d2febc7c69054df39b1ef15cb56Clarify docs that `FormData` and `URLSearchParams` override `Content-Type` headershttps://github.com/sindresorhus/ky/discussions/766
+
+
+readme.md
+@@@3a4457b5c6d42d2febc7c69054df39b1ef15cb562025-10-15Sindre Sorhussindresorhus@gmail.com333afbea6bf4689d70795aa0ca10ef50a50d8665Document proxy and HTTP/2 support (#761)
+
+readme.md
+@@@333afbea6bf4689d70795aa0ca10ef50a50d86652025-10-14Sindre Sorhussindresorhus@gmail.com5d0a85d338525c563e51b7b48aaf4f47056af6f7Code style
+
+source/core/Ky.ts
+source/utils/body.ts
+source/utils/type-guards.ts
+@@@5d0a85d338525c563e51b7b48aaf4f47056af6f72025-10-14Sindre Sorhussindresorhus@gmail.comd93560ccdcd4cc643f64c09b2904b4647b60be5ftag: v1.12.01.12.0
+
+package.json
+@@@d93560ccdcd4cc643f64c09b2904b4647b60be5f2025-10-14Sindre Sorhussindresorhus@gmail.comec10a6821808fb61d9aca1707b60ee5982ff09e3Document how to modify `FormData` in `beforeRequest` hooks (#764)
+
+readme.md
+@@@ec10a6821808fb61d9aca1707b60ee5982ff09e32025-10-14Sindre Sorhussindresorhus@gmail.com37fc2503c9864e1b40987b4d9c1ffb68c5ca7e7eDocument Chromium's automatic retry behavior for 408 status codesFixes #233
+
+
+readme.md
+@@@37fc2503c9864e1b40987b4d9c1ffb68c5ca7e7e2025-10-13Sindre Sorhussindresorhus@gmail.com5fc5bfb859b9d2c87ce5c8bcb398f7be39761ccbAdd retry count to `afterResponse` and `beforeError` hooks (#763)
+
+readme.md
+source/core/Ky.ts
+source/index.ts
+source/types/hooks.ts
+test/hooks.ts
+@@@5fc5bfb859b9d2c87ce5c8bcb398f7be39761ccb2025-10-13Sindre Sorhussindresorhus@gmail.com5a3fc90ccba78d10809e48fa89cef722543c9597Fix flaky timing tests on Node.js 24 in CI
+
+test/helpers/with-performance.ts
+@@@5a3fc90ccba78d10809e48fa89cef722543c95972025-10-13Sindre Sorhussindresorhus@gmail.com001c340955237d8350a81f8a05afc05689bedc6cFix `dispatcher` option being ignored (#757)
+
+source/core/constants.ts
+source/types/request.ts
+test/fetch.ts
+@@@001c340955237d8350a81f8a05afc05689bedc6c2025-10-13Sindre Sorhussindresorhus@gmail.com0f2f00a55592ccfe08c9a82a4d2db2a511f78e9bDocument requirement to handle `error.response` body when catching `HTTPError` (#758)
+
+readme.md
+@@@0f2f00a55592ccfe08c9a82a4d2db2a511f78e9b2025-10-12Sindre Sorhussindresorhus@gmail.comb7572d0942f6be3b22be44982601d955a3e3b34dFix `hooks` field incorrectly included in `NormalizedOptions` (#726) (#756)
+
+source/core/Ky.ts
+test/hooks.ts
+@@@b7572d0942f6be3b22be44982601d955a3e3b34d2025-10-12Sindre Sorhussindresorhus@gmail.comc847eec510f301ce1aa41f3200d5286c328ca180Add retry count to `beforeRequest` hook (#754)
+
+readme.md
+source/core/Ky.ts
+source/index.ts
+source/types/hooks.ts
+test/hooks.ts
+@@@c847eec510f301ce1aa41f3200d5286c328ca1802025-10-12Sindre Sorhussindresorhus@gmail.com2b0a10071d5bb79057c9f22ff84a854d37b2954aFix `searchParams` option merging with `URLSearchParams` instances (#755)
+
+source/utils/merge.ts
+test/main.ts
+@@@2b0a10071d5bb79057c9f22ff84a854d37b2954a2025-10-12Sindre Sorhussindresorhus@gmail.com5f24cb36d5febd41d90424a19aa702e22b6b4fddFix `signal` merging when using both instance and request options (#751)
+
+source/utils/merge.ts
+test/main.ts
+@@@5f24cb36d5febd41d90424a19aa702e22b6b4fdd2025-10-12Sindre Sorhussindresorhus@gmail.comd02b6363e18e233dcdd29e4e1f987882c2fa18dbFix `beforeError` hook example (#753)
+
+readme.md
+source/types/hooks.ts
+@@@d02b6363e18e233dcdd29e4e1f987882c2fa18db2025-10-12Sindre Sorhussindresorhus@gmail.com019e10ee06bbe62afca839f5a802ccf4c4c49378Fix FormData `content-type` boundary regeneration when retrying in hooks (#752)
+
+source/core/Ky.ts
+test/formdata-searchparams.ts
+@@@019e10ee06bbe62afca839f5a802ccf4c4c493782025-10-11Sindre Sorhussindresorhus@gmail.com7e1fd0ba60be6ae2c5aec0ef401393a54d98e372Update dev dependencies
+
+.github/workflows/main.yml
+package.json
+test/main.ts
+@@@7e1fd0ba60be6ae2c5aec0ef401393a54d98e3722025-10-06Hichemfantar.hichem@gmail.comac3e6149b449ad49e51e89543b1dc27e8bfba7bdAdd type guards for errors (#746)
+
+readme.md
+source/core/Ky.ts
+source/index.ts
+source/utils/type-guards.ts
+test/hooks.ts
+@@@ac3e6149b449ad49e51e89543b1dc27e8bfba7bd2025-09-27Sindre Sorhussindresorhus@gmail.com9a89a35ec3a141cf6e262e7260b7223d2b29e516tag: v1.11.01.11.0
+
+package.json
+@@@9a89a35ec3a141cf6e262e7260b7223d2b29e5162025-09-27Rune81473218+whddltjdwhd@users.noreply.github.com60958f9325ccc3cfe3ddd430805bf74597118d6fFix hang on stream request cleanup in Node.js (#741)Co-authored-by: Seth Holladay <me@seth-holladay.com>
+
+package.json
+source/core/Ky.ts
+test/memory-leak.ts
+@@@60958f9325ccc3cfe3ddd430805bf74597118d6f2025-09-26Seth Holladayme@seth-holladay.com99ad6d7722b90ce8007f06911fa395f1acba0886Improve progress events for `onDownloadProgress` and `onUploadProgress` (#736)
+
+source/utils/body.ts
+test/browser.ts
+test/stream.ts
+@@@99ad6d7722b90ce8007f06911fa395f1acba08862025-09-26Hichemfantar.hichem@gmail.comb9df6cf88a0d2ed82e35402bde4a9a91e9344a6bImprove error handling example in readme (#743)Co-authored-by: Seth Holladay <me@seth-holladay.com>
+
+readme.md
+@@@b9df6cf88a0d2ed82e35402bde4a9a91e9344a6b2025-09-25Hichemfantar.hichem@gmail.com053afa2b273603187d929490d7fb70b4db7eb013Minor tweak (#745)
+
+source/errors/HTTPError.ts
+@@@053afa2b273603187d929490d7fb70b4db7eb0132025-09-05Sindre Sorhussindresorhus@gmail.com8cd79d3602bcc9c0dc582b266dc4584ff4d6f456tag: v1.10.01.10.0
+
+package.json
+@@@8cd79d3602bcc9c0dc582b266dc4584ff4d6f4562025-09-04Sindre Sorhussindresorhus@gmail.coma87d9e934508695f7bc62424c2be8394839c9160Fix race condition issue with `.json()` (#731)
+
+source/core/Ky.ts
+@@@a87d9e934508695f7bc62424c2be8394839c91602025-09-03Sindre Sorhussindresorhus@gmail.comc4e13c3ce1b0a42c29136d061b392a5de866ce67Support `undefined` values for `searchParams` object (#729)
+
+readme.md
+source/core/Ky.ts
+source/types/options.ts
+test/main.ts
+@@@c4e13c3ce1b0a42c29136d061b392a5de866ce672025-09-03Sindre Sorhussindresorhus@gmail.com2fb39e95ea5f905d3dbd1c876715ecbdb7647f40Add test for request cancellation (#728)
+
+test/browser.ts
+@@@2fb39e95ea5f905d3dbd1c876715ecbdb7647f402025-09-02Sindre Sorhussindresorhus@gmail.comc2f7f4345a6f2403079b43c831663420f13ee90cFix flaky tests
+
+test/fetch.ts
+test/headers.ts
+@@@c2f7f4345a6f2403079b43c831663420f13ee90c2025-08-28Sindre Sorhussindresorhus@gmail.com3a8f89cfdc3135da98daffbedad5d1c0a593ce9dtag: v1.9.11.9.1
+
+package.json
+@@@3a8f89cfdc3135da98daffbedad5d1c0a593ce9d2025-08-27Sindre Sorhussindresorhus@gmail.comd7320b9485fdc0a1d4fa3d0cb3c2d144275b81b5Fix `uploadProgress` with form data (#725)
+
+source/core/Ky.ts
+source/utils/body.ts
+test/formdata-searchparams.ts
+@@@d7320b9485fdc0a1d4fa3d0cb3c2d144275b81b52025-08-21Sindre Sorhussindresorhus@gmail.comd112283ffd615479c6adaeeeccf225906da9f3fftag: v1.9.01.9.0
+
+package.json
+@@@d112283ffd615479c6adaeeeccf225906da9f3ff2025-08-21Sindre Sorhussindresorhus@gmail.com17ca3894b5f2b1957f7255bd8a805b3f68e5e17cAdd `.bytes()` shortcut (#720)
+
+readme.md
+source/core/Ky.ts
+source/core/constants.ts
+source/types/ResponsePromise.ts
+test/bytes.ts
+@@@17ca3894b5f2b1957f7255bd8a805b3f68e5e17c2025-08-07Nguyễn Hồng Quânng.hong.quan@gmail.com0630c2cfc5935ecd7d574d5e8858784b9d823737Don't produce URL with "?" alone (#706)
+
+source/core/Ky.ts
+source/utils/options.ts
+test/fetch.ts
+@@@0630c2cfc5935ecd7d574d5e8858784b9d8237372025-08-01Seth Holladayme@seth-holladay.comd5710c448970d5f698b1797e9cc6271514ba0987Add Node 20 and latest to CI tests (#715)
+
+.github/workflows/main.yml
+test/headers.ts
+@@@d5710c448970d5f698b1797e9cc6271514ba09872025-07-17Sindre Sorhussindresorhus@gmail.com24eec6fef2db724153915a1f80098216fe7571a8tag: v1.8.21.8.2
+
+package.json
+@@@24eec6fef2db724153915a1f80098216fe7571a82025-07-17Gilles Piougilles.piou@gmail.com3207ecc30677fea718b8206a1bd9d3ea152a9975Test support of AbortSignal.any() (#711)
+
+source/core/Ky.ts
+source/core/constants.ts
+@@@3207ecc30677fea718b8206a1bd9d3ea152a99752025-06-16Gastón Fourniergastonfournier@gmail.com916f8248b8ade9bbd236a27eb73f2d491642e285Update readme on `got` differences (#704)
+
+readme.md
+@@@916f8248b8ade9bbd236a27eb73f2d491642e2852025-05-19Sindre Sorhussindresorhus@gmail.com74dd15e819564c533352b18690bac304da95bc70Meta tweaks
+
+readme.md
+@@@74dd15e819564c533352b18690bac304da95bc702025-04-14Sindre Sorhussindresorhus@gmail.com1f903ed7793a75a5d2b4f4109c583db65b58aedbtag: v1.8.11.8.1
+
+package.json
+@@@1f903ed7793a75a5d2b4f4109c583db65b58aedb2025-04-13Seth Holladayme@seth-holladay.com93c02ac7817df1138e97e8971fe5165e30d68097Improve reliability of cloned request cleanup (#693)
+
+source/core/Ky.ts
+@@@93c02ac7817df1138e97e8971fe5165e30d680972025-03-31Sindre Sorhussindresorhus@gmail.come48386e70144bfb7ccd2264ab5760b154048cf48tag: v1.8.01.8.0
+
+package.json
+@@@e48386e70144bfb7ccd2264ab5760b154048cf482025-03-31Seb Insuame@sebinsua.comb49cd03d8673ea522a29bae4ef6b4672cf23201bFix memory leak caused by shared abort signals (#683)Co-authored-by: Seth Holladay <me@seth-holladay.com>
+
+package.json
+source/core/Ky.ts
+test/memory-leak.ts
+@@@b49cd03d8673ea522a29bae4ef6b4672cf23201b2025-03-19Haidong Pangme@haidong.technology5dc572d9b64c78ce60ecb7f14eab1199120da520Fix memory leak, clean up body streams after retry (#651)Fixes #650
+
+Co-authored-by: Seth Holladay <me@seth-holladay.com>
+
+.github/workflows/main.yml
+package.json
+source/core/Ky.ts
+@@@5dc572d9b64c78ce60ecb7f14eab1199120da5202025-03-18Gifford Nowlandhi@giffordnowland.coma53fd348f30de986768d81c1a8d64a43c0e5c39bUpdate readme.md to clarify HTTPError (#638)
+
+readme.md
+@@@a53fd348f30de986768d81c1a8d64a43c0e5c39b2025-03-10Jade Devin Cabatlaojadedevin13@users.noreply.github.comf9a9f3889752d033f06335868fc44877fca04953Add onUploadProgress option (#632)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+Co-authored-by: Seth Holladay <me@seth-holladay.com>
+
+readme.md
+source/core/Ky.ts
+source/core/constants.ts
+source/index.ts
+source/types/options.ts
+source/utils/body.ts
+test/browser.ts
+test/helpers/create-large-file.ts
+test/helpers/index.ts
+test/stream.ts
+@@@f9a9f3889752d033f06335868fc44877fca049532025-02-12Sindre Sorhussindresorhus@gmail.comadae9a77123420d0a403365f1942db2e93ef0c4atag: v1.7.51.7.5
+
+package.json
+@@@adae9a77123420d0a403365f1942db2e93ef0c4a2025-02-12Sindre Sorhussindresorhus@gmail.com762ea4cb643465e83d1a3487e443f29ef6d2d2cfReadme tweaks
+
+readme.md
+@@@762ea4cb643465e83d1a3487e443f29ef6d2d2cf2025-02-12Philipp Rudloff5774638+kleinfreund@users.noreply.github.com4a427011ad7b4ab98bb5f02ecaa5375fba5addcaFix options.method being undefined in normalized options (#671)
+
+source/core/Ky.ts
+test/methods.ts
+@@@4a427011ad7b4ab98bb5f02ecaa5375fba5addca2024-12-18Sindre Sorhussindresorhus@gmail.com6d063383a602ecb75b60bd4dda7ece60da66f462tag: v1.7.41.7.4
+
+package.json
+@@@6d063383a602ecb75b60bd4dda7ece60da66f4622024-12-18Kadhirravan R53949365+kadhirr@users.noreply.github.com1d92c203f7f60df37c03d60360237d8cb9bcb30aFix handling of a signal that is already aborted before the request begins (#663)* fix: throw early if signal is aborted before request is triggered
+
+* fix: abort if the original signal also aborted early
+
+* fix: linter issues
+
+* fix: pass abort reason to early abort
+
+* fix: check if server receives request after abort
+
+* fix: lint issues
+
+source/core/Ky.ts
+test/main.ts
+@@@1d92c203f7f60df37c03d60360237d8cb9bcb30a2024-12-10Sindre Sorhussindresorhus@gmail.com30e7afda475cc3b7783f1eb23b148014731868e7tag: v1.7.31.7.3
+
+package.json
+@@@30e7afda475cc3b7783f1eb23b148014731868e72024-12-09Seth Holladayme@seth-holladay.com3ba40cc6333cf1847c02c51744e22ab7c04407f5Fix memory leak from cloned responses (#661)Fixes #648
+
+This removes an unnecessary response clone that was used in body method shortcuts, such as `ky().json()`, which caused the original response to be fully buffered and never consumed.
+
+source/core/Ky.ts
+@@@3ba40cc6333cf1847c02c51744e22ab7c04407f52024-09-03Sindre Sorhussindresorhus@gmail.com8d2ca916d7a6e8852de4fab5b72357b37f47e6ectag: v1.7.21.7.2
+
+package.json
+@@@8d2ca916d7a6e8852de4fab5b72357b37f47e6ec2024-09-02Dirk Luijkmail@dirkluijk.nla7e273617eb4728456d966201dbf50af30fb8e35Mark ky.create() options as optional in public types (#628)
+
+source/types/ky.ts
+@@@a7e273617eb4728456d966201dbf50af30fb8e352024-08-29Kid44045911+kidonng@users.noreply.github.comcac5fbd2f79de2339eb3b3d084d521d3e5d4c0bcRevise CDN links in readme (#626)
+
+readme.md
+@@@cac5fbd2f79de2339eb3b3d084d521d3e5d4c0bc2024-08-22Sindre Sorhussindresorhus@gmail.com32a720d925dfec076fc8267d8f3d11f1b33cd1aftag: v1.7.11.7.1
+
+package.json
+@@@32a720d925dfec076fc8267d8f3d11f1b33cd1af2024-08-21Andreas Wiedelich@andreas-wiedel.deeb704826f2d1e4eb1ba193c209efa22823fd673dFix types for browsers (#623)
+
+source/types/request.ts
+@@@eb704826f2d1e4eb1ba193c209efa22823fd673d2024-08-17Sindre Sorhussindresorhus@gmail.comf76c7cd34680910ed28d90de9d38aa8492d62290tag: v1.7.01.7.0
+
+package.json
+@@@f76c7cd34680910ed28d90de9d38aa8492d622902024-08-17Seth Holladayme@seth-holladay.coma7204c4672d10a144b12ef169c8d38e17db81931Add JSON generics to `ky()` and `HTTPError` (#619)
+
+readme.md
+source/core/Ky.ts
+source/errors/HTTPError.ts
+source/types/ResponsePromise.ts
+source/types/ky.ts
+source/types/request.ts
+source/types/response.ts
+test/http-error.ts
+test/main.ts
+@@@a7204c4672d10a144b12ef169c8d38e17db819312024-08-13Sindre Sorhussindresorhus@gmail.com8531b050918d54066abb9f11b0193b893e77718ftag: v1.6.01.6.0
+
+package.json
+@@@8531b050918d54066abb9f11b0193b893e77718f2024-08-12Seth Holladayme@seth-holladay.comfbe0ec68b052a9df6221a3531553783860925289Add support for the `RateLimit-Reset` header (#618)
+
+readme.md
+source/core/Ky.ts
+source/types/options.ts
+test/retry.ts
+@@@fbe0ec68b052a9df6221a35315537838609252892024-08-10Seth Holladayme@seth-holladay.com9728f4bd47a00f7aabb1be433c8879ec6e1e584cRemove unnecessary setting of `credentials` option (#616)The `input.credentials` will be used automatically by `fetch()` if `options.credentials` is not defined, so copying it over manually is unnecessary.
+
+source/core/Ky.ts
+@@@9728f4bd47a00f7aabb1be433c8879ec6e1e584c2024-08-08Sindre Sorhussindresorhus@gmail.com2376cf2bdfc97cee92df220a51e69dd3ef700eefMeta tweaks
+
+readme.md
+@@@2376cf2bdfc97cee92df220a51e69dd3ef700eef2024-07-31Christian Owusu36159205+crisshaker@users.noreply.github.com0017053ef28ce77e97b743e4619d80b88d35a5ecFix signal handling for Request objects (#613)* Fix signal handling for Request objects
+
+Fix lint issues
+
+* Simplify signal handling
+
+* Fix lint error
+
+* Add a test for aborting via a Request object
+
+---------
+
+Co-authored-by: Seth Holladay <me@seth-holladay.com>
+
+source/core/Ky.ts
+test/main.ts
+@@@0017053ef28ce77e97b743e4619d80b88d35a5ec2024-07-30Kenneth Sills132029135+Kenneth-Sills@users.noreply.github.com786a9de992db854941b3c169a75ec8d2228eddbcAllow explicitly unsetting hooks on `.extend()` (#599)* feat: allow explicitly unsetting hooks on `.extend()`
+
+The implementation here is pretty simple: just give hook merging some custom
+logic so it either merges OR resets to an empty array. Matches what was
+discussed in the related ticket.
+
+Documentation has been updated to describe this behavior as well.
+
+The dedicated test is just a modified copy of the existing `ky.extend()` one.
+Admittedly, I did modify a couple of other tests to cover the edge cases
+instead of building brand new tests. No reason other than noticing they were
+already close to what I needed and I'm being lazy.
+
+Closes #408
+
+* chore: remove unused import
+
+readme.md
+source/core/Ky.ts
+source/utils/merge.ts
+test/main.ts
+@@@786a9de992db854941b3c169a75ec8d2228eddbc2024-07-25Sindre Sorhussindresorhus@gmail.comdb4247be9856e75775d31fdfecc2cef8f882a3c4tag: v1.5.01.5.0
+
+package.json
+@@@db4247be9856e75775d31fdfecc2cef8f882a3c42024-07-18Sindre Sorhussindresorhus@gmail.com8764419e4ae23f1ed41d05d9be70f32808726a44Meta tweaks
+
+package.json
+readme.md
+source/core/Ky.ts
+source/types/ky.ts
+source/utils/delay.ts
+test/browser.ts
+test/helpers/with-page.ts
+test/main.ts
+@@@8764419e4ae23f1ed41d05d9be70f32808726a442024-07-25Kenneth Sills132029135+Kenneth-Sills@users.noreply.github.com42981838a2d2bac4f8130ad218b7183004caa274Add `retry.afterStatusCodes` option (#598)Co-authored-by: Seth Holladay <me@seth-holladay.com>
+
+readme.md
+source/types/options.ts
+source/utils/normalize.ts
+test/retry.ts
+@@@42981838a2d2bac4f8130ad218b7183004caa2742024-07-23Kid44045911+kidonng@users.noreply.github.com9587c9d77ede26024ec3810d956fc856810c8eb5Readme nitpicking (#612)
+
+readme.md
+@@@9587c9d77ede26024ec3810d956fc856810c8eb52024-07-19Mark Fultonmfulton26@gmail.com8e171f54c435215d9677ccb7f8ea8f6f89fac04aAdd support for passing a function to ky.extend() (#611)* feat(extend): support function options
+
+callback function receives parent's default options to allow extended instance to refer to modify parent options
+
+Closes #586
+
+* test(extend): add additional function test cases
+
+* docs(extend): add JSDoc example
+
+readme.md
+source/index.ts
+source/types/ky.ts
+test/main.ts
+@@@8e171f54c435215d9677ccb7f8ea8f6f89fac04a2024-07-19Mark Fultonmfulton26@gmail.com4886b666ec65aec8e51e59a89d3daf130a24c878Use KyRequest and KyResponse types in errors (#610)* feat: additional json convenience methods
+
+- introduces `KyRequest` which, like `KyResponse`, adds `json()` convenience method for extracting JSON with an expected TypeScript type
+- update API `Request`/`Response` usages to expose `KyRequest`/`KyResponse` to `ky` consumers so that they may use the `json()` convenience method in more scenarios (`HTTPError`, `TimeoutError`, and hooks)
+
+Refs: #584
+
+* fix unnecessary assertion
+
+* docs(readme): mention `.json()` TS improvements
+
+readme.md
+source/errors/HTTPError.ts
+source/errors/TimeoutError.ts
+source/index.ts
+source/types/hooks.ts
+source/types/request.ts
+test/hooks.ts
+@@@4886b666ec65aec8e51e59a89d3daf130a24c8782024-06-30Seth Holladayme@seth-holladay.come044626ad8163f00a1fd3834558c1a13d5c2b2deRetry request even if retry delay is zero (#604)
+
+source/core/Ky.ts
+test/retry.ts
+@@@e044626ad8163f00a1fd3834558c1a13d5c2b2de2024-06-26Sindre Sorhussindresorhus@gmail.comf0f9111a81611986e6330d652d924c4e29be2d56tag: v1.4.01.4.0
+
+package.json
+@@@f0f9111a81611986e6330d652d924c4e29be2d562024-06-26Seth Holladayme@seth-holladay.comc5be8416f82c8797566cc31201d88450d42e0eccClamp Retry-After time to retry.maxRetryAfter (#603)* Clamp Retry-After time to retry.maxRetryAfter
+
+We now use `maxRetryAfter` as a limit, rather than a threshold for canceling the retry. If `Retry-After` is greater than `maxRetryAfter`, then `Retry-After` will be capped.
+
+* Document `maxRetryAfter` changes
+
+readme.md
+source/core/Ky.ts
+test/retry.ts
+@@@c5be8416f82c8797566cc31201d88450d42e0ecc2024-06-26Seth Holladayme@seth-holladay.com974f1e9698e21818e9f9ebd724a97919da10f5c7Fetch with an uncloned request when possible (#601)
+
+source/core/Ky.ts
+@@@974f1e9698e21818e9f9ebd724a97919da10f5c72024-06-26Seth Holladayme@seth-holladay.comb1effd9b3bac97cf8ad03f8333b914592e96b76bImprove robustness of request construction (#600)* Improve robustness of request construction
+
+* Fix flakey retry tests
+
+package.json
+source/core/Ky.ts
+test/helpers/with-performance-observer.ts
+test/helpers/with-performance.ts
+test/retry.ts
+@@@b1effd9b3bac97cf8ad03f8333b914592e96b76b2024-06-25edramedram@qq.com36d0bd3ed3a3d3d915536988311fd046fa325e8cImprove detection of streaming request support (#581) (#582)* Fix unsupported BodyInit type (#581)
+
+* Only handle `unsupported BodyInit type` error
+
+* Tweak comment
+
+---------
+
+Co-authored-by: Seth Holladay <me@seth-holladay.com>
+
+source/core/constants.ts
+@@@36d0bd3ed3a3d3d915536988311fd046fa325e8c2024-06-24Seth Holladayme@seth-holladay.com585ebcb80545d784b31033e5a70326a0eb202468Add request method and URL to error messages (#595)
+
+source/errors/HTTPError.ts
+source/errors/TimeoutError.ts
+test/browser.ts
+test/hooks.ts
+test/http-error.ts
+@@@585ebcb80545d784b31033e5a70326a0eb2024682024-06-03Yuki Ishii37304826+komura-c@users.noreply.github.comeab50492bd77ba46e52d9312fcb283fbc147962bFix `onDownloadProgress` test commented out in test/browser.ts (#591)
+
+test/browser.ts
+@@@eab50492bd77ba46e52d9312fcb283fbc147962b2024-05-31Sindre Sorhussindresorhus@gmail.com2eea67e8d857407ada2e21f33735b322f8ded0detag: v1.3.01.3.0
+
+package.json
+@@@2eea67e8d857407ada2e21f33735b322f8ded0de2024-06-01Reverier Xureverier.xu@outlook.com2af72bfa7a391662a8ee6b1671979069f7f20737Add `stringifyJson` option (#579)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+readme.md
+source/core/Ky.ts
+source/core/constants.ts
+source/types/options.ts
+test/main.ts
+@@@2af72bfa7a391662a8ee6b1671979069f7f207372024-05-24Sindre Sorhussindresorhus@gmail.com44f97b61efa58dfc698f9fcc582fee792cb77cdcMeta tweaks
+
+.github/security.md
+@@@44f97b61efa58dfc698f9fcc582fee792cb77cdc2024-04-23Sindre Sorhussindresorhus@gmail.com5e48ed41dcd17b82907961ce94ea2ce6927bd0b8Clarify docs about `fetch` optionsFixes #580
+
+
+readme.md
+@@@5e48ed41dcd17b82907961ce94ea2ce6927bd0b82024-04-22Sindre Sorhussindresorhus@gmail.com10a4ec74ab9a4e57951ec2ec29c8a5068f7bb5a1tag: v1.2.41.2.4
+
+package.json
+@@@10a4ec74ab9a4e57951ec2ec29c8a5068f7bb5a12024-04-22Janne Liuhtonenjanne.liuhtonen@iki.fi7760a811976338a27dc93c100125489afbf0271dFix request types for use with Node.js (#578)
+
+source/types/request.ts
+@@@7760a811976338a27dc93c100125489afbf0271d2024-04-21Mohammad Javad Khademianmjkhonline@live.com2d56baf6739a49655cbbe74b5083c0350511bbedAdd link to `Request` web API (#577)
+
+readme.md
+@@@2d56baf6739a49655cbbe74b5083c0350511bbed2024-04-10Gao Sungao@silverhand.io30a8ad7b40040bf6dce4fb3ebb7d852791a7fc73Meta tweaks (#573)
+
+readme.md
+@@@30a8ad7b40040bf6dce4fb3ebb7d852791a7fc732024-04-09Sindre Sorhussindresorhus@gmail.comec6733c97e5a2649b3683d5529517605eb6ba2adMeta tweaks
+
+readme.md
+@@@ec6733c97e5a2649b3683d5529517605eb6ba2ad2024-04-04Hawken Riveshawkrives@fastmail.fmd042b0575fbdea681031ab39d33b9512e1c4d559Fix docs typos (#571)
+
+source/types/hooks.ts
+@@@d042b0575fbdea681031ab39d33b9512e1c4d5592024-03-24Sindre Sorhussindresorhus@gmail.com08f912d44a809876efabd05078d4c250715e48aftag: v1.2.31.2.3
+
+package.json
+@@@08f912d44a809876efabd05078d4c250715e48af2024-03-24Alec Mevalec@mev.earth051d7ab4fd39743758b49012b62aaf420f7ca53dFix `exactOptionalPropertyTypes` and compatibility with TypeScript 5.4 (#565)
+
+source/core/Ky.ts
+source/core/constants.ts
+source/types/options.ts
+tsconfig.json
+@@@051d7ab4fd39743758b49012b62aaf420f7ca53d2024-02-29Sindre Sorhussindresorhus@gmail.comc0a4dfa12d3f831b900bb057c3ce97da5f0067d6tag: v1.2.21.2.2
+
+package.json
+@@@c0a4dfa12d3f831b900bb057c3ce97da5f0067d62024-02-29Sindre Sorhussindresorhus@gmail.com58b5c4a50391689e7b55901f8aa23ebe2a401c73Fix missing type dependencyFixes #562
+
+
+source/types/request.ts
+@@@58b5c4a50391689e7b55901f8aa23ebe2a401c732024-02-25Sindre Sorhussindresorhus@gmail.comd8ee60282f84820089a4dd50a28642a0155805f8tag: v1.2.11.2.1
+
+package.json
+@@@d8ee60282f84820089a4dd50a28642a0155805f82024-02-25Martin DONADIEUmartindonadieu@gmail.com38ac18bc1ac3268130de766891ce9b718eb8145aFix compatibility with Cloudflare Workers (#559)
+
+source/core/Ky.ts
+source/types/options.ts
+@@@38ac18bc1ac3268130de766891ce9b718eb8145a2024-01-07Sindre Sorhussindresorhus@gmail.com4dd4077cebb429a301c2c6cb5500ca7ea067ffc9tag: v1.2.01.2.0
+
+package.json
+@@@4dd4077cebb429a301c2c6cb5500ca7ea067ffc92024-01-07Kévin Berthommierbertho-zero@users.noreply.github.com917ab1207f95c9b450cc48001dee52bc9b11bba6Export the `Input` TypeScript type (#552)
+
+source/index.ts
+@@@917ab1207f95c9b450cc48001dee52bc9b11bba62024-01-07MunyuShizumishizumi@munyu.co634cb2b3ec8d949875c071fbc425f8724995fbf7Fix the `retryCount` option retrying an incorrect amount (#547)
+
+source/core/Ky.ts
+test/browser.ts
+test/hooks.ts
+test/retry.ts
+@@@634cb2b3ec8d949875c071fbc425f8724995fbf72023-11-16Sindre Sorhussindresorhus@gmail.com3cf50649ac2a9d5230ebcff94fa58b63a77781dcFix CI
+
+.github/workflows/main.yml
+package.json
+source/core/Ky.ts
+test/browser.ts
+test/headers.ts
+test/helpers/with-page.ts
+test/helpers/with-performance-observer.ts
+tsconfig.json
+@@@3cf50649ac2a9d5230ebcff94fa58b63a77781dc2023-11-16Alec Mevalec@mev.earthd7b0abc03743095176d990a955c38db70534808cMake types compatible with both DOM and Node.js (#543)
+
+source/core/Ky.ts
+source/types/options.ts
+source/utils/merge.ts
+test/headers.ts
+@@@d7b0abc03743095176d990a955c38db70534808c2023-11-02Sindre Sorhussindresorhus@gmail.com16eb51de3c5f7f33b4f161db6a21cdb6de1ab2a3tag: v1.1.31.1.3
+
+package.json
+@@@16eb51de3c5f7f33b4f161db6a21cdb6de1ab2a32023-11-02Sindre Sorhussindresorhus@gmail.comf86ff9060e2324a2324dae1fa718c1c3803070e9Export the `KyInstance` type
+
+source/index.ts
+@@@f86ff9060e2324a2324dae1fa718c1c3803070e92023-10-29Sindre Sorhussindresorhus@gmail.com0e9d7bbacc4e8564a3ca3e2f9bd6ab13cefbc5aftag: v1.1.21.1.2
+
+package.json
+@@@0e9d7bbacc4e8564a3ca3e2f9bd6ab13cefbc5af2023-10-29Kelvin Del Montekdelmonten@gmail.comdd713b6212b185366009d2429347796e6bae97e1Fix multipart boundary mismatch (#540)
+
+.github/workflows/main.yml
+package.json
+source/core/constants.ts
+source/types/request.ts
+source/utils/options.ts
+test/browser.ts
+test/helpers/with-page.ts
+@@@dd713b6212b185366009d2429347796e6bae97e12023-10-24Sindre Sorhussindresorhus@gmail.come93bc6dc455d2d84d99a6986d51829f2bf7f3d93tag: v1.1.11.1.1
+
+package.json
+@@@e93bc6dc455d2d84d99a6986d51829f2bf7f3d932023-10-24Kelvin Del Montekdelmonten@gmail.comd372e2eccf9f47597f2c0f49cba286e19d7974b3Fix support with environments that add support for custom `fetch` options (#536)
+
+source/core/Ky.ts
+source/core/constants.ts
+source/types/options.ts
+source/utils/options.ts
+source/utils/timeout.ts
+test/fetch.ts
+@@@d372e2eccf9f47597f2c0f49cba286e19d7974b32023-10-17Sindre Sorhussindresorhus@gmail.comc6181efcc6a8319a6a0e249bcc53a7eff2f1b69atag: v1.1.01.1.0
+
+package.json
+@@@c6181efcc6a8319a6a0e249bcc53a7eff2f1b69a2023-10-17Russell Clareyr.e.clarey@gmail.com577dd4c5e36f214930a22247523a73d37847c335Add `retry.delay` option to control the time between retries (#533)
+
+readme.md
+source/core/Ky.ts
+source/types/options.ts
+source/types/retry.ts
+source/utils/normalize.ts
+test/helpers/with-performance-observer.ts
+test/retry.ts
+@@@577dd4c5e36f214930a22247523a73d37847c3352023-09-29Sindre Sorhussindresorhus@gmail.com98d76e6d0827504b0f5574693eaa3feec664f06cFailing test for #528
+
+test/retry.ts
+@@@98d76e6d0827504b0f5574693eaa3feec664f06c2023-09-28Sindre Sorhussindresorhus@gmail.comd2dc9519768508ce42780c97d39917b4344fdcd5Add some more tests
+
+test/fetch.ts
+@@@d2dc9519768508ce42780c97d39917b4344fdcd52023-09-06Sindre Sorhussindresorhus@gmail.com4d63a2176de22b4e52bcdd9e6daeb5772c41dabatag: v1.0.11.0.1
+
+package.json
+@@@4d63a2176de22b4e52bcdd9e6daeb5772c41daba2023-09-06Sindre Sorhussindresorhus@gmail.com60e4f672bef8fe7519855a5e3f3039030ab6efeeChange `Options` and `NormalizedOptions` types back to be `interface`Fixes #523
+
+
+source/types/options.ts
+@@@60e4f672bef8fe7519855a5e3f3039030ab6efee2023-09-01Sindre Sorhussindresorhus@gmail.coma8a3a269d2e260999b06105ede3f1cef668f0cf2tag: v1.0.01.0.0
+
+package.json
+@@@a8a3a269d2e260999b06105ede3f1cef668f0cf22023-09-01Sindre Sorhussindresorhus@gmail.com356d61c1534c9dc2cfb8ce1c1ff5c4832579e11bRequire Node.js 18
+
+.github/workflows/main.yml
+package.json
+readme.md
+source/errors/DOMException.ts
+source/utils/delay.ts
+test/_require.ts
+test/browser.ts
+test/fetch.ts
+test/headers.ts
+test/hooks.ts
+test/main.ts
+test/methods.ts
+@@@356d61c1534c9dc2cfb8ce1c1ff5c4832579e11b2023-06-14Sindre Sorhussindresorhus@gmail.com780e0321a2010697c64b2f8391e99d3d447228b3Update dev dependecies
+
+.github/workflows/main.yml
+package.json
+source/core/Ky.ts
+source/core/constants.ts
+source/index.ts
+source/types/ResponsePromise.ts
+source/types/hooks.ts
+source/types/ky.ts
+source/types/options.ts
+source/types/response.ts
+source/types/retry.ts
+source/utils/delay.ts
+source/utils/merge.ts
+test/browser.ts
+test/helpers/create-http-test-server.ts
+test/helpers/with-page.ts
+test/hooks.ts
+test/http-error.ts
+@@@780e0321a2010697c64b2f8391e99d3d447228b32023-05-17legobeat109787230+legobeat@users.noreply.github.com53ce279c818998ed372822207b967eb68b92fba6Fix placeholder URL (#506)
+
+source/core/constants.ts
+@@@53ce279c818998ed372822207b967eb68b92fba62023-03-17Sindre Sorhussindresorhus@gmail.com00e45d02ab1ef0e04d7a6cf271b429cb6f946dc3tag: v0.33.30.33.3
+
+package.json
+@@@00e45d02ab1ef0e04d7a6cf271b429cb6f946dc32023-03-17三咲智子 Kevin Dengsxzz@sxzz.moe719e5492c5bbd3abcc26af968cdcaa8299f3efa8Fix compatibility with native Fetch being disabled on Node.js (#494)
+
+source/core/constants.ts
+@@@719e5492c5bbd3abcc26af968cdcaa8299f3efa82023-03-14Mimmy45905800+MimmyJau@users.noreply.github.comfb9ccd898c729c4254784e284dfcd373b356b454Fix dead link in documentation for body methods (#495)
+
+readme.md
+@@@fb9ccd898c729c4254784e284dfcd373b356b4542023-03-13Sindre Sorhussindresorhus@gmail.com740732c78aad97e9aec199e9871bdbf0ae29b805Meta tweaks
+
+readme.md
+@@@740732c78aad97e9aec199e9871bdbf0ae29b8052023-01-13Sindre Sorhussindresorhus@gmail.comce8588d830a80f575588de5d7e8303a973583bd7tag: v0.33.20.33.2
+
+package.json
+@@@ce8588d830a80f575588de5d7e8303a973583bd72023-01-13Cristobal Dabedcristobal@dabed.org78a44c0df0670b217746e74a1ebd470f9fea7896Fix the name of the error when aborting a request (#482)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+source/errors/DOMException.ts
+test/main.ts
+@@@78a44c0df0670b217746e74a1ebd470f9fea78962023-01-13Cristobal Dabedcristobal@dabed.orgb322f7cddb6c9a1687a1775224cd0690bd406a95Fix flaky browser tests (#484)
+
+.github/workflows/main.yml
+test/browser.ts
+test/helpers/with-page.ts
+@@@b322f7cddb6c9a1687a1775224cd0690bd406a952022-12-29Sindre Sorhussindresorhus@gmail.comae2fe071296702381d30790a19e9137dd51babaatag: v0.33.10.33.1
+
+package.json
+@@@ae2fe071296702381d30790a19e9137dd51babaa2022-12-29Sindre Sorhussindresorhus@gmail.comaaec57af0643ea54da1a5e0c1d008937634901e9Fix compatibility with UnidiciFixes #467
+
+
+source/core/Ky.ts
+@@@aaec57af0643ea54da1a5e0c1d008937634901e92022-12-12Sindre Sorhussindresorhus@gmail.comab19bafa8478bddb660dc52b968a2b2a525d261dtag: v0.33.00.33.0
+
+package.json
+@@@ab19bafa8478bddb660dc52b968a2b2a525d261d2022-12-12Frank van Wijkgithub@frankvanwijk.nlbc7d9f401e119cddc305da2d4f028b2ac1d16ad6Add `retry.backoffLimit` option (#454)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+readme.md
+source/core/Ky.ts
+source/types/retry.ts
+source/utils/normalize.ts
+test/retry.ts
+@@@bc7d9f401e119cddc305da2d4f028b2ac1d16ad62022-12-08Kim Hyunyoung, Abelatobaum@gmail.come791d16b27549e89134e446a90bf1b8307749ef0Fix readme typo (#477)
+
+readme.md
+@@@e791d16b27549e89134e446a90bf1b8307749ef02022-11-14arrow2nd44780846+arrow2nd@users.noreply.github.combbca5620ab45dc8ae5f67b83417329ec9b4ebd87Update recommended CDN for Deno (#469)
+
+readme.md
+@@@bbca5620ab45dc8ae5f67b83417329ec9b4ebd872022-11-04Mikael Finstadfinstaden@gmail.com430486b5522dcafd2d658ab391c6a37d921d66daFix incorrect documentation and add example (#462)
+
+readme.md
+source/types/hooks.ts
+@@@430486b5522dcafd2d658ab391c6a37d921d66da2022-11-01Sindre Sorhussindresorhus@gmail.combf9eca6aff391a31da942ca5c4357688dc8d5906tag: v0.32.20.32.2
+
+package.json
+@@@bf9eca6aff391a31da942ca5c4357688dc8d59062022-11-01David Rungerdavidjrunger@gmail.com4f1e7a18cf9f8cc7fe360645ff9aba339d24bba4Fix the empty check for `.json()` (#466)
+
+source/core/Ky.ts
+@@@4f1e7a18cf9f8cc7fe360645ff9aba339d24bba42022-10-31Sindre Sorhussindresorhus@gmail.com9f59325df6b185952b6f241e4db02e9f51e86365tag: v0.32.10.32.1
+
+package.json
+@@@9f59325df6b185952b6f241e4db02e9f51e863652022-10-31Sindre Sorhussindresorhus@gmail.com195e0e2e5f7d19a9714fd1cd13b2b50450ad6e87Fix flaky tests
+
+test/headers.ts
+@@@195e0e2e5f7d19a9714fd1cd13b2b50450ad6e872022-10-31David Rungerdavidjrunger@gmail.com49876125576d417ec01b11419beedd86fb44ec6fDon't return empty string for `.json()` if `Transfer-Encoding` is `chunked` (#464)
+
+source/core/Ky.ts
+test/main.ts
+@@@49876125576d417ec01b11419beedd86fb44ec6f2022-10-31Sindre Sorhussindresorhus@gmail.com1cc6bbb32c36885c62fb17850e3d7c1287f83372tag: v0.32.00.32.0
+
+package.json
+@@@1cc6bbb32c36885c62fb17850e3d7c1287f833722022-10-31Taishi Naka62321668+lemonadern@users.noreply.github.comdddf7ba3888cceebdd7c7063c70935065be2d63bParse empty response bodies without throwing when using `.json()` (#459)
+
+readme.md
+source/core/Ky.ts
+source/types/ResponsePromise.ts
+test/main.ts
+@@@dddf7ba3888cceebdd7c7063c70935065be2d63b2022-10-31Richie Bendallrichiebendall@gmail.com6d9f7c8f42f1b1e999a6576d8c3b8b2474e0c065Fix abortions between retries (#433)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+package.json
+source/core/Ky.ts
+source/errors/DOMException.ts
+source/utils/delay.ts
+source/utils/time.ts
+source/utils/timeout.ts
+test/browser.ts
+test/main.ts
+@@@6d9f7c8f42f1b1e999a6576d8c3b8b2474e0c0652022-10-12Sindre Sorhussindresorhus@gmail.comf51c434928600f710b67da5452928d38dc6b89b7Fix CI
+
+package.json
+@@@f51c434928600f710b67da5452928d38dc6b89b72022-10-12Sindre Sorhussindresorhus@gmail.comb78b6acc0722f722f1cacaa251903df13c8e5825tag: v0.31.40.31.4
+
+package.json
+@@@b78b6acc0722f722f1cacaa251903df13c8e58252022-10-12Sindre Sorhussindresorhus@gmail.combccbfdb95259378036e13839ce080034dce0ca0eUpdate dev dependencies
+
+package.json
+@@@bccbfdb95259378036e13839ce080034dce0ca0e2022-10-12Sindre Sorhussindresorhus@gmail.comda40323e903fb943c9192e4a43f9dc601d16a5e8Fix Firefox compatibility for the `onDownloadProgress` optionFixes #455
+
+
+source/core/Ky.ts
+source/core/constants.ts
+@@@da40323e903fb943c9192e4a43f9dc601d16a5e82022-09-04Sindre Sorhussindresorhus@gmail.com0b141f1725442039a439b683d32d42e9b9d52559tag: v0.31.30.31.3
+
+package.json
+@@@0b141f1725442039a439b683d32d42e9b9d525592022-09-04Sindre Sorhussindresorhus@gmail.com8a4bb6254ca766f33d897500ddbc0eea7e2be73dFix Node.js compatibilityFixes #452
+
+
+readme.md
+source/core/constants.ts
+@@@8a4bb6254ca766f33d897500ddbc0eea7e2be73d2022-09-02Sindre Sorhussindresorhus@gmail.come0c4b330f3e4738a8a6f12dee410d4f6a6f24e0ctag: v0.31.20.31.2
+
+package.json
+@@@e0c4b330f3e4738a8a6f12dee410d4f6a6f24e0c2022-09-02Sindre Sorhussindresorhus@gmail.com316fffe5ad9a1a1329816b6d82d02e7da05b6f35Minor tweaks
+
+package.json
+@@@316fffe5ad9a1a1329816b6d82d02e7da05b6f352022-09-02Karol Fabjańczukkarol-f@users.noreply.github.com6b2b1b23364154bbf809b3884c7d6fd345417657Fix Chrome 105 compatibility (#451)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+source/core/Ky.ts
+source/core/constants.ts
+@@@6b2b1b23364154bbf809b3884c7d6fd3454176572022-08-02Sindre Sorhussindresorhus@gmail.comc55dfd391706598a6e63d9bf9a81b30153b142cdMeta tweaksFixes #447
+
+
+media/logo.ai
+@@@c55dfd391706598a6e63d9bf9a81b30153b142cd2022-07-21Sindre Sorhussindresorhus@gmail.comd48ed955bad7e0d1f6d884164e377766104e669atag: v0.31.10.31.1
+
+package.json
+@@@d48ed955bad7e0d1f6d884164e377766104e669a2022-07-20Yixuan Xuyixuanxu94@outlook.comb5a4dc641f429c37291645a5f15f60a405e299e8Fix copying response body with 204 status code when using `onDownloadProgress` (#444)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+source/core/Ky.ts
+test/browser.ts
+@@@b5a4dc641f429c37291645a5f15f60a405e299e82022-06-24Sindre Sorhussindresorhus@gmail.come557973db906cb74cc61cc7fcbf06e81b3a44e5ctag: v0.31.00.31.0
+
+package.json
+@@@e557973db906cb74cc61cc7fcbf06e81b3a44e5c2022-06-23Sindre Sorhussindresorhus@gmail.comcff4c7ae0aafbbda4d3b01945943d844527939baRequire Node.js 14
+
+.github/workflows/main.yml
+.gitignore
+package.json
+source/index.ts
+test/browser.ts
+tsconfig.json
+@@@cff4c7ae0aafbbda4d3b01945943d844527939ba2022-06-23Dominik16338782+TeraNovaLP@users.noreply.github.comf34fb1fabcdcffc93372da08e721d0864db771baAdd typed JSON response (#437)
+
+package.json
+source/core/Ky.ts
+source/index.ts
+source/types/ResponsePromise.ts
+source/types/ky.ts
+source/types/response.ts
+test/main.ts
+@@@f34fb1fabcdcffc93372da08e721d0864db771ba2022-06-23Yixuan Xuyixuanxu94@outlook.come4077b9fd45874da3b1ebe8903bcdb33e33d73c7Fix response details getting lost when using `onDownloadProgress` (#441)
+
+source/core/Ky.ts
+test/browser.ts
+@@@e4077b9fd45874da3b1ebe8903bcdb33e33d73c72022-06-23Cristobal Dabedcristobal@dabed.orgdc76278c8a6dc73843e1a6e86acba639e2bf63e4Export `BeforeRetryState` type (#442)
+
+source/index.ts
+@@@dc76278c8a6dc73843e1a6e86acba639e2bf63e42022-03-02Sindre Sorhussindresorhus@gmail.comde66c1613ebc4c01d16ae970c20867513347b5c6tag: v0.30.00.30.0
+
+package.json
+@@@de66c1613ebc4c01d16ae970c20867513347b5c62022-03-02Sindre Sorhussindresorhus@gmail.comd00864fc937f3a212103b258fd66828c7acfa009Fix linting
+
+package.json
+source/core/Ky.ts
+source/types/common.ts
+source/types/options.ts
+source/utils/time.ts
+test/browser.ts
+test/helpers/index.ts
+test/hooks.ts
+test/main.ts
+@@@d00864fc937f3a212103b258fd66828c7acfa0092022-03-02Seth Holladayme@seth-holladay.comd74e16d3f5b138770be082fce0c08e0cf8a289d5Allow overriding `Content-Type` header for JSON requests (#429)
+
+readme.md
+source/core/Ky.ts
+source/types/options.ts
+test/headers.ts
+@@@d74e16d3f5b138770be082fce0c08e0cf8a289d52022-02-15Sindre Sorhussindresorhus@gmail.com616d276d7db76e0da66b369afd64e2a36e3435ectag: v0.29.00.29.0
+
+package.json
+@@@616d276d7db76e0da66b369afd64e2a36e3435ec2022-02-15Malolan Buchihamalolan@gmail.com3e72832a33dc591e7704dc9288a25c094aefa45dAdd `beforeError` hook (#417)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+readme.md
+source/core/Ky.ts
+source/index.ts
+source/types/hooks.ts
+test/helpers/with-page.ts
+test/hooks.ts
+@@@3e72832a33dc591e7704dc9288a25c094aefa45d2021-12-24Mario De Schaepmeestermario@mariods.netd4fee8abeef12ad6b00949636f56779cd5a3c855Improve documentation for retry and timeout (#404)
+
+readme.md
+source/types/options.ts
+@@@d4fee8abeef12ad6b00949636f56779cd5a3c8552021-12-07Leon Sivcjwt@leonzalion.comc315cc36e8989ef5bc7fe17111b87f6a8e46591fFix typo (#403)
+
+readme.md
+source/types/ky.ts
+@@@c315cc36e8989ef5bc7fe17111b87f6a8e46591f2021-11-08Sindre Sorhussindresorhus@gmail.comb52d13307a316fcb528d3af74c233c94febd0f5dtag: v0.28.70.28.7
+
+package.json
+@@@b52d13307a316fcb528d3af74c233c94febd0f5d2021-11-08Sindre Sorhussindresorhus@gmail.comb0e3001b16f5b5448ec090e81b6dc3d8589161c9Fix CI
+
+package.json
+test/browser.ts
+@@@b0e3001b16f5b5448ec090e81b6dc3d8589161c92021-11-08zengguirong18520788695@163.com2049affe2ca939f53350fb9b7354c3ff8d2e1c1fFix source map generation (#396)
+
+tsconfig.dist.json
+@@@2049affe2ca939f53350fb9b7354c3ff8d2e1c1f2021-10-13Sindre Sorhussindresorhus@gmail.comff1563ab54a57a932948a4cacc9112ca11795795Rename some internal types and upgrade dev dependencies
+
+package.json
+source/core/Ky.ts
+source/core/constants.ts
+source/errors/HTTPError.ts
+source/index.ts
+source/types/ky.ts
+source/types/options.ts
+source/types/response.ts
+source/utils/merge.ts
+source/utils/normalize.ts
+source/utils/time.ts
+test/_require.ts
+test/browser.ts
+test/fetch.ts
+test/headers.ts
+test/helpers/create-http-test-server.ts
+test/helpers/with-page.ts
+test/hooks.ts
+test/http-error.ts
+test/main.ts
+test/methods.ts
+test/prefix-url.ts
+test/retry.ts
+@@@ff1563ab54a57a932948a4cacc9112ca117957952021-10-13Sindre Sorhussindresorhus@gmail.com5ad41b1d39bbe2a142d205c4356d62d151146df6tag: v0.28.60.28.6
+
+package.json
+@@@5ad41b1d39bbe2a142d205c4356d62d151146df62021-10-13Sindre Sorhussindresorhus@gmail.comca20d65497d810fd3fc829accc7f6e7319b3ed81Minor tweak
+
+source/types/options.ts
+@@@ca20d65497d810fd3fc829accc7f6e7319b3ed812021-10-13Paul Botteinpaul.bottein@gmail.com885a7bdb33c87bd01d915e6131adee241191e4ebFix types for TypeScript 4.4 (#384)
+
+package.json
+source/core/Ky.ts
+@@@885a7bdb33c87bd01d915e6131adee241191e4eb2021-09-13will yewilliamyeny@gmail.com35f384696d1c3a96e0d00bf4c1d0e4da552eb3d0Fix broken anchor link in readme (#379)
+
+readme.md
+@@@35f384696d1c3a96e0d00bf4c1d0e4da552eb3d02021-09-11robertgr991robertgr991@yahoo.ro870a0b29d925df1873d85fcb449cf6e13d03ca0cAdd note about `throwHttpErrors` and retry functionality (#368)Co-authored-by: Szymon Marczak <36894700+szmarczak@users.noreply.github.com>
+Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+readme.md
+source/types/options.ts
+@@@870a0b29d925df1873d85fcb449cf6e13d03ca0c2021-06-17Alex Berezinberaliv.spb@gmail.com4b697957e491fa17ad9f31542310b19e41040acdRemove some `@ts-expect-error` (#339)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+package.json
+source/core/Ky.ts
+source/core/constants.ts
+source/index.ts
+source/types/hooks.ts
+source/utils/types.ts
+test/browser.ts
+test/fetch.ts
+test/hooks.ts
+test/http-error.ts
+@@@4b697957e491fa17ad9f31542310b19e41040acd2021-06-10Seth Holladayme@seth-holladay.comdfba243fb8f47688949cdf188ea099176cf54933Update instructions for use without a bundler (#358)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+readme.md
+@@@dfba243fb8f47688949cdf188ea099176cf549332021-06-03Luka Jeranlukaw3d@gmail.com757cd0a34bb17e20c1974b47ce947d910703b05fFix some TypeScript TODOs (#355)
+
+source/core/Ky.ts
+source/index.ts
+source/types/ky.ts
+test/hooks.ts
+@@@757cd0a34bb17e20c1974b47ce947d910703b05f2021-05-31Sindre Sorhussindresorhus@gmail.comad991fa76752f79a498d90fe5b62242a5782644etag: v0.28.50.28.5
+
+package.json
+@@@ad991fa76752f79a498d90fe5b62242a5782644e2021-05-31Sindre Sorhussindresorhus@gmail.comf862634112ab8554e819070bf9d3684105ef4915Export more TypeScript types
+
+source/index.ts
+source/types/options.ts
+@@@f862634112ab8554e819070bf9d3684105ef49152021-05-31Sindre Sorhussindresorhus@gmail.com8fc2f22c92d64cc250d183943fb705dfc728ebfbtag: v0.28.40.28.4
+
+package.json
+@@@8fc2f22c92d64cc250d183943fb705dfc728ebfb2021-05-31Mark Doeswijkmdoeswijk@gmail.com69d759370bb2995de6f0991e642fcade8b5b1956Fix missing hook method types for TypeScript (#353)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+source/index.ts
+@@@69d759370bb2995de6f0991e642fcade8b5b19562021-05-28Sindre Sorhussindresorhus@gmail.com5dd56265a2068e1a4c2f93ee6a3288004033e688tag: v0.28.30.28.3
+
+package.json
+@@@5dd56265a2068e1a4c2f93ee6a3288004033e6882021-05-28Sindre Sorhussindresorhus@gmail.com5f3c3158af5c7efbb6a1cfd9e5f16fc71dd26e36Upgrade dev dependencies
+
+package.json
+@@@5f3c3158af5c7efbb6a1cfd9e5f16fc71dd26e362021-05-29Luke Lulukeupup@gmail.com5164ab7557dc757870db0e0b861147398a624695Fix incompatibility with New Relic (#351)Co-authored-by: Seth Holladay <me@seth-holladay.com>
+
+package.json
+source/core/Ky.ts
+@@@5164ab7557dc757870db0e0b861147398a6246952021-05-25Sindre Sorhussindresorhus@gmail.com3ad1eab520cb707684ac5de09045f1fb6e9fc9b3tag: v0.28.20.28.2
+
+package.json
+@@@3ad1eab520cb707684ac5de09045f1fb6e9fc9b32021-05-25Sindre Sorhussindresorhus@gmail.com1338996cee1b76b7a7df4f6b62d7debebc1ad594Fix missing `Options` TypeScript typeFixes #347
+
+
+source/index.ts
+@@@1338996cee1b76b7a7df4f6b62d7debebc1ad5942021-05-25Olivier Louvignesolivier@mgcrea.io25929d79a48a65d58c67e3993edeb160a0df14e1Restore `main` field in package.json (#342)
+
+package.json
+@@@25929d79a48a65d58c67e3993edeb160a0df14e12021-05-14Sindre Sorhussindresorhus@gmail.com010b0824538150e0d14f2bd8c991d99cb3446aa2tag: v0.28.10.28.1
+
+package.json
+@@@010b0824538150e0d14f2bd8c991d99cb3446aa22021-05-14Olivier Louvignesolivier@mgcrea.iobf5be2f27b614ae632285d995e2b7dcfec985bcdFix `searchParams` option TypeScript type (#344)
+
+source/core/Ky.ts
+source/types/options.ts
+@@@bf5be2f27b614ae632285d995e2b7dcfec985bcd2021-05-04Sindre Sorhussindresorhus@gmail.com6ec7fd7f7d2920e9b5d9cc18161cc56eeb3cd674tag: v0.28.00.28.0
+
+package.json
+@@@6ec7fd7f7d2920e9b5d9cc18161cc56eeb3cd6742021-05-04Sindre Sorhussindresorhus@gmail.comb3c9e88fa49d50150dbb6e6b771b4af56cb40c98Make `HTTPError` and `TimeoutError` named exportsFixes #320
+
+
+readme.md
+source/index.ts
+source/types/ky.ts
+test/hooks.ts
+test/http-error.ts
+test/main.ts
+@@@b3c9e88fa49d50150dbb6e6b771b4af56cb40c982021-05-04Seth Holladayme@seth-holladay.comeefcde501bc639a6943eaa018d8f8def18d25fabFix merging of searchParams in create()/extend() (#335)
+
+source/utils/merge.ts
+test/main.ts
+@@@eefcde501bc639a6943eaa018d8f8def18d25fab2021-05-04Seth Holladayme@seth-holladay.comca098f85917a3d12d6f0276f781f3a4ad3e38d39Throw timeouts even if throwHttpErrors is false (#334)
+
+source/core/Ky.ts
+test/main.ts
+@@@ca098f85917a3d12d6f0276f781f3a4ad3e38d392021-05-04Seth Holladayme@seth-holladay.com453846e45436543c0cd2f0d2dde578697f066f88Improve HTTPError messages (#333)
+
+source/errors/HTTPError.ts
+test/browser.ts
+test/hooks.ts
+test/http-error.ts
+@@@453846e45436543c0cd2f0d2dde578697f066f882021-04-28Sindre Sorhussindresorhus@gmail.com2d8d68ae08f974d5e04249076683ec763d647bf5Minor tweaks
+
+.github/workflows/main.yml
+package.json
+source/core/Ky.ts
+source/errors/HTTPError.ts
+source/errors/TimeoutError.ts
+@@@2d8d68ae08f974d5e04249076683ec763d647bf52021-04-28Olivier Louvignesolivier@mg-crea.comd11af8816c0bea0fbca3d844e6a821362de40f5aMove to TypeScript (#330)
+
+.github/workflows/main.yml
+.gitignore
+index.d.ts
+index.js
+index.test-d.ts
+package.json
+source/core/Ky.ts
+source/core/constants.ts
+source/errors/HTTPError.ts
+source/errors/TimeoutError.ts
+source/index.ts
+source/types/common.ts
+source/types/hooks.ts
+source/types/ky.ts
+source/types/options.ts
+source/types/response.ts
+source/types/retry.ts
+source/utils/is.ts
+source/utils/merge.ts
+source/utils/normalize.ts
+source/utils/time.ts
+test/_require.js
+test/_require.ts
+test/browser.js
+test/browser.ts
+test/fetch.js
+test/fetch.ts
+test/headers.js
+test/headers.ts
+test/helpers/create-http-test-server.ts
+test/helpers/disable-abort-controller.js
+test/helpers/disable-stream-support.js
+test/helpers/index.ts
+test/helpers/parse-body.ts
+test/helpers/with-page.js
+test/helpers/with-page.ts
+test/hooks.js
+test/hooks.ts
+test/http-error.js
+test/http-error.ts
+test/main.js
+test/main.ts
+test/methods.js
+test/methods.ts
+test/prefix-url.js
+test/prefix-url.ts
+test/retry.js
+test/retry.ts
+tsconfig.dist.json
+tsconfig.json
+@@@d11af8816c0bea0fbca3d844e6a821362de40f5a2021-02-20Sindre Sorhussindresorhus@gmail.com58155185e888a35a34dc119bba3a9af1506094eftag: v0.27.00.27.0
+
+package.json
+@@@58155185e888a35a34dc119bba3a9af1506094ef2021-02-20contrayo@contra.io42424d4a7d2aada14eb45896aa450a748db82026Don't mangle user-provided `searchParams` string (#325)
+
+index.js
+test/fetch.js
+test/main.js
+@@@42424d4a7d2aada14eb45896aa450a748db820262021-02-10Sindre Sorhussindresorhus@gmail.com110aba869a1a2cf1f1d7775c033fde141e600508Document need for another polyfillFixes #323
+
+readme.md
+@@@110aba869a1a2cf1f1d7775c033fde141e6005082021-01-24Sindre Sorhussindresorhus@gmail.com23bb84e0f0a5d51989e1ca57585812b447e4a80eRename `master` branch to `main`
+
+readme.md
+@@@23bb84e0f0a5d51989e1ca57585812b447e4a80e2021-01-17Seth Holladayme@seth-holladay.comc4a1dc83b6d6f8f78714ff0f2f1195bc46a6cc44Simplify global variable usage (#319)* Simplify global variable usage
+
+* Use globalThis everywhere
+
+index.js
+test/_require.js
+test/fetch.js
+test/headers.js
+test/hooks.js
+@@@c4a1dc83b6d6f8f78714ff0f2f1195bc46a6cc442021-01-16Seth Holladayme@seth-holladay.com9c893a4d3935fc29d573a9c30b5d27224e978290Switch from Puppeteer to Playwright for reliable and concurrent browser tests (#317)
+
+package.json
+test/browser.js
+test/helpers/with-page.js
+@@@9c893a4d3935fc29d573a9c30b5d27224e9782902021-01-15Seth Holladayme@seth-holladay.combf175f012715fc72736d006933954111615309b1Update recommended CDN for Deno users (#316)
+
+readme.md
+@@@bf175f012715fc72736d006933954111615309b12021-01-14Sindre Sorhussindresorhus@gmail.com4fc06d9cd22290d68c5d432c8ed53f92960985f9Minor package.json tweak
+
+package.json
+@@@4fc06d9cd22290d68c5d432c8ed53f92960985f92021-01-11Sindre Sorhussindresorhus@gmail.come877e8f762d0aa32325aa17bfd761c2345f1cdd0Use top-level await in readme examples
+
+index.d.ts
+readme.md
+@@@e877e8f762d0aa32325aa17bfd761c2345f1cdd02021-01-08Sindre Sorhussindresorhus@gmail.com0ced1f1d9cc1f3158a064f46ee4073c88b49bb47tag: v0.26.00.26.0
+
+package.json
+@@@0ced1f1d9cc1f3158a064f46ee4073c88b49bb472021-01-08ialexi-bl44489753+ialexi-bl@users.noreply.github.com519d17e54d52d80e42834f698f43f85393a0c3b1Improve docs for `ky.stop` (#314)Co-authored-by: Seth Holladay <me@seth-holladay.com>
+Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+index.d.ts
+readme.md
+@@@519d17e54d52d80e42834f698f43f85393a0c3b12021-01-08ialexi-bl44489753+ialexi-bl@users.noreply.github.com5da3da05a530ab7328346f53df435035827c2969Add `request` and `options` to `HTTPError` (#309)Co-authored-by: Seth Holladay <me@seth-holladay.com>
+Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+index.d.ts
+index.js
+index.test-d.ts
+readme.md
+@@@5da3da05a530ab7328346f53df435035827c29692021-01-08ialexi-bl44489753+ialexi-bl@users.noreply.github.com1a7ec7f0cb21213869119d360380721e1c48a601Fix `BeforeRetryHook` and `NormalizedOptions` TypeScript type definitions (#308)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+index.d.ts
+index.test-d.ts
+@@@1a7ec7f0cb21213869119d360380721e1c48a6012021-01-07Sindre Sorhussindresorhus@gmail.com1136e0dab1e54f28e44d6a3db28ca5c53e53fcdfRequire Node.js 12 and drop UMD build (#315)
+
+.github/workflows/main.yml
+.gitignore
+index.js
+package.json
+readme.md
+test/browser.js
+umd.d.ts
+@@@1136e0dab1e54f28e44d6a3db28ca5c53e53fcdf2021-01-06Sindre Sorhussindresorhus@gmail.comd9760294875b46263265fa4a4c470edfb3347295Fix CI
+
+.github/workflows/main.yml
+@@@d9760294875b46263265fa4a4c470edfb33472952021-01-04Sindre Sorhussindresorhus@gmail.com3038671496bd540bdbabc57a23ea06a76eda2056Make the package a module type (#313)
+
+package.json
+test/browser.js
+test/fetch.js
+test/headers.js
+test/hooks.js
+test/http-error.js
+test/main.js
+test/methods.js
+test/prefix-url.js
+test/retry.js
+@@@3038671496bd540bdbabc57a23ea06a76eda20562021-01-03Sindre Sorhussindresorhus@gmail.com282cfd4dd38d1c6b4576ed3b4d1d284f62dab0c8Fix code coverage reporting
+
+package.json
+@@@282cfd4dd38d1c6b4576ed3b4d1d284f62dab0c82021-01-01Sindre Sorhussindresorhus@gmail.comb86ff0a4e8d66c363df17612c968c023560f9241Fix typo
+
+.github/workflows/main.yml
+readme.md
+@@@b86ff0a4e8d66c363df17612c968c023560f92412020-12-20rururuxrururux@gmail.com87c94fd5faebd26f637b93dfad58f92b28cf7073Fix support for `ky.stop` as return type in `BeforeRetryHook` TypeScript type (#307)
+
+index.d.ts
+index.test-d.ts
+@@@87c94fd5faebd26f637b93dfad58f92b28cf70732020-12-19Em Zhanzqianem@gmail.com16b501224edca67868808232e54d520da6c54713Fix aborting when `onDownloadProgress` throws an exception (#301)* Add failing test aborting w/ onDownloadProgress
+
+Note: this hangs the test runner after indicating failure
+
+* Fix rejected promise not being passed up
+
+* Make test pass by working around a Chromium bug
+
+Seems like https://bugs.chromium.org/p/chromium/issues/detail?id=817687
+was not completely fixed?
+
+index.js
+test/browser.js
+@@@16b501224edca67868808232e54d520da6c547132020-12-08Sindre Sorhussindresorhus@gmail.com902a6c158f811a7200c47e8379646e7ef4924be0tag: v0.25.10.25.1
+
+package.json
+@@@902a6c158f811a7200c47e8379646e7ef4924be02020-12-08Sindre Sorhussindresorhus@gmail.combc646cdd760c9979d83974b97e9540222fead605Minor readme tweak
+
+readme.md
+@@@bc646cdd760c9979d83974b97e9540222fead6052020-12-08Shivamsinghshivamkr@gmail.come22060767f086baf0d8fcd5665a18aa0387f8b30Replace `Reflect.has()` with the `in` operator (#304)
+
+index.js
+@@@e22060767f086baf0d8fcd5665a18aa0387f8b302020-12-01Sindre Sorhussindresorhus@gmail.comab134cd93659340681029c4525d7837b5cf90332Move to GitHub Actions
+
+.github/workflows/main.yml
+.travis.yml
+package.json
+readme.md
+@@@ab134cd93659340681029c4525d7837b5cf903322020-11-15Sindre Sorhussindresorhus@gmail.com2462577fed99e2952a33d7800ea7070ac51638a6tag: v0.25.00.25.0
+
+package.json
+@@@2462577fed99e2952a33d7800ea7070ac51638a62020-11-15Sindre Sorhussindresorhus@gmail.com1d0afa5c95118c5f76218012aeeaa61a1f009467Fix `tsd`
+
+package.json
+@@@1d0afa5c95118c5f76218012aeeaa61a1f0094672020-11-15Sindre Sorhussindresorhus@gmail.com2bff89ac3a3e0c014b0f2473b6b9aba9ad08bc8eUpdate AVA link
+
+readme.md
+@@@2bff89ac3a3e0c014b0f2473b6b9aba9ad08bc8e2020-11-15Xeoth46075322+Xeoth@users.noreply.github.com599a45b25f0752e2a2224f6e5041b836d8447af3Fix Deno and React Native compatibility (#295)
+
+index.d.ts
+@@@599a45b25f0752e2a2224f6e5041b836d8447af32020-11-15Oskar Löfgrenislander.abroad@gmail.comcfb75835e3adf2725abf601dbbd65e2a8cfb0d05Expose `TimeoutError#request` (#299)
+
+index.d.ts
+index.test-d.ts
+test/browser.js
+@@@cfb75835e3adf2725abf601dbbd65e2a8cfb0d052020-11-08Oskar Löfgrenislander.abroad@gmail.com764bc1cdabdb65bbcd9830b0f8bfbd95fed3179aUpdate `AbortError` message in the tests (#300)
+
+test/browser.js
+@@@764bc1cdabdb65bbcd9830b0f8bfbd95fed3179a2020-10-13Diego Lemecontato@diegoleme.com.br1f593943b954d7279b2fef6f62549548b1eef80eMention `ky-hooks-change-case` in the readme (#286)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+readme.md
+@@@1f593943b954d7279b2fef6f62549548b1eef80e2020-09-28Sindre Sorhussindresorhus@gmail.com9876da129c216b99ad9f5760d38ba0ed1876d20etag: v0.24.00.24.0
+
+package.json
+@@@9876da129c216b99ad9f5760d38ba0ed1876d20e2020-09-28Seth Holladayme@seth-holladay.com59dbd1dd2ce68848bc371605df5c7b45049870bdFix handling of network errors for `beforeRetry` hook (#276)
+
+index.d.ts
+index.js
+readme.md
+test/hooks.js
+@@@59dbd1dd2ce68848bc371605df5c7b45049870bd2020-08-13Kim Røenkim@kimroen.com9076dbcdb59e756b943a3b405edf7aec7ce6e6a2Fix readme typo (#278)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+readme.md
+@@@9076dbcdb59e756b943a3b405edf7aec7ce6e6a22020-07-21Sindre Sorhussindresorhus@gmail.comd52981efa5985f771e1ede166f11ac053db7a15etag: v0.23.00.23.0
+
+package.json
+@@@d52981efa5985f771e1ede166f11ac053db7a15e2020-07-21Seth Holladayme@seth-holladay.comccda3b98935ac26ffee70fb24d8e9fb28f89bbebClarify `throwHttpErrors` and redirect interaction (#274)
+
+index.d.ts
+readme.md
+@@@ccda3b98935ac26ffee70fb24d8e9fb28f89bbeb2020-07-20Skayojonas@skayo.dev6e0294035bb32675e92bd471176e0543b63e774eAdd option for custom `fetch` implementation (#273)* Overwrite globals.fetch when a 'fetch' option was provided
+
+* Fixed bug that wouldn't let me overwrite globals' properties
+
+* Fixed bug where 'this' referenced to the wrong object
+
+* Added basic documentation
+
+* Overwriting globals.fetch affects all other ky calls, therefore switched to this._options.fetch
+
+* Added basic tests
+
+* Formatting
+
+* More Formatting
+
+* Update index.d.ts
+
+* Update readme.md
+
+* Use shorthand syntax for passing fetch function in examples
+
+* Added more assertions to the test
+and removed .serial()
+
+* Added note that the user-defined fetch function has to be compatible with the standard
+
+* Fixed test
+
+* Plan for 12 assertions because every call for fetch is another assertion
+
+* Remove trailing comma
+
+* Remove configurable setting as it's not needed anymore
+
+Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+Co-authored-by: Seth Holladay <me@seth-holladay.com>
+
+index.d.ts
+index.js
+readme.md
+test/fetch.js
+@@@6e0294035bb32675e92bd471176e0543b63e774e2020-07-17Sindre Sorhussindresorhus@gmail.comc9e52061a40396ae1408ef9177ea9fd94a36f98ftag: v0.22.00.22.0
+
+package.json
+@@@c9e52061a40396ae1408ef9177ea9fd94a36f98f2020-07-17Seth Holladayme@seth-holladay.com95e7fd7cec8bed8bbeaf300e4fd1b6fb521ca145Add support for relative URLs and searchParams even in non-browsers (#271)
+
+index.js
+package.json
+test/browser.js
+test/fetch.js
+test/helpers/with-page.js
+@@@95e7fd7cec8bed8bbeaf300e4fd1b6fb521ca1452020-07-17Kirill Groshkovkirill.groshkov@naturalcycles.com71a8d59dc500102ce94030ec88b28f0288fd6b9eAdd `parseJson` option (#272)* feat: Options.parseJson
+
+fixes https://github.com/sindresorhus/ky/issues/254
+
+* Update index.d.ts
+
+* Update readme.md
+
+* Support parseJson option with response.json()
+
+* docs: remove the limitation clause
+
+* Update index.js
+
+Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+Co-authored-by: Seth Holladay <me@seth-holladay.com>
+
+index.d.ts
+index.js
+readme.md
+test/main.js
+@@@71a8d59dc500102ce94030ec88b28f0288fd6b9e2020-07-16Seth Holladayme@seth-holladay.comf67304ee71ab2cc675a5590e414c2daf695b337dFix headers construction in old browsers (#270)* Fix headers construction in old browsers
+
+* Add headers test
+
+index.js
+test/headers.js
+@@@f67304ee71ab2cc675a5590e414c2daf695b337d2020-07-12Sindre Sorhussindresorhus@gmail.comb9dbd19a533fd61fbadaa44b1803995dc782e839tag: v0.21.00.21.0
+
+package.json
+@@@b9dbd19a533fd61fbadaa44b1803995dc782e8392020-07-12Thierry Goettelmannthierry@byscripts.info2c5d6dda8ac889048408a337c3f5d068769981b2Add `Request` to `TimeoutError` (#267)
+
+index.d.ts
+index.js
+index.test-d.ts
+@@@2c5d6dda8ac889048408a337c3f5d068769981b22020-05-16Sindre Sorhussindresorhus@gmail.com588f45331a4e98872e74d628a04deeeb7bd601e0tag: v0.20.00.20.0
+
+package.json
+@@@588f45331a4e98872e74d628a04deeeb7bd601e02020-05-16Sindre Sorhussindresorhus@gmail.com70826b2c56aac6ca59518d88907ffb6ddbff6f9aMeta tweaks
+
+index.d.ts
+index.test-d.ts
+license
+package.json
+readme.md
+test/main.js
+@@@70826b2c56aac6ca59518d88907ffb6ddbff6f9a2020-05-16Daniel Andreiandrei.daniel26@gmail.come4e820c4ba94651a795a4e23f79e4bdc4afd10c1Add ability to remove headers using `ky.extend()` (#235)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+Co-authored-by: Szymon Marczak <36894700+szmarczak@users.noreply.github.com>
+
+index.d.ts
+index.js
+readme.md
+test/headers.js
+@@@e4e820c4ba94651a795a4e23f79e4bdc4afd10c12020-04-17Sindre Sorhussindresorhus@gmail.comd5e1233c3e170187cc77820c85a35661f9d8e9e5tag: v0.19.10.19.1
+
+package.json
+@@@d5e1233c3e170187cc77820c85a35661f9d8e9e52020-04-17Kumar McMillankumar.mcmillan@gmail.comfcb80099254362b30a5c8c722f1df32d0be536c4Ensure HTTPError always has a defined message (#249)
+
+index.js
+test/http-error.js
+@@@fcb80099254362b30a5c8c722f1df32d0be536c42020-04-15Seth Holladayme@seth-holladay.com7be6d00abde87879ab0ce1c5316ad5d75866102bFix the NormalizedOptions.headers type (#243)
+
+index.d.ts
+@@@7be6d00abde87879ab0ce1c5316ad5d75866102b2020-03-06Sindre Sorhussindresorhus@gmail.com9c9dfe9429fd9facf0807d76c88af33a83d1ff1ftag: v0.19.00.19.0
+
+package.json
+@@@9c9dfe9429fd9facf0807d76c88af33a83d1ff1f2020-03-06Piotr Monwid-Olechnowiczhasparus@gmail.comd547e89fba92b13333f5b714bf79fb59b4690253Add TimeoutError and HTTPError to ky TypeScript namespace (#241)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+index.d.ts
+index.test-d.ts
+@@@d547e89fba92b13333f5b714bf79fb59b46902532020-03-03gydroperitgydroperit@gmail.com3f8969f8ee022bc16ee40bd7f3f8489c75991919Delete `Content-Type` header for multipart requests (#211)
+
+index.js
+test/_require.js
+test/browser.js
+test/headers.js
+@@@3f8969f8ee022bc16ee40bd7f3f8489c759919192020-02-28Sindre Sorhussindresorhus@gmail.com041e93589caf4726a2a5c8edfa6b5abaac793fedtag: v0.18.00.18.0
+
+package.json
+@@@041e93589caf4726a2a5c8edfa6b5abaac793fed2020-02-22Seth Holladayme@seth-holladay.com3f3e14d3b8accd065b622738b0e7f3d57d7db2b1Fix request cancellation on timeout (#238)
+
+index.js
+@@@3f3e14d3b8accd065b622738b0e7f3d57d7db2b12020-02-21Lukasz Ostrowskilukasz@ostrowski.ninjad5cb15a362519232b6f6203359070a10dfabfdb0Add `response` to `beforeRetry` hook and change its parameter to a single object (#201)Co-authored-by: Seth Holladay <me@seth-holladay.com>
+Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+
+index.d.ts
+index.js
+index.test-d.ts
+readme.md
+test/hooks.js
+@@@d5cb15a362519232b6f6203359070a10dfabfdb02020-02-03Umidbek Karimovuma.karimov@gmail.com9f09e0622352a11d9f8b74016e08fd73ea63be36Add failing test for using FormData with searchParams (#227)* test: Use `busboy` for `FormData with searchParams` case.
+
+* WIP
+
+* WIP
+
+* WIP
+
+* WIP
+
+* WIP
+
+* WIP
+
+* WIP
+
+* Update test/browser.js
+
+Co-Authored-By: Szymon Marczak <36894700+szmarczak@users.noreply.github.com>
+
+Co-authored-by: Szymon Marczak <36894700+szmarczak@users.noreply.github.com>
+
+
+package.json
+test/browser.js
+@@@9f09e0622352a11d9f8b74016e08fd73ea63be362020-02-03Sindre Sorhussindresorhus@gmail.com7c1d37146197508a11e4dcff432682f199e38cc7tag: v0.17.00.17.0
+
+package.json
+@@@7c1d37146197508a11e4dcff432682f199e38cc72020-02-03Sindre Sorhussindresorhus@gmail.comcf6ca955266674a6dac7c0429c3a6cdf24d7322cRequire Node.js 10
+
+package.json
+readme.md
+test/browser.js
+test/hooks.js
+test/main.js
+test/prefix-url.js
+test/retry.js
+@@@cf6ca955266674a6dac7c0429c3a6cdf24d7322c2020-02-02Seth Holladayme@seth-holladay.com55b2535ab02446c8f1ef93140495cc9f4ed61731Move named exports to properties of default export (#206)
+
+index.d.ts
+index.js
+index.test-d.ts
+readme.md
+test/browser.js
+test/main.js
+umd.d.ts
+@@@55b2535ab02446c8f1ef93140495cc9f4ed617312020-02-01Seth Holladayme@seth-holladay.com78814e74efaaab65728103a13541820441b05d93Fix retries for requests with a body (#231)* Fix retries by cloning request before using it
+
+Fixes #217
+
+* Add test for reusing body on retry
+
+* Fix request counter assertion
+
+
+index.js
+test/browser.js
+@@@78814e74efaaab65728103a13541820441b05d932020-01-30Elijah Smithelijahs@gmail.combb46ca86e36d8998c0425ac1fa3b3faf9972c82bAssert error messages in retry tests (#229)* tests: check all retry failure for correct status text
+
+* Fix code style issues
+
+Co-authored-by: Seth Holladay <me@seth-holladay.com>
+
+
+test/retry.js
+@@@bb46ca86e36d8998c0425ac1fa3b3faf9972c82b2020-01-19Sindre Sorhussindresorhus@gmail.comb20779bd23d8a2d2f610d7406c1a6a56297ee8b6tag: v0.16.20.16.2
+
+package.json
+@@@b20779bd23d8a2d2f610d7406c1a6a56297ee8b62020-01-19Elijah Smithelijahs@gmail.com3a2922ac5df7219e52358e3bcc0d259a733b2d47Fix handling of falsy value with the `json` option (#223)Co-authored-by: Seth Holladay <me@seth-holladay.com>
+Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+
+index.d.ts
+index.js
+readme.md
+test/main.js
+@@@3a2922ac5df7219e52358e3bcc0d259a733b2d472020-01-12Braedon Gough38016720+braedongough@users.noreply.github.comb34276f2dabc17e44ea8e82ff6b04de08184bc72Port header tests from Got (#214)
+
+package.json
+test/headers.js
+@@@b34276f2dabc17e44ea8e82ff6b04de08184bc722020-01-02Sindre Sorhussindresorhus@gmail.comd6ff489b62468b0fb3af3a23bfb4533888b20b57Add `"sideEffects": false` key for Webpack
+
+package.json
+@@@d6ff489b62468b0fb3af3a23bfb4533888b20b572019-11-26Sindre Sorhussindresorhus@gmail.com2078a151370af3ce692d201b19c5fe4b5f00a456tag: v0.16.10.16.1
+
+package.json
+@@@2078a151370af3ce692d201b19c5fe4b5f00a4562019-11-26Rupert Angermeierrangermeier@users.noreply.github.com2f37c3f999efb36db9108893b8b3d4b3a7f5ec45Remove `content-type` header check for FormData body (#208)
+
+index.js
+readme.md
+test/browser.js
+test/main.js
+@@@2f37c3f999efb36db9108893b8b3d4b3a7f5ec452019-11-19Sindre Sorhussindresorhus@gmail.com449468a82f038238d4efc49ae662b33ca66bfb6eUpdate readme.md
+
+readme.md
+@@@449468a82f038238d4efc49ae662b33ca66bfb6e2019-11-18Ruy Adornoruyadorno@hotmail.com1a86d5bf16f9282e00cd35b149d2ec00826dbef7Add package.json funding property (#192)
+
+package.json
+@@@1a86d5bf16f9282e00cd35b149d2ec00826dbef72019-11-15Sindre Sorhussindresorhus@gmail.com0b93fa8cbe334aaf7625993e7a566b2452144696tag: v0.16.00.16.0
+
+package.json
+@@@0b93fa8cbe334aaf7625993e7a566b24521446962019-11-15Sindre Sorhussindresorhus@gmail.com0bc6fb1a84b343c4b151595a3bde4e7fd939c7a1Meta tweaks
+
+index.d.ts
+index.js
+index.test-d.ts
+package.json
+readme.md
+test/browser.js
+@@@0bc6fb1a84b343c4b151595a3bde4e7fd939c7a12019-11-15Daniel Andreiandrei.daniel26@gmail.comc0d9d2bb07e4c122a08f019b39e9c55a4c9324f3Add ability to stop retries in `beforeRetry` hooks (#198)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+index.d.ts
+index.js
+index.test-d.ts
+readme.md
+test/hooks.js
+@@@c0d9d2bb07e4c122a08f019b39e9c55a4c9324f32019-11-13Seth Holladayme@seth-holladay.comb08f351eafd990cd2097021caaa42bd23f40a701Fix global property lookup (#203)
+
+index.js
+@@@b08f351eafd990cd2097021caaa42bd23f40a7012019-11-11Sindre Sorhussindresorhus@gmail.com65f38f9f000413525d19d16599512b24e0a496aaAdd @szmarczak and @sholladay to funding.yml
+
+.github/funding.yml
+@@@65f38f9f000413525d19d16599512b24e0a496aa2019-11-09Seth Holladayme@seth-holladay.coma1c000e06ab80f3e669402fd5b9f7fa9492c988aAllow overriding the default accept headers (#200)
+
+index.js
+test/main.js
+@@@a1c000e06ab80f3e669402fd5b9f7fa9492c988a2019-11-08Seth Holladayme@seth-holladay.com4e0528951a36ebc858db0a0a0a4c62ee032bce56Avoid body method parse errors on 204 responses (#196)* Avoid body method parse errors on 204 responses
+
+* Synchronize documentation about the response
+
+* Use an empty string for 204 responses with .json()
+
+
+index.d.ts
+index.js
+readme.md
+test/main.js
+@@@4e0528951a36ebc858db0a0a0a4c62ee032bce562019-11-08Szymon Marczak36894700+szmarczak@users.noreply.github.coma5c249e36105ab8c7518cb999644e6f4d6e39e9fDocument `prefixUrl` reasonings (#175)* Document `prefixUrl` reasonings
+
+Fixes #146
+
+* Clean up explanation of prefixUrl
+
+* Update docs in TS definitions
+
+
+index.d.ts
+readme.md
+@@@a5c249e36105ab8c7518cb999644e6f4d6e39e9f2019-11-07Seth Holladayme@seth-holladay.com3b87b936ab81c881ce13ea252e7ea6c955f282d3Pass all Ky options to hooks (#188)
+
+index.d.ts
+index.js
+index.test-d.ts
+readme.md
+test/hooks.js
+test/main.js
+test/retry.js
+@@@3b87b936ab81c881ce13ea252e7ea6c955f282d32019-11-06Dave Lunny4298089+himynameisdave@users.noreply.github.comc5821a7fbf1af21f934ee5ed5a76fb224559c530Improve example in documentation for using umd.js (#190)
+
+readme.md
+@@@c5821a7fbf1af21f934ee5ed5a76fb224559c5302019-10-28Seth Holladayme@seth-holladay.com6e929dbe1630b491889c463b4ee563cf15abfad9Use request to normalize options (#180)
+
+index.d.ts
+index.js
+index.test-d.ts
+readme.md
+test/hooks.js
+test/main.js
+test/prefix-url.js
+@@@6e929dbe1630b491889c463b4ee563cf15abfad92019-10-03Sindre Sorhussindresorhus@gmail.com32a700798e00ab3e6507240d37e1920083c0029ftag: v0.15.00.15.0
+
+package.json
+@@@32a700798e00ab3e6507240d37e1920083c0029f2019-10-02Daniel Almaguerdanielalmaguer@gmail.comdbf23826c0d62853f82c6eb8b019ac8347d4f461Update typings for BeforeRequestHook (#181)* Fix BeforeRequestHook typings
+
+* Add more type tests for hooks
+
+* Use async functions
+
+
+index.d.ts
+index.test-d.ts
+@@@dbf23826c0d62853f82c6eb8b019ac8347d4f4612019-10-01Aldira Putra Raharjadira.thea@gmail.com68959c4a4f4b23054ccac998e1b5ceaf70a7f6efFix browser tests on Travis (#177)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+test/browser.js
+@@@68959c4a4f4b23054ccac998e1b5ceaf70a7f6ef2019-09-22Dave Lunny4298089+himynameisdave@users.noreply.github.comc4fe0c9f0f2aec8c1740f792dfa2164d93ec1f8cValidate the `input` argument (#176)
+
+index.js
+test/main.js
+@@@c4fe0c9f0f2aec8c1740f792dfa2164d93ec1f8c2019-09-09Sindre Sorhussindresorhus@gmail.com8ab3886a4b57ccf8e6c2ac55a8046c82f3ec211dtag: v0.14.00.14.0
+
+package.json
+@@@8ab3886a4b57ccf8e6c2ac55a8046c82f3ec211d2019-09-09Sindre Sorhussindresorhus@gmail.comc80a62230aa55fa7a3b94511e072f61941aca7b1Improve the TypeScript type docs
+
+index.d.ts
+readme.md
+@@@c80a62230aa55fa7a3b94511e072f61941aca7b12019-09-09Sindre Sorhussindresorhus@gmail.com4eb3677ed27472f5521258224501c12e2d1ae50eFix docs for #172
+
+index.d.ts
+readme.md
+@@@4eb3677ed27472f5521258224501c12e2d1ae50e2019-09-10Alisuelambdalisue@hashnote.net59d36ac658fae5d85de4919ebfe6710edd97e089Add `beforeRetry` hook (#159)
+
+index.d.ts
+index.js
+index.test-d.ts
+readme.md
+test/hooks.js
+@@@59d36ac658fae5d85de4919ebfe6710edd97e0892019-09-09Hugo Diasmail@hugodias.meac072441e4a96902e49c9db3d1dafcb03b0acf59Allow returning `Response` from a `beforeRequest` hook (#172)
+
+index.js
+readme.md
+test/hooks.js
+@@@ac072441e4a96902e49c9db3d1dafcb03b0acf592019-09-08Lukas Kohlerlux@ontheblueplanet.com83dff35a23a022e2c039ef2e1df966f619f9c206Move globals to getters to allow them to be mocked (#153)Co-authored-by: Szymon Marczak <36894700+szmarczak@users.noreply.github.com>
+
+index.js
+test/browser.js
+@@@83dff35a23a022e2c039ef2e1df966f619f9c2062019-09-04Sindre Sorhussindresorhus@gmail.com41960b69058ead848cdfa787187b92ba5e0a7a14tag: v0.13.00.13.0
+
+package.json
+@@@41960b69058ead848cdfa787187b92ba5e0a7a142019-08-30dcharbonnierd.charbonnier@oxys.neta50948adeff0c2255626ed28465e126e095a7c04Use `prepare` in npm run script (#171)
+
+package.json
+@@@a50948adeff0c2255626ed28465e126e095a7c042019-08-23Sindre Sorhussindresorhus@gmail.comd4ddb7ab4ec0d5baff73b3c038be48717592384dClean up #110
+
+index.d.ts
+index.js
+readme.md
+test/hooks.js
+test/retry.js
+@@@d4ddb7ab4ec0d5baff73b3c038be48717592384d2019-08-23Daniel Andreiandrei.daniel26@gmail.com9181aa2c284469971d15f8b8a1dccc09cf813c2bMake the `retry` option more powerful (#110)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+index.d.ts
+index.js
+readme.md
+test/retry.js
+@@@9181aa2c284469971d15f8b8a1dccc09cf813c2b2019-08-23Alisuelambdalisue@hashnote.netbfdc9b503105c3eb0c0019b01114b5546e1d82a2Pass input/options to beforeRequest/afterResponse hooks (#163)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+index.d.ts
+index.js
+index.test-d.ts
+readme.md
+test/hooks.js
+test/methods.js
+@@@bfdc9b503105c3eb0c0019b01114b5546e1d82a22019-08-22João Vieirajoaoguerravieira@gmail.coma16c49bc5b61611732279e958b4f0022de9d9a4aSimplify the `Options` TypeScript type (#165)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+index.d.ts
+index.test-d.ts
+@@@a16c49bc5b61611732279e958b4f0022de9d9a4a2019-08-12Sindre Sorhussindresorhus@gmail.com04b1477643cc5658b12252a5383015e626213638tag: v0.12.00.12.0
+
+package.json
+@@@04b1477643cc5658b12252a5383015e6262136382019-08-12Sindre Sorhussindresorhus@gmail.com9c81d89171ea5b1c4fa264251e30fa8ab64ee907Readme tweaks
+
+index.d.ts
+readme.md
+@@@9c81d89171ea5b1c4fa264251e30fa8ab64ee9072019-08-12Daniel Andreiandrei.daniel26@gmail.com0a0427d9121b5eccf8214a47515ce47458cc231aFix passing a `Request` instance as input (#147)
+
+index.js
+readme.md
+test/_require.js
+test/main.js
+@@@0a0427d9121b5eccf8214a47515ce47458cc231a2019-08-12João Vieirajoaoguerravieira@gmail.com00266ead236ad22c65d698d8d3ce099446e69966Fix the `BeforeRequestHook` TypeScript type (#161)
+
+index.d.ts
+index.test-d.ts
+@@@00266ead236ad22c65d698d8d3ce099446e699662019-08-12João Vieirajoaoguerravieira@gmail.com64e93c5da5874ca4010044c3439a018f350483d8Fix the options TypeScript type (#162)
+
+index.d.ts
+index.test-d.ts
+@@@64e93c5da5874ca4010044c3439a018f350483d82019-07-27Sindre Sorhussindresorhus@gmail.com30450d89f886c743e7acfa8f1bff156f473f893ftag: v0.11.20.11.2
+
+package.json
+@@@30450d89f886c743e7acfa8f1bff156f473f893f2019-07-26Oscarobartra@gmail.com2ea165a60614729c0d1fe79070541e8bec09575bFix timeout regression that caused Node.js to not terminate (#145)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+index.js
+test/main.js
+@@@2ea165a60614729c0d1fe79070541e8bec09575b2019-07-11Sindre Sorhussindresorhus@gmail.com2ded27572ec491e6c9e594ebcd2f94cc8c3957dbUpdate logoFixes #150
+
+
+media/logo.ai
+media/logo.png
+media/logo.svg
+@@@2ded27572ec491e6c9e594ebcd2f94cc8c3957db2019-06-20Sumanth Reddysrksumanth@gmail.comb1bd68fa760acb977c6f7661bc14a5f162d3701aFix readme usage example (#143)
+
+readme.md
+@@@b1bd68fa760acb977c6f7661bc14a5f162d3701a2019-06-15Sindre Sorhussindresorhus@gmail.com07838c79e66b74f4d365b4c5ac82c5c9c18039b8Add size badgeFixes #140
+
+
+readme.md
+@@@07838c79e66b74f4d365b4c5ac82c5c9c18039b82019-06-07Sindre Sorhussindresorhus@gmail.com93d2faf628c70681acc12dbc4be3ff42324c70bftag: v0.11.10.11.1
+
+package.json
+@@@93d2faf628c70681acc12dbc4be3ff42324c70bf2019-06-07Sindre Sorhussindresorhus@gmail.com5a4b4b0f4614aa6b4203872f1957024593faef6fFix TypeScript 3.5 compatibility
+
+index.d.ts
+@@@5a4b4b0f4614aa6b4203872f1957024593faef6f2019-05-24Sindre Sorhussindresorhus@gmail.com5a0e901daf914a4062b8a96eb326d01cec2644e2Enable the repo sponsor button
+
+.github/funding.yml
+readme.md
+@@@5a0e901daf914a4062b8a96eb326d01cec2644e22019-05-10Sindre Sorhussindresorhus@gmail.come5dbab33cc363c58e05fcee5080b2636cf9a07b9tag: v0.11.00.11.0
+
+package.json
+@@@e5dbab33cc363c58e05fcee5080b2636cf9a07b92019-05-10Sindre Sorhussindresorhus@gmail.comf89d796d3cfe69dfb45a922b6c7b7693f17d7c18Meta tweaks
+
+.travis.yml
+index.d.ts
+index.js
+package.json
+readme.md
+@@@f89d796d3cfe69dfb45a922b6c7b7693f17d7c182019-05-10Dennis Dangdangggdennis@gmail.com7793c53296da29d94d7609f2f16063d1121a7d7fAdd `onDownloadProgress` option (#34)Co-authored-by: Szymon Marczak <sz.marczak@gmail.com>
+Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+index.d.ts
+index.js
+index.test-d.ts
+readme.md
+test/browser.js
+test/helpers/disable-stream-support.js
+@@@7793c53296da29d94d7609f2f16063d1121a7d7f2019-05-10Sindre Sorhussindresorhus@gmail.com0a6beb1327e0c0be51f515b79b9c09f455601b75Simplify the TypeScript types (#133)
+
+index.d.ts
+index.test-d.ts
+@@@0a6beb1327e0c0be51f515b79b9c09f455601b752019-04-26Szymon Marczak36894700+szmarczak@users.noreply.github.com813d28bfb3229867be032bef08ed0c36b4f980c9Fix `ky.extend()` not inheriting its parent and add `ky.create()` (#128)
+
+index.d.ts
+index.js
+index.test-d.ts
+readme.md
+test/main.js
+@@@813d28bfb3229867be032bef08ed0c36b4f980c92019-04-24Szymon Marczak36894700+szmarczak@users.noreply.github.com64c2d29795e0141fb8e8816b5a04b3f9ccb1fcc3Document using FormData (#130)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+index.js
+readme.md
+test/hooks.js
+test/main.js
+test/methods.js
+@@@64c2d29795e0141fb8e8816b5a04b3f9ccb1fcc32019-04-23Szymon Marczaksz.marczak@gmail.com696e4d0b9716310ce7a0950b334694fb7fa7fa84Add a test for #125Fixes #126
+
+
+test/browser.js
+test/helpers/disable-abort-controller.js
+@@@696e4d0b9716310ce7a0950b334694fb7fa7fa842019-04-22Szymon Marczak36894700+szmarczak@users.noreply.github.come9c807b64c6414940b6c14b4e85c807f833dc0f2Fix incorrect `<script>` tag in README
+
+readme.md
+@@@e9c807b64c6414940b6c14b4e85c807f833dc0f22019-04-22Yanis Bensonyanis.benson@gmail.com77dbffe9feeb82850d1bc0192cf5a2402f96a44bImplement disabling timeouts (#127)
+
+index.d.ts
+index.js
+readme.md
+test/main.js
+@@@77dbffe9feeb82850d1bc0192cf5a2402f96a44b2019-04-19Sindre Sorhussindresorhus@gmail.coma0b1a70cc05fad278098657d103c0e8402ca7161Fix Travis
+
+.travis.yml
+@@@a0b1a70cc05fad278098657d103c0e8402ca71612019-04-19Sindre Sorhussindresorhus@gmail.comfcffa1816593f3da2ef42b886adc1932a14b99eftag: v0.10.00.10.0
+
+package.json
+@@@fcffa1816593f3da2ef42b886adc1932a14b99ef2019-04-19Sindre Sorhussindresorhus@gmail.comafc18eab70c98bc1b21c9b7efc9e18e37ba488e3Make it possible to install Ky in Node.js 8Closes #24
+
+
+.travis.yml
+package.json
+readme.md
+@@@afc18eab70c98bc1b21c9b7efc9e18e37ba488e32019-04-19Sebastian Andilsebastian.andil@gmail.coma012fd3ad568b62bf7e07375f1e27498cceadb0eSet accept header for ky shortcut methods (#118)Co-Authored-By: Szymon Marczak <36894700+szmarczak@users.noreply.github.com>
+
+index.js
+readme.md
+test/methods.js
+@@@a012fd3ad568b62bf7e07375f1e27498cceadb0e2019-04-19Gregor MacLennangmaclennan@digital-democracy.org7114ba310d31c8839668baa4be1225d3c3512c08Fix regression for environments without `AbortController` (#125)
+
+index.js
+@@@7114ba310d31c8839668baa4be1225d3c3512c082019-04-10Sindre Sorhussindresorhus@gmail.com2ea6f4f7e7be067682ee92ba0b5b95c9c78a4399Don't export the `Ky` TypeScript namespaceJust change `Ky` to `typeof ky` if you need it.
+
+
+index.d.ts
+index.test-d.ts
+@@@2ea6f4f7e7be067682ee92ba0b5b95c9c78a43992019-04-10Sindre Sorhussindresorhus@gmail.comd5b16d603a14b33c30dbe5369b3f421cca79f98etag: v0.9.10.9.1
+
+package.json
+@@@d5b16d603a14b33c30dbe5369b3f421cca79f98e2019-04-10Sindre Sorhussindresorhus@gmail.comed17c9a84d3afa6830fcaabd6835aa3f3f23c55bImprove the TypeScript definition
+
+index.d.ts
+index.test-d.ts
+package.json
+@@@ed17c9a84d3afa6830fcaabd6835aa3f3f23c55b2019-04-09Artemy Tregubenkome@arty.namebc6aa04b8d440f8599fc819da0b6c05a65991d2eFix problem with debugging timed-out requests (#122)Fixes #91
+
+index.js
+@@@bc6aa04b8d440f8599fc819da0b6c05a65991d2e2019-04-09Etienne Dldce.deladonchamps@gmail.com8d295b0072c1733d722a9355f06dd370c469e160Fix TypeScript types to allow hooks to return a Promise (#123)
+
+index.d.ts
+@@@8d295b0072c1733d722a9355f06dd370c469e1602019-04-03Michael Stramelstramel@users.noreply.github.com81e08da19a872a37d98620ae7a961c34c8805908Fix Error types (#113)
+
+index.d.ts
+index.test-d.ts
+@@@81e08da19a872a37d98620ae7a961c34c88059082019-03-25Luca Banmesqueeb@users.noreply.github.com6bdd75e767e7dcfb484a1a155ec2d99e36cc6571Clarify usage of `.json()` (#111)
+
+readme.md
+@@@6bdd75e767e7dcfb484a1a155ec2d99e36cc65712019-03-11Bertrand Marronbertrand.marron@gmail.com8c6abab989367abf756efd8b4faa549e7dfe0a54Remove slash in prefixUrl example (#108)See #11.
+
+readme.md
+@@@8c6abab989367abf756efd8b4faa549e7dfe0a542019-02-26Callum Locke250617+callumlocke@users.noreply.github.coma60054277a83ddf3054c32c2527c6bb5b1919211Fix note about non-2xx status codes in readme (#104)
+
+readme.md
+@@@a60054277a83ddf3054c32c2527c6bb5b19192112019-02-23Sindre Sorhussindresorhus@gmail.coma150ae885496a6ef307ffb65cabfd9ddaa075c40Mention `ky-universal` in the readme
+
+package.json
+readme.md
+@@@a150ae885496a6ef307ffb65cabfd9ddaa075c402019-02-22Sindre Sorhussindresorhus@gmail.com57e6da971d3f65c9336d4994a4e9fd7e546685e9tag: v0.9.00.9.0
+
+package.json
+@@@57e6da971d3f65c9336d4994a4e9fd7e546685e92019-02-22Sindre Sorhussindresorhus@gmail.com66ea8a7aee7a652eed1f7a7aa3e01d72c57d29a3Minor tweaks
+
+index.test-d.ts
+test/main.js
+@@@66ea8a7aee7a652eed1f7a7aa3e01d72c57d29a32019-02-22doniyor2109doniyor2109@gmail.comcd33a63b25618606360b78e5bd62149951a5b142Improve type system for get and head methods (#87)Fixes #85
+
+
+Co-authored-by: Szymon Marczak <36894700+szmarczak@users.noreply.github.com>
+
+index.d.ts
+index.js
+index.test-d.ts
+test/main.js
+@@@cd33a63b25618606360b78e5bd62149951a5b1422019-02-217Passwp7pass@hotmail.comffdc62f0886afc96f6e84a8c1b8519dcf2e2d8f7Fix `afterResponse` hook & retry not being called (#95)
+
+index.js
+test/hooks.js
+@@@ffdc62f0886afc96f6e84a8c1b8519dcf2e2d8f72019-02-21Szymon Marczak36894700+szmarczak@users.noreply.github.comc6e69e50532faceb3af8e5592ae4215c817a9540Remove the minified build link strikethroughIt is fixed now
+
+readme.md
+@@@c6e69e50532faceb3af8e5592ae4215c817a95402019-02-16Ian Walterpublic@iankwalter.comb6ed9dfc17e1081b992b54f95e65969deb633c5aReplace Cypress with AVA + Puppeteer (#84)
+
+cypress.json
+cypress/fixtures/fixture.json
+cypress/integration/index.js
+cypress/plugins/.keep
+cypress/support/.keep
+package.json
+test/browser.js
+test/helpers/with-page.js
+@@@b6ed9dfc17e1081b992b54f95e65969deb633c5a2019-02-13Sindre Sorhussindresorhus@gmail.comca0d3477f2ad0b986ad8f97838fc8e51059f6b24Improve readme examplesFixes #99
+
+
+index.d.ts
+readme.md
+@@@ca0d3477f2ad0b986ad8f97838fc8e51059f6b242019-02-09Sindre Sorhussindresorhus@gmail.comce12902195558b84d4c22b0676526153be334328tag: v0.8.00.8.0
+
+package.json
+@@@ce12902195558b84d4c22b0676526153be3343282019-02-05Sindre Sorhussindresorhus@gmail.com8f17a135f271c114936233b2aef7b253cfc4a493Make the `.json()` method generic (#98)It can still be used as before without a generic.
+
+Fixes #80
+
+index.d.ts
+index.test-d.ts
+@@@8f17a135f271c114936233b2aef7b253cfc4a4932019-02-04Ashinze Ekeneashinzekene@gmail.comd5d3eaa24f903294d1b86d96a7652262c61536ebActually cancel the request after the timeout (#27)Fixes #8 
+
+
+Co-authored-by: Szymon Marczak <36894700+szmarczak@users.noreply.github.com>
+
+index.js
+package.json
+test/_require.js
+test/main.js
+@@@d5d3eaa24f903294d1b86d96a7652262c61536eb2019-01-29Sindre Sorhussindresorhus@gmail.com5fabe0cab287e2a23772716d49b7b42d943a8950tag: v0.7.10.7.1
+
+package.json
+@@@5fabe0cab287e2a23772716d49b7b42d943a89502019-01-28Dmitrii Kanatnikovsteve111@yandex.ru924951ec1dcc639565d9ded1b7e633e20e47dcc6Add `ky/umd` TypeScript definition (#89)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+
+package.json
+umd.d.ts
+@@@924951ec1dcc639565d9ded1b7e633e20e47dcc62019-01-220xflotus0xflotus@gmail.com7bcea95bb5da2f2e99c72b5649ce64f973a785b2Fix typo in readme (#88)cancelation => cancellation
+
+
+readme.md
+@@@7bcea95bb5da2f2e99c72b5649ce64f973a785b22019-01-20Seth Holladayme@seth-holladay.coma9aa7ee1386ec9010a02e00039af05df4c2e66d0Support running Ky in Deno (#86)* Add globalThis as a fallback for globals
+
+This makes it possible to run Ky in Deno and perhaps other environments in the future.
+
+https://github.com/denoland/deno
+
+* Avoid ReferenceErrors in tests
+
+* Document support for Deno
+
+* Do not require a specific global variable name
+
+This is necessary to avoid errors in all environments because `global` doesn’t work in Deno and `globalThis` doesn’t work in Node.
+
+
+index.js
+package.json
+readme.md
+@@@a9aa7ee1386ec9010a02e00039af05df4c2e66d02019-01-20Sindre Sorhussindresorhus@gmail.comc2073450bdbce53aa508f92fa2a3bcaf8689ec83Minor readme tweaks
+
+readme.md
+@@@c2073450bdbce53aa508f92fa2a3bcaf8689ec832019-01-20Sindre Sorhussindresorhus@gmail.com8111684aea45e2f8055eaa424f6b10418f0f8f20tag: v0.7.00.7.0
+
+package.json
+@@@8111684aea45e2f8055eaa424f6b10418f0f8f202019-01-20Sindre Sorhussindresorhus@gmail.com90bc68db84169e27d456b9f6aa67965df876d59eUse more specific JSON types in TypeScript (#82)
+
+index.d.ts
+index.test-d.ts
+@@@90bc68db84169e27d456b9f6aa67965df876d59e2019-01-16Seth Holladayme@seth-holladay.coma99b7d12497ae59da994d6774a006f36969b20b0Add a UMD build to support older environments (#81)
+
+.gitignore
+package.json
+readme.md
+@@@a99b7d12497ae59da994d6774a006f36969b20b02019-01-14Sindre Sorhussindresorhus@gmail.come57223b9f2665c3c1eb3ff7c0f1cbaea174f9d03Bump XO
+
+index.js
+package.json
+test/prefix-url.js
+@@@e57223b9f2665c3c1eb3ff7c0f1cbaea174f9d032019-01-10Sindre Sorhussindresorhus@gmail.com1d99e7cae2f5aaec161da9c63beaf341f61b4377Add shout-out to LunaNode for supporting me on Patreon 🙌
+
+readme.md
+@@@1d99e7cae2f5aaec161da9c63beaf341f61b43772019-01-08Sindre Sorhussindresorhus@gmail.com9621da4776f2d4c6d2272e2ce91214c2b6ba9415tag: v0.6.00.6.0
+
+package.json
+@@@9621da4776f2d4c6d2272e2ce91214c2b6ba94152019-01-08Sindre Sorhussindresorhus@gmail.com1680ae6641b45e5b47d188bbf1c288e2f7113ea8Add manual download and CDN links to the readme (#79)
+
+readme.md
+@@@1680ae6641b45e5b47d188bbf1c288e2f7113ea82019-01-08Sindre Sorhussindresorhus@gmail.com7bf5b61f0b9f94587af4182ff346f869fec73f75Welcome @sholladay as a maintainer 🎉
+
+readme.md
+@@@7bf5b61f0b9f94587af4182ff346f869fec73f752019-01-08Sindre Sorhussindresorhus@gmail.com7c7f5fe1b38ae7da89003e93ce79526b5397dc88Add FAQ answer on how to use Ky without a bundler (#78)Fixes #73
+
+readme.md
+@@@7c7f5fe1b38ae7da89003e93ce79526b5397dc882019-01-08Cosmodaixianceng@gmail.com099efce4c8defa29f6af60a571a8db5f2dd51b81Fix the `throwHttpErrors` option for POST requests (#77)
+
+index.js
+test/main.js
+@@@099efce4c8defa29f6af60a571a8db5f2dd51b812019-01-07Sindre Sorhussindresorhus@gmail.comab86789e21325a35c44b494c3cddd9d88fed1e96Add copyright comment to the JS fileSince a lot of people include the file directly in their project. Makes it easier for them.
+
+
+index.js
+@@@ab86789e21325a35c44b494c3cddd9d88fed1e962019-01-06Seth Holladayme@seth-holladay.comf21b3a00f1e9dc455482fc206eac33dbbe51e533Avoid use of globals where possible (#74)
+
+index.js
+test/_require.js
+test/hooks.js
+test/main.js
+@@@f21b3a00f1e9dc455482fc206eac33dbbe51e5332019-01-07Sindre Sorhussindresorhus@gmail.comb205fe37d58e7e548bae63844dd3fcad4409106fFix Travis
+
+.travis.yml
+@@@b205fe37d58e7e548bae63844dd3fcad4409106f2019-01-06Sindre Sorhussindresorhus@gmail.comc504230d95c863232c4c22b9128e1c2eda7c8a65Require Node.js 10 when used in Node.js
+
+package.json
+test/_require.js
+@@@c504230d95c863232c4c22b9128e1c2eda7c8a652019-01-06Sindre Sorhussindresorhus@gmail.com15fbdec0feb25877f81b9d006c74ce396eb41e63TypeScript definition improvementsFixes #76
+
+
+index.d.ts
+@@@15fbdec0feb25877f81b9d006c74ce396eb41e632018-12-29Sindre Sorhussindresorhus@gmail.comce5c56d291872270549b800e0d873bd05498da65tag: v0.5.20.5.2
+
+package.json
+@@@ce5c56d291872270549b800e0d873bd05498da652018-12-29Sindre Sorhussindresorhus@gmail.com2bbc557c80a8f6b77a75f6d0ccdc68195043a2d3Update dev dependencies
+
+package.json
+@@@2bbc557c80a8f6b77a75f6d0ccdc68195043a2d32018-12-29Alexandre Breteaucontact@seldszar.fra534e5820149f9c51986eb0052974d496aa59d3cNormalize `method` option value casing (#63)
+
+index.js
+readme.md
+test/methods.js
+@@@a534e5820149f9c51986eb0052974d496aa59d3c2018-11-30Sindre Sorhussindresorhus@gmail.com5dbd4a2f7351f12d4ea683a3b827fe08d0e8cb7eRemove moot ESLint disable comment
+
+test/hooks.js
+@@@5dbd4a2f7351f12d4ea683a3b827fe08d0e8cb7e2018-11-06Sindre Sorhussindresorhus@gmail.comd6f81762fb965f6ae60b86de96f1a9d46501e575tag: v0.5.10.5.1
+
+package.json
+@@@d6f81762fb965f6ae60b86de96f1a9d46501e5752018-11-06Seth Holladayme@seth-holladay.come800c7a8b96e228d1eb460c565cae7191015c3f7Fix relative URL resolution (#59)Fixes https://github.com/sindresorhus/ky/issues/58
+
+There was a regression introduced in https://github.com/sindresorhus/ky/commit/a7c71b5728adb5efab59f4057caf83a82453ba4d which broke the ability for `input` to be a relative URL like `foo` or `/foo`. The root cause is that [`window.URL`](https://developer.mozilla.org/en-US/docs/Web/API/URL) unfortunately does not support relative URLs without an explicit and absolute `base` argument. This fixes that and adds a test for it. Now that we have Cypress set up, we can properly test anything related to relative URLs.
+
+The goal is to follow the URL resolution rules the same way that `fetch` does. So we resolve `input` against [`document.baseURI`](https://developer.mozilla.org/en-US/docs/Web/API/Node/baseURI#The_base_URL_of_a_document).
+
+cypress/integration/index.js
+index.js
+test/_require.js
+@@@e800c7a8b96e228d1eb460c565cae7191015c3f72018-11-05Sindre Sorhussindresorhus@gmail.com16f59c062f7e614489c26d9c59e76ac72185bb73Minor tweaks to type definition tweaks and docs
+
+index.d.ts
+readme.md
+@@@16f59c062f7e614489c26d9c59e76ac72185bb732018-11-02Sindre Sorhussindresorhus@gmail.com41c706fa21c1239f997e1b9450a859ea51dc4cb9tag: v0.5.00.5.0
+
+package.json
+@@@41c706fa21c1239f997e1b9450a859ea51dc4cb92018-11-02Sindre Sorhussindresorhus@gmail.coma7c71b5728adb5efab59f4057caf83a82453ba4dFixup #57
+
+index.d.ts
+index.js
+index.test-d.ts
+test/main.js
+@@@a7c71b5728adb5efab59f4057caf83a82453ba4d2018-11-01Itai Steinherzitaisteinherz@gmail.com854a6957cb65828d5b76f77a96414c9144268931Add `searchParams` option (#57)
+
+index.d.ts
+index.js
+readme.md
+test/main.js
+@@@854a6957cb65828d5b76f77a96414c91442689312018-11-01Sindre Sorhussindresorhus@gmail.comf107e7b92d90e4b0287846a49ba3f30d9b9ca648Improve the test pre-require script
+
+test/_require.js
+test/hooks.js
+@@@f107e7b92d90e4b0287846a49ba3f30d9b9ca6482018-11-01Sindre Sorhussindresorhus@gmail.com8481f5b49637394bece0f4e6f52382ce7156fab2Use `globalThis` polyfillSo it will work in environments like React Native.
+
+Fixes #53
+
+
+index.js
+@@@8481f5b49637394bece0f4e6f52382ce7156fab22018-11-01Sindre Sorhussindresorhus@gmail.comb714b8ac7460266b1cc07b49437ad8d509312421Minor improvements to #42
+
+index.d.ts
+index.test-d.ts
+readme.md
+test/hooks.js
+@@@b714b8ac7460266b1cc07b49437ad8d5093124212018-11-01PoppinLpoppinlp@gmail.comf0b75021fe7c150a836a2fb561a6f07d5999c9d3Add `afterResponse` hook (#42)Fixes #29
+
+index.js
+readme.md
+test/_require.js
+test/hooks.js
+@@@f0b75021fe7c150a836a2fb561a6f07d5999c9d32018-11-01Sindre Sorhussindresorhus@gmail.comaf77f30f42014885810d78d1a4b1246d0e8f26f4Set up integration testing with CypressCloses #51
+
+
+cypress.json
+cypress/fixtures/fixture.json
+cypress/integration/index.js
+cypress/plugins/.keep
+cypress/support/.keep
+package.json
+@@@af77f30f42014885810d78d1a4b1246d0e8f26f42018-11-01komkanitkom.sujautra@gmail.combe1a01d29cec4e1a22df63b9fa2187df9050f1f3Respect the `Retry-After` header when calculating retry delay (#55)Fix #45 
+
+index.js
+readme.md
+test/retry.js
+@@@be1a01d29cec4e1a22df63b9fa2187df9050f1f32018-10-18Sindre Sorhussindresorhus@gmail.com0dd18c80bfbe76deb09a8b1da77ad538f162137cMinor readme tweaks
+
+readme.md
+@@@0dd18c80bfbe76deb09a8b1da77ad538f162137c2018-10-10PoppinLpoppinlp@gmail.comda423b0971e958c8700fed801cd8e71a6c8db797Add type assertion for `.extend()` argument (#50)Fix #40 
+
+index.js
+test/main.js
+@@@da423b0971e958c8700fed801cd8e71a6c8db7972018-10-10Sindre Sorhussindresorhus@gmail.com83408d3ee4206d70c4a00f0c844abd0d08e5d93dtag: v0.4.10.4.1
+
+package.json
+@@@83408d3ee4206d70c4a00f0c844abd0d08e5d93d2018-10-10Sindre Sorhussindresorhus@gmail.com371b8e62404b05e3a78cc849c7d63c184d0f61f2Add WHATWG URL in some places in the TS definition
+
+index.d.ts
+index.test-d.ts
+@@@371b8e62404b05e3a78cc849c7d63c184d0f61f22018-10-10Fagl418francisco18@gmail.com232f0b8f7b9d4e91563585e4d34d570a2df76d04Add missing `prefixUrl` option to TypeScript definition (#49)
+
+index.d.ts
+@@@232f0b8f7b9d4e91563585e4d34d570a2df76d042018-10-06PoppinLpoppinlp@gmail.comeb4b341b8dac088ca6ec436eedc536d101c4b02cAdd a test case for extend with deep array (#41)
+
+test/main.js
+@@@eb4b341b8dac088ca6ec436eedc536d101c4b02c2018-09-30Sindre Sorhussindresorhus@gmail.com1e542eb4b63bb90a3ff35d9331a0355ebeb3ef6etag: v0.4.00.4.0
+
+package.json
+@@@1e542eb4b63bb90a3ff35d9331a0355ebeb3ef6e2018-09-29Florian ReuschelFlorian.Reuschel@gmx.de66fb6c37921244ec7ca94068749effa4aa69c5cbSupport Ky usage in web workers (#36)
+
+index.js
+test/_require.js
+@@@66fb6c37921244ec7ca94068749effa4aa69c5cb2018-09-29Seth Holladayme@seth-holladay.com91de80f0b9b4db9760f6f247f5f5d8f1d1ab256aAdd `prefixUrl` option (#11)Fixes #1 
+
+index.js
+readme.md
+test/_require.js
+test/prefix-url.js
+@@@91de80f0b9b4db9760f6f247f5f5d8f1d1ab256a2018-09-29Thijs Triemstrainfo@collab.nl81bbf7b6f6eed796b2f9c711ee96f5f298367818Fix usage example URL (#38)
+
+readme.md
+@@@81bbf7b6f6eed796b2f9c711ee96f5f2983678182018-09-17Sindre Sorhussindresorhus@gmail.com6a32b54b61b2d6209ff048fa5b7b598c80032b7eChange `retry` option default to what's actually documentedFixes #30
+
+
+index.js
+@@@6a32b54b61b2d6209ff048fa5b7b598c80032b7e2018-09-17Sindre Sorhussindresorhus@gmail.com52bc75aaddc02b072b5d17d270e96dbd841d0810Split tests into multiple files
+
+package.json
+readme.md
+test.js
+test/_require.js
+test/hooks.js
+test/main.js
+test/retry.js
+@@@52bc75aaddc02b072b5d17d270e96dbd841d08102018-09-17Sindre Sorhussindresorhus@gmail.com28ac3d82fe9362654eee4d1d0799c9c0dca2f11dtag: v0.3.00.3.0
+
+package.json
+@@@28ac3d82fe9362654eee4d1d0799c9c0dca2f11d2018-09-17Sindre Sorhussindresorhus@gmail.com3e4222d14a231ca029af2b0c230d1821e0f9bd67Make the `beforeRequest` hook work asyncThis was not correctly handled in #22
+
+
+index.js
+readme.md
+test.js
+@@@3e4222d14a231ca029af2b0c230d1821e0f9bd672018-09-17luvsic1021679588@qq.come40e3e74ff29374480adcf11e87027f6b9bed39eAdd TypeScript definition (#20)Co-authored-by: Sindre Sorhus <sindresorhus@gmail.com>
+
+index.d.ts
+index.test-d.ts
+package.json
+@@@e40e3e74ff29374480adcf11e87027f6b9bed39e2018-09-11Sindre Sorhussindresorhus@gmail.com9fe30fcb1cd8f1d5a6ab9135a795aba3a2b3ff30Make Ky a ES2015 moduleCloses #23
+Fixes #24
+
+
+index.js
+package.json
+readme.md
+test.js
+@@@9fe30fcb1cd8f1d5a6ab9135a795aba3a2b3ff302018-09-08killynathankillynathan@users.noreply.github.com27a826c39682eb934c984d79435ae0297e18cbe2Add `beforeRequest` hook (#22)
+
+index.js
+readme.md
+test.js
+@@@27a826c39682eb934c984d79435ae0297e18cbe22018-09-08killynathankillynathan@users.noreply.github.com02c3a7e0ef2781db48be126e7ac467f062df8858Add `throwHttpErrors` option (#14)
+
+index.js
+readme.md
+test.js
+@@@02c3a7e0ef2781db48be126e7ac467f062df88582018-09-07Sindre Sorhussindresorhus@gmail.com1cd5b7eb4b6b765b5dbf048d1b38085888b0a380Add @szmarczak as a maintainer ✨
+
+readme.md
+@@@1cd5b7eb4b6b765b5dbf048d1b38085888b0a3802018-09-07Sindre Sorhussindresorhus@gmail.comf6914d20a244d03e9711c4f210e855e1a68f256fAdd more FAQs to the readme
+
+readme.md
+@@@f6914d20a244d03e9711c4f210e855e1a68f256f2018-09-07vivek poddarvivekimsit@gmail.com6e799a8d096c79a35064ef3e70bfde7541e25288Refactor TimeoutError (#16)
+
+index.js
+@@@6e799a8d096c79a35064ef3e70bfde7541e252882018-09-07Walle Cyrilcapocyril@hotmail.comf15717572c33cf0b8013ec7e7fdee59a3f1ff76fMinor code refactoring (#18)Fixes #15 
+
+index.js
+@@@f15717572c33cf0b8013ec7e7fdee59a3f1ff76f2018-09-05Sindre Sorhussindresorhus@gmail.comdc7928c25fa53e3379a4ccd2a8294b02685b34ffAdd FAQ section to the readmeFixes #10
+
+readme.md
+@@@dc7928c25fa53e3379a4ccd2a8294b02685b34ff2018-09-05Sindre Sorhussindresorhus@gmail.combd204c8b01bfc707019fc7ff041262f71cd944a0Add tip about request cancelationFixes #4
+
+
+readme.md
+@@@bd204c8b01bfc707019fc7ff041262f71cd944a02018-09-05Sindre Sorhussindresorhus@gmail.com368985073e7faf67e63e0f20e1efd97b905a24e3Set a height on the logo
+
+readme.md
+@@@368985073e7faf67e63e0f20e1efd97b905a24e32018-09-04Sindre Sorhussindresorhus@gmail.com04751015b80a769dabd4ffe2a7eb69b0889d5085Fix codecov
+
+package.json
+@@@04751015b80a769dabd4ffe2a7eb69b0889d50852018-09-04Sindre Sorhussindresorhus@gmail.com441fb42d8d720e85e8e82c67806f791b9b77ce75tag: v0.2.00.2.0
+
+package.json
+@@@441fb42d8d720e85e8e82c67806f791b9b77ce752018-09-04Sindre Sorhussindresorhus@gmail.comInit
+
+.editorconfig
+.gitattributes
+.gitignore
+.npmrc
+.travis.yml
+index.js
+license
+media/logo.ai
+media/logo.png
+media/logo.svg
+package.json
+readme.md
+test.js

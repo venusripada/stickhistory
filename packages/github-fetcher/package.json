@@ -1,0 +1,12 @@
+{
+  "name": "@commit-wars/github-fetcher",
+  "version": "0.1.0",
+  "description": "Fetches a GitHub repository's commits, pull requests, linked issues and tags as a normalized history.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": ["src"],
+  "license": "MIT"
+}

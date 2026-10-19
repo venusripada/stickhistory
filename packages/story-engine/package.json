@@ -1,0 +1,13 @@
+{
+  "name": "@commit-wars/story-engine",
+  "version": "0.1.0",
+  "description": "Turns a normalized repository history into a Commit Wars episode (chapters, heroes, duels, bosses).",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./schema.json": "./src/episode.schema.json"
+  },
+  "files": ["src"],
+  "license": "MIT"
+}

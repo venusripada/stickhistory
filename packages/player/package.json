@@ -1,0 +1,17 @@
+{
+  "name": "@commit-wars/player",
+  "version": "0.1.0",
+  "description": "Canvas stick-figure fight player for Commit Wars episodes.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@commit-wars/story-engine": "*"
+  }
+}

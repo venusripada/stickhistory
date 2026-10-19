@@ -1,0 +1,27 @@
+{
+  "name": "commit-wars",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Turn any GitHub repository's history into a stick-figure fight: developers duel the bugs and issues they actually fixed.",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @commit-wars/web",
+    "build": "npm run build -w @commit-wars/web",
+    "preview": "npm run preview -w @commit-wars/web",
+    "test": "vitest run",
+    "cli": "node apps/cli/bin/commit-wars.js",
+    "e2e": "node e2e/app.e2e.mjs"
+  },
+  "devDependencies": {
+    "vitest": "3.2.4",
+    "playwright": "1.56.0"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "license": "MIT"
+}
