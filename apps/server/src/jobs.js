@@ -1,4 +1,5 @@
-// One job at a time, in order. A job works on a story found by its id, so
+// One job at a time, in order (periods have their own line, so a quarter
+// doesn't wait behind clones or a big combine). A job works on a story found by its id, so
 // renaming or moving the story while the job waits is fine.
 //
 //   build   clone if needed, read the history, build the episode
@@ -50,6 +51,8 @@ export function pickNext(queue, { now: t, stale }) {
 export function createJobs({ library, emit }) {
   const queue = [];
   let running = null, seq = 0;
+  const periodQueue = []; // periods only read saved histories: their own line, one at a time
+  let periodRunning = null;
   const stale = new Map(); // collectionId -> { changed, since }: stories changed since its movie was last combined
   const noteChange = (collectionId) => {
     if (!collectionId) return;
@@ -84,13 +87,13 @@ export function createJobs({ library, emit }) {
   }
   /** A period's movie and report; its period.json says it's waiting until the job runs. */
   function enqueuePeriod(collectionId, periodId) {
-    const same = queue.find((j) => j.kind === 'period' && j.collectionId === collectionId && j.periodId === periodId);
+    const same = periodQueue.find((j) => j.collectionId === collectionId && j.periodId === periodId);
     if (same) return view(same);
     const loc = library.findCollectionById(collectionId);
-    const job = { id: String(++seq), kind: 'period', storyId: null, collectionId, periodId, collection: loc ? { slug: loc.c, name: loc.json.name } : null, story: null, state: 'queued', phase: 'queued', message: 'Waiting to build this period.', frac: null };
-    queue.push(job);
+    const job = { id: String(++seq), kind: 'period', storyId: null, collectionId, periodId, collection: loc ? { slug: loc.c, name: loc.json.name } : null, story: null, state: 'queued', phase: 'queued', message: periodRunning ? 'Waiting for the period ahead to finish.' : 'Starting…', frac: null };
+    periodQueue.push(job);
     publish(job);
-    setImmediate(pump);
+    setImmediate(pumpPeriods);
     return view(job);
   }
   /** After a story changes, its collection's movie is rebuilt. */
@@ -103,6 +106,19 @@ export function createJobs({ library, emit }) {
   async function pump() {
     if (running || !queue.length) return;
     const job = running = queue.splice(pickNext(queue, { now: Date.now(), stale }), 1)[0];
+    await runJob(job);
+    running = null;
+    setImmediate(pump);
+  }
+  async function pumpPeriods() {
+    if (periodRunning || !periodQueue.length) return;
+    const job = periodRunning = periodQueue.shift();
+    await runJob(job);
+    periodRunning = null;
+    setImmediate(pumpPeriods);
+  }
+
+  async function runJob(job) {
     job.state = 'running'; publish(job);
     try {
       await (job.kind === 'collection' ? runCollection(job) : job.kind === 'period' ? runPeriod(job) : run(job));
@@ -126,8 +142,6 @@ export function createJobs({ library, emit }) {
       }
     } finally {
       publish(job);
-      running = null;
-      setImmediate(pump);
     }
   }
 
@@ -254,7 +268,7 @@ export function createJobs({ library, emit }) {
     enqueue,
     enqueueCollection,
     enqueuePeriod,
-    list: () => [running, ...queue].filter(Boolean).map(view),
+    list: () => [running, ...queue, periodRunning, ...periodQueue].filter(Boolean).map(view),
     /** Stories left half-done by a stopped server get built again. */
     recover() {
       for (const col of library.list()) {

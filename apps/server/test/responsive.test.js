@@ -45,4 +45,37 @@ describe('a big collection build', () => {
       expect(worst).toBeLessThan(1500);
     } finally { await srv.close(); }
   }, 150000);
+  it('builds a period right away, without waiting for a big combine to finish', async () => {
+    const root2 = tempDir('cw-lanes-');
+    try {
+      const write = (c, id, stories, n) => {
+        mkdirSync(join(root2, c), { recursive: true });
+        writeFileSync(join(root2, c, 'collection.json'), JSON.stringify({ id, name: c, order: [], people: { merge: [], separate: [] } }));
+        for (const s of stories) {
+          mkdirSync(join(root2, c, s));
+          writeFileSync(join(root2, c, s, 'story.json'), JSON.stringify({ id: `${id}-${s}`, name: s, url: `file:///nowhere/${s}`, status: 'ready', commits: n }));
+          writeFileSync(join(root2, c, s, 'history.json'), JSON.stringify(bigHistory(s, n)));
+          writeFileSync(join(root2, c, s, 'episode.json'), '{}');
+        }
+      };
+      write('big', 'big-id', ['one', 'two', 'three'], 40000);
+      write('team', 'team-id', ['alpha', 'beta'], 400); // Jan 1 – Jan 17, 2020
+      const srv = await startServer({ port: 0, library: root2, quiet: true }); // starts combining both on start
+      try {
+        const r = await fetch(srv.url + '/api/collections/team/periods', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ from: '2020-01-01', to: '2020-01-31' }) });
+        expect(r.status).toBe(202);
+        let lib;
+        const t0 = Date.now();
+        for (;;) {
+          lib = await (await fetch(srv.url + '/api/library')).json();
+          const p = lib.collections.find((c) => c.slug === 'team').periods[0];
+          if (p && ['ready', 'error'].includes(p.status)) break;
+          if (Date.now() - t0 > 60000) throw new Error('the period never finished');
+          await new Promise((res) => setTimeout(res, 50));
+        }
+        expect(lib.collections.find((c) => c.slug === 'team').periods[0].status).toBe('ready');
+        expect(lib.collections.find((c) => c.slug === 'big').episode?.status).toBe('building');
+      } finally { await srv.close(); }
+    } finally { removeDir(root2); }
+  }, 150000);
 });
