@@ -141,7 +141,8 @@ export function makeSim(E) {
   const enemyReach = (t) => (t.kind === 'boss' ? t.r + 110 : t.r + 22);
   function nearestTarget(h) {
     if (G.duel && G.duel.hero === h) return G.duel.enemy && alive(G.duel.enemy) ? G.duel.enemy : null;
-    if (G.boss && (G.boss.state === 'fight' || G.boss.state === 'wind')) return G.boss;
+    // a shielded boss can't be hit: fight what it spawns first
+    if (G.boss && !G.boss.shield && (G.boss.state === 'fight' || G.boss.state === 'wind')) return G.boss;
     // your own bugs and features first; help with others' only when you have none
     let best = null, bd = 1e9, mine = false;
     for (const e of G.enemies) {
@@ -153,6 +154,8 @@ export function makeSim(E) {
       const d = Math.abs(e.x - h.x) + Math.abs(e.d - h.d) * 300;
       if ((own && !mine) || d < bd) { bd = d; best = e; mine = own; }
     }
+    // on release day everyone free turns on the release hive
+    if (!best && G.hive && G.hive.state === 'assault') return G.hive;
     return best;
   }
   function walkPose(h, dt, fast) { h.walkT += dt * (fast ? 9 : 6.5); const a = Math.floor(h.walkT) % 2; return fast ? (a ? 'dash1' : 'dash2') : (a ? 'walk1' : 'walk2'); }
@@ -218,13 +221,18 @@ export function makeSim(E) {
       else if (M.pop && t.T.launch) { t.state = 'air'; t.vz = M.pop; }
       else { t.state = 'hurt'; t.timer = .22; }
       if (t.z > 20 && !M.spike) t.vz = Math.max(t.vz, 180);
+    } else if (t.kind === 'hive') {
+      if (Math.abs(t.x - h.x) > t.r + 70) return;
+      h.fought = true; G.curD = t.d;
+      t.hp -= M.dmg * power * 9; t.flash = .1;
+      impact(t.x - Math.sign(t.x - h.x) * t.r * .6, GY - rand(30, 110), col(h.name), 16, 'hit');
     } else if (t.kind === 'boss') {
       if (Math.abs(t.x - h.x) > enemyReach(t) + 30 || (t.state !== 'fight' && t.state !== 'wind')) return;
       h.fought = true;
       t.hp = Math.max(19, t.hp - M.dmg * power * rand(2.2, 3.4)); t.flash = .1; t.kx = h.f * 30;
       impact(t.x - Math.sign(t.x - h.x) * t.r * .8, GY - rand(30, 80), col(h.name), 16, 'hit');
       G.hitstop = Math.max(G.hitstop, .04);
-      if (t.hp <= 20 && !G.finisher) startFinisher();
+      if (t.hp <= 20 && !G.finisher) E.startFinisher(); // bosses.js
     }
   }
   function finishEnemy(e, h) {
@@ -278,7 +286,7 @@ export function makeSim(E) {
       return walkPose(h, dt);
     }
     const t = nearestTarget(h);
-    if (t && t.kind === 'boss') {
+    if (t && (t.kind === 'boss' || t.kind === 'hive')) {
       const side = h.k % 2 === 0 ? -1 : 1;
       const slot = clamp(t.x + side * (t.r + 12 + Math.floor(h.k / 2) * 30 + (side < 0 ? 22 : 0)), 20, E.W - 22);
       // spread around the boss in depth too
@@ -351,69 +359,6 @@ export function makeSim(E) {
     h.trail = h.trail.filter((t) => t.life > 0);
   }
 
-  // ---------- boss ----------
-  function makeBoss(info) { return { kind: 'boss', info, d: 0.3, x: E.W + 140, f: -1, r: 72, hp: 100, state: 'enter', timer: 0, cd: 2, phase: 0, flash: 0, kx: 0, claw: 0, age: 0 }; }
-  function updBoss(B, dt) {
-    G.curD = B.d;
-    B.phase += dt * 6; B.flash = Math.max(0, B.flash - dt); B.age += dt;
-    B.x += B.kx * dt; B.kx *= Math.exp(-5 * dt);
-    if (B.age > 16 && !G.finisher && B.state !== 'dying') { B.hp = 20; startFinisher(); }
-    if (B.state === 'enter') { B.x -= 110 * dt; if (B.x <= Math.min(E.W * 0.75, E.W - B.r - 66)) { B.state = 'fight'; G.shake = 8; dust(B.x - 30, 14); dust(B.x + 30, 14); } return; }
-    if (B.state === 'fight') { B.claw = lerp(B.claw, 0, dt * 8); B.cd -= dt; if (B.cd <= 0) { B.state = 'wind'; B.timer = .6; } return; }
-    if (B.state === 'wind') {
-      B.claw = lerp(B.claw, 1, dt * 10); B.timer -= dt;
-      if (B.timer <= 0) {
-        B.state = 'fight'; B.cd = rand(2, 2.8); B.claw = -0.6; G.shake = 8;
-        ring(B.x - B.r, GY - 20, C.bug); dust(B.x - B.r - 30, 12);
-        for (const h of G.heroes) {
-          if (h.x > B.x - B.r - 110 && h.x < B.x + B.r + 60 && h.z < 40 && h.state !== 'down') {
-            if (Math.random() < .35) { h.state = 'dodge'; h.timer = .35; h.vz = 300; h.kx = (h.x < B.x ? -1 : 1) * 200; continue; }
-            h.atk = null;
-            if (Math.random() < .35) { h.state = 'down'; h.timer = 1.0; } else { h.state = 'hurt'; h.timer = .45; }
-            h.kx = h.x < B.x ? -300 : 240;
-            impact(h.x, GY - 60, C.bug, 14, 'hit');
-          }
-        }
-        G.hitstop = .08;
-        floater(B.x - B.r, GY - 140, 'BONK', C.ink, 26);
-      }
-      return;
-    }
-    if (B.state === 'stagger') { B.claw = lerp(B.claw, -.3, dt * 4); return; }
-    if (B.state === 'dying') {
-      B.timer -= dt; B.flash = .1; G.shake = 5;
-      if (Math.random() < dt * 30) burst(B.x + rand(-60, 60), GY - rand(20, 90), pick([C.bug, C.orb, C.ink]), 6, 140);
-      if (B.timer <= 0) {
-        const c = col(G.finisher.hero.name);
-        for (let k = 0; k < 6; k++) burst(B.x + rand(-50, 50), GY - rand(20, 80), pick([C.bug, C.orb, c]), 16, 260);
-        ring(B.x, GY - 50, c, 2); ring(B.x, GY - 50, C.orb, 2.6);
-        scraps(B.x, GY - 60, B.info.files);
-        G.stamp = { text: 'REFACTORED', sub: B.info.files != null ? `${fmtN(B.info.files)} files changed` : trunc(B.info.s, 40), col: c, t: 0 };
-        G.shake = 14; G.hitstop = .3; G.slowmo = .8; G.boss = null; G.finisher.phase = 'done'; G.finisher.t = 0;
-        E.say('boss-down', { hero: G.finisher.hero.name, info: B.info });
-      }
-    }
-  }
-  function startFinisher() {
-    const B = G.boss; if (!B) return;
-    const hero = G.heroes.find((h) => h.name === B.info.who && !h.leaving) || G.heroes.find((h) => !h.leaving);
-    if (!hero) { B.state = 'dying'; B.timer = .7; G.finisher = { hero: { name: B.info.who }, phase: 'cast', t: 0 }; return; }
-    G.finisher = { hero, phase: 'approach', t: 0 };
-    hero.fought = true; // the finishing move is their fight
-    B.state = 'stagger';
-    G.enemies.forEach((e) => { if (alive(e) && !e.duel) { e.state = 'dead'; e.timer = .5; } });
-  }
-  function updFinisher(dt) {
-    const F = G.finisher; if (!F) return;
-    F.t += dt;
-    if (F.phase === 'cast' && G.boss) {
-      if (F.t > .35) { G.boss.flash = .1; G.boss.kx = 20; G.shake = Math.max(G.shake, 3); }
-      if (F.t > 1.7 && G.boss.state !== 'dying') { G.boss.state = 'dying'; G.boss.timer = .7; }
-    }
-    if (F.phase === 'approach' && F.t > 6) { F.phase = 'cast'; F.t = 0; }
-    if (F.phase === 'done' && F.t > 1.8) G.finisher = null;
-  }
-
   // ---------- reverts ----------
   function fireRevert(hero, info) { G.bolts.push({ kind: 'bolt', d: hero.d, x: E.W + 20, y: GY - 70, hero, info, trail: [] }); }
   function updBolt(b, dt) {
@@ -462,8 +407,6 @@ export function makeSim(E) {
     }
     for (const e of G.enemies) updEnemy(e, dt);
     G.enemies = G.enemies.filter((e) => !(e.state === 'dead' && e.timer <= 0));
-    if (G.boss) updBoss(G.boss, dt);
-    updFinisher(dt);
     for (const x of G.bolts) updBolt(x, dt);
     G.bolts = G.bolts.filter((x) => !x.done);
     if (G.bot) updBot(G.bot, dt);
@@ -486,7 +429,7 @@ export function makeSim(E) {
   }
 
   return {
-    camTarget, camReset, step, makeEnemy, makeHero, makeBoss, home, alive, finishEnemy, startFinisher,
-    fireRevert, finishInPassing, burst, dust, ring, floater, impact,
+    camTarget, camReset, step, makeEnemy, makeHero, home, alive, finishEnemy,
+    fireRevert, finishInPassing, burst, dust, ring, floater, impact, scraps, moveTo, walkPose,
   };
 }

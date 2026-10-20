@@ -7,7 +7,9 @@
 //   feat     { i, who }            a feature commit: one unfinished feature, built (fought) by its author
 //   featduel { i, who }            a chapter's biggest feature: a spotlight duel that ends SHIPPED
 //   revert   { i, who }            a revert: the time-warp bolt
-//   boss     { i, who, k }         chapter k's largest refactor: Tech Debt arrives
+//   boss     { i, who, k, bossKind, g, members }  a boss arrives: Tech Debt, or a big feature
+//                                  pull request; `members` are the commits it spawns
+//   hive     { g, tag, until }     a release under construction stands until its release
 //   release  { tag, weight }       a minor or major release: flag and fireworks
 //   chapter  { k }                 chapter k starts: title card
 
@@ -29,6 +31,19 @@ export function buildEvents(ep, o = {}) {
     for (const p of ch.powerups) { const i = find(p.sha); if (i != null) big.add(i); }
   });
 
+  // bosses that spawn their work (timeline.groups): their commits wait for them
+  const groups = tl.groups || null;
+  const held = new Set(), bossAt = new Map();
+  if (groups) {
+    bosses.clear();
+    groups.forEach((g, gi) => {
+      if (g.kind === 'release' || g.at == null) return;
+      for (const m of g.members) held.add(m);
+      bossAt.set(g.at, gi);
+    });
+  }
+  const personOf = (name) => tl.people.findIndex((p) => p.name === name);
+
   const ev = [];
   let dayStart = 0, n = 0;
   for (let i = 0; i < tl.commits.length; i++) {
@@ -38,14 +53,23 @@ export function buildEvents(ep, o = {}) {
       while (dayStart + n < tl.commits.length && tl.commits[dayStart + n][TL.day] === c[TL.day]) n++;
     }
     const p = c[TL.who];
-    if (tl.people[p].bot || (who != null && p !== who)) continue;
     const t = c[TL.day] + (i - dayStart + 0.5) / n;
+    if (bossAt.has(i)) {
+      const gi = bossAt.get(i), g = groups[gi];
+      const members = who == null ? g.members : g.members.filter((m) => tl.commits[m][TL.who] === who);
+      const lead = g.who != null ? personOf(g.who) : p;
+      if (who == null || members.length || lead === who) ev.push({ t, type: 'boss', i, who: lead >= 0 ? lead : p, k: g.k, bossKind: g.kind, g: gi, members });
+      continue;
+    }
+    if (held.has(i)) continue;
+    if (tl.people[p].bot || (who != null && p !== who)) continue;
     if (bosses.has(i)) ev.push({ t, type: 'boss', i, who: p, k: bosses.get(i) });
     else if (c[TL.kind] === 'fix') ev.push({ t, type: duels.has(i) ? 'duel' : 'fix', i, who: p });
     else if (c[TL.kind] === 'feat') ev.push({ t, type: big.has(i) ? 'featduel' : 'feat', i, who: p });
     else if (c[TL.kind] === 'revert') ev.push({ t, type: 'revert', i, who: p });
   }
   for (const r of tl.releases) if (r.weight >= 2) ev.push({ t: r.day + 0.95, type: 'release', tag: r.tag, weight: r.weight });
+  if (groups) groups.forEach((g, gi) => { if (g.kind === 'release') ev.push({ t: g.start, type: 'hive', g: gi, tag: g.tag, until: g.day + 0.95 }); });
   ep.chapters.forEach((ch, k) => ev.push({ t: Math.max(0, dayOfIso(tl, ch.first)), type: 'chapter', k }));
   const rank = { chapter: 0, release: 2 };
   return ev.map((e, n) => [e, n]).sort((a, b) => a[0].t - b[0].t || (rank[a[0].type] ?? 1) - (rank[b[0].type] ?? 1) || a[1] - b[1]).map(([e]) => e);

@@ -200,6 +200,17 @@ describe('parseGitLog', () => {
     expect(h.commits[1]).toMatchObject({ sha: 'bbb222', files: 1 });
     expect(h.commits[1].issues.map((i) => i.number)).toEqual([7]);
   });
+  it('keeps parent commits, and a merge commit\'s pull request title from its body', () => {
+    const text = [
+      '@@@m2\x1f2025-01-03\x1fAda\x1fa@x\x1fm1 b3\x1f\x1fMerge pull request #7 from ada/palette\x1fAdd the command palette\n\x1e',
+      '@@@b3\x1f2025-01-02\x1fAda\x1fa@x\x1fb2\x1f\x1ffeat: palette keys\x1f\x1e',
+      'src/a.js',
+    ].join('\n');
+    const h = parseGitLog(text);
+    expect(h.commits[0]).toMatchObject({ parents: 2, parentShas: ['m1', 'b3'], mergeTitle: 'Add the command palette' });
+    expect(h.commits[1]).toMatchObject({ parents: 1, parentShas: ['b2'] });
+    expect(h.commits[1].mergeTitle).toBeUndefined();
+  });
   it('leaves issues empty when the log has no bodies', () => {
     const h = parseGitLog('@@@aaa\x1f2025-01-02\x1fAda\x1fa@x\x1fp1\x1f\x1ffix: thing, fixes #3\nsrc/a.js\n');
     expect(h.commits[0].issues.map((i) => i.number)).toEqual([3]);

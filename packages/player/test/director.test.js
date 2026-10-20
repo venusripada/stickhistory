@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildEpisode, TL } from '@commit-wars/story-engine';
 import { syntheticHistory } from '../../story-engine/test/fixtures.js';
+import { mergeHistory } from '../../story-engine/test/fixtures-merge.js';
 import { buildEvents, firstEventAt, eventsBetween, chooseLineup } from '../src/director.js';
 
 const ep = buildEpisode(syntheticHistory({ withPr: true, withIssues: true }));
@@ -48,7 +49,8 @@ describe('director events', () => {
     const who = 0;
     const mine = buildEvents(ep, { who });
     for (const e of mine) {
-      if (e.type === 'chapter' || e.type === 'release') continue;
+      if (e.type === 'chapter' || e.type === 'release' || e.type === 'hive') continue; // everyone's
+      if (e.type === 'boss') { for (const m of e.members) expect(tl.commits[m][TL.who]).toBe(who); continue; }
       expect(e.who).toBe(who);
     }
     expect(mine.filter((e) => e.type === 'fix' || e.type === 'duel').length).toBe(humanFix.filter((i) => tl.commits[i][TL.who] === who).length);
@@ -94,5 +96,38 @@ describe('chooseLineup', () => {
     const r = chooseLineup({ ...base, max: 2, busy: new Map([['Low', 1], ['High', 5], ['Mid', 3]]), onStage });
     expect(r.leave).toEqual([]);
     expect(r.add).toEqual(['High']);
+  });
+});
+
+describe('bosses that spawn their work', () => {
+  const ep = buildEpisode(mergeHistory());
+  const tl = ep.timeline;
+  const ev = buildEvents(ep);
+  const held = new Set(tl.groups.filter((g) => g.kind !== 'release').flatMap((g) => g.members));
+  it('holds back a boss\'s commits from their own dates', () => {
+    const singles = ev.filter((e) => ['fix', 'feat', 'duel', 'featduel'].includes(e.type)).map((e) => e.i);
+    for (const i of held) expect(singles).not.toContain(i);
+  });
+  it('brings each feature and Tech Debt boss on its merge date with the commits it spawns', () => {
+    const bosses = ev.filter((e) => e.type === 'boss');
+    const want = tl.groups.filter((g) => g.kind !== 'release');
+    expect(bosses.map((e) => e.g).sort()).toEqual(want.map((g) => tl.groups.indexOf(g)).sort());
+    for (const e of bosses) {
+      const g = tl.groups[e.g];
+      expect(e.bossKind).toBe(g.kind);
+      expect(Math.floor(e.t)).toBe(g.day);
+      expect(e.members).toEqual(g.members);
+    }
+  });
+  it('puts up a release hive at the start of each release period', () => {
+    const hives = ev.filter((e) => e.type === 'hive');
+    expect(hives.map((e) => e.tag)).toEqual(['v0.1.0', 'v0.2.0']);
+    for (const h of hives) expect(h.t).toBe(tl.groups[h.g].start);
+  });
+  it('following someone keeps the bosses with their work in them, and only their commits', () => {
+    const ada = tl.people.findIndex((p) => p.name === 'Ada');
+    const mine = buildEvents(ep, { who: ada }).filter((e) => e.type === 'boss');
+    expect(mine.length).toBeGreaterThan(0);
+    for (const e of mine) for (const m of e.members) expect(tl.commits[m][TL.who]).toBe(ada);
   });
 });

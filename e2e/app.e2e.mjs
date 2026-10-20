@@ -15,7 +15,7 @@ import { chromium } from 'playwright';
 import { buildEpisode, parseGitLog, activeAt, isoOfDay, commitRange, TL } from '../packages/story-engine/src/index.js';
 import { startServer } from '../apps/server/src/server.js';
 import { createGitHub } from '../apps/server/src/github.js';
-import { makeRepo, addCommits, tempDir, removeDir } from '../packages/git-source/test/make-repo.js';
+import { makeRepo, addCommits, tempDir, removeDir, mergePullRequest } from '../packages/git-source/test/make-repo.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const DIST = join(here, '..', 'apps', 'web', 'dist');
@@ -349,6 +349,42 @@ try {
     check('the status filter shows only failed stories', (await page.textContent(`${big} .story-card`)).includes('couldn\'t find it') && filteredHash.includes('status=failed'), filteredHash);
     await page.click('#libStatus button:has-text("All")');
     check('no page errors with many stories', errors.length === 0, errors.join(' | '));
+    await ctx.close();
+  }
+  // 2e. A big feature pull request is a boss: shielded while its commits come out, then shipped.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
+    const post = (p, body) => fetch(`${app.url}/api${p}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json());
+    const repo = makeRepo({ n: 14 });
+    mergePullRequest(repo, { name: 'palette', n: 6, title: 'Add the command palette', day: '2024-01-15' });
+    addCommits(repo, { n: 4, from: 30, start: '2024-01-01' });
+    repos.push(repo);
+    await post('/collections', { name: 'Bosses' });
+    await post('/collections/bosses/stories', { url: repo, name: 'Palette' });
+    for (let k = 0; k < 200; k++) {
+      const lib = await (await fetch(`${app.url}/api/library`)).json();
+      if (lib.collections.find((c) => c.slug === 'bosses')?.stories[0]?.status === 'ready') break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    await page.goto(BASE + '#/s/bosses/palette');
+    await page.waitForFunction(() => document.querySelector('#ovDate').textContent.trim().length > 4);
+    for (let k = 0; k < 3; k++) await page.click('#bSpeed');
+    let sawShield = false, sawSpawned = false, shot = false;
+    const t0 = Date.now();
+    while (Date.now() - t0 < 60000) {
+      const st = await page.evaluate(() => window.__cwPlayer.stageSnapshot());
+      if (st.boss && st.boss.kind === 'feature' && st.boss.shield) sawShield = true;
+      if (st.boss && st.boss.kind === 'feature' && st.enemies.length) sawSpawned = true;
+      if (/shipped "Add the command palette"/.test(await page.textContent('#caption'))) break;
+      if (sawShield && sawSpawned && !shot) { shot = true; await page.locator('#movie').screenshot({ path: join(OUT, '17-feature-boss.png') }); }
+      await page.waitForTimeout(150);
+    }
+    const cap = await page.textContent('#caption');
+    check('a feature pull request is a shielded boss that spawns its commits', sawShield && sawSpawned, `shield ${sawShield}, spawned ${sawSpawned}`);
+    check('beating its commits, then the boss, ships the feature', /shipped "Add the command palette"/.test(cap), cap);
+    check('no page errors with bosses', errors.length === 0, errors.join(' | '));
     await ctx.close();
   }
   // 2b. LAN mode: another machine can watch the library and play stories, but not change anything.

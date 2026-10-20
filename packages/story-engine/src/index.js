@@ -7,6 +7,8 @@ import { resolveIdentities } from './identity.js';
 import { splitChapters, releaseWeight } from './chapters.js';
 import { dayOfIso } from './timeline.js';
 export { combineHistories } from './collection.js';
+export { findPullRequests } from './groups.js';
+import { buildGroups } from './groups.js';
 
 export { parseGitLog, closingIssues, GIT_LOG_COMMAND, GIT_LOG_FORMAT } from './git-log.js';
 export { validateEpisode } from './validate.js';
@@ -16,7 +18,7 @@ export { splitChapters, chapterCount, releaseWeight } from './chapters.js';
 export { C as TL, secondsPerDay, isoOfDay, dayOfIso, commitRange, weekBuckets, totalsAt, activeAt, chapterAt, fixOf, commitUrl, peopleSummary } from './timeline.js';
 
 export const SCHEMA_VERSION = 2;
-export const ENGINE_VERSION = '0.3.0';
+export const ENGINE_VERSION = '0.4.0';
 const ROSTER_SIZE = 24;
 
 const CREATURE = { gremlin: 'Gremlins', beetle: 'Beetles', crawler: 'Crawlers', wraith: 'Wraiths', moth: 'Moths', bomb: 'Bombs' };
@@ -222,6 +224,8 @@ export function buildEpisode(history, opts = {}) {
     releases,
   };
   if (multi) timeline.repos = history.repos.map((r) => ({ name: r.name, url: r.url ?? null }));
+  // bosses that spawn their work: big feature pull requests, Tech Debt, releases
+  timeline.groups = buildGroups({ raw, commits, parts, chapters, tl: timeline, releases });
 
   // ---- summary ----
   const count = (f) => commits.filter(f).length;

@@ -79,3 +79,21 @@ describe('clone, read and fetch', () => {
     expect(err.message).toMatch(/git couldn't/i);
   });
 });
+
+describe('a pull request merged with a merge commit', async () => {
+  const { mergePullRequest } = await import('./make-repo.js');
+  const { buildEpisode } = await import('@commit-wars/story-engine');
+  it('reaches the story as a feature boss with its commits', async () => {
+    const dir = track(makeRepo({ n: 14 }));
+    mergePullRequest(dir, { name: 'palette', n: 6, title: 'Add the command palette', day: '2024-01-15' });
+    addCommits(dir, { n: 4, from: 30, start: '2024-01-01' });
+    const h = await readHistory(dir, { name: 'demo' });
+    const merge = h.commits.find((c) => c.parents === 2);
+    expect(merge.mergeTitle).toBe('Add the command palette');
+    const ep = buildEpisode(h);
+    const f = ep.timeline.groups.filter((g) => g.kind === 'feature');
+    expect(f).toHaveLength(1);
+    expect(f[0]).toMatchObject({ title: 'Add the command palette' });
+    expect(f[0].members).toHaveLength(6);
+  });
+});

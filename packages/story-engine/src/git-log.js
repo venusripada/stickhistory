@@ -43,7 +43,12 @@ export function parseGitLog(text, meta = {}) {
   const repo = { owner: meta.owner ?? null, name: meta.repoName ?? null };
   let cur = null;
   let body = null; // lines of the current commit's body until the %x1e marker
-  const endBody = () => { cur.issues = closingIssues(cur.message + '\n' + body.join('\n'), repo); body = null; };
+  const endBody = () => {
+    cur.issues = closingIssues(cur.message + '\n' + body.join('\n'), repo);
+    // a merge commit's body starts with its pull request's title
+    if (cur.parents > 1) { const t = body.map((l) => l.trim()).find(Boolean); if (t) cur.mergeTitle = t; }
+    body = null;
+  };
   for (const raw of String(text).split(/\r?\n/)) {
     if (body) {
       const end = raw.indexOf('\x1e');
@@ -55,7 +60,8 @@ export function parseGitLog(text, meta = {}) {
       let bodyStart = null;
       if (line.includes('\x1f')) {
         const [sha, date, name, email, parents, dec, subject, ...rest] = line.split('\x1f');
-        c = { sha: sha.trim(), date: date.trim(), author: { name: name || null, email: email || null, login: null }, parents: parents ? parents.trim().split(/\s+/).filter(Boolean).length : 1, tags: tagsFromDecoration(dec), message: String(subject || '').trim() };
+        const parentShas = parents ? parents.trim().split(/\s+/).filter(Boolean) : [];
+        c = { sha: sha.trim(), date: date.trim(), author: { name: name || null, email: email || null, login: null }, parents: parentShas.length || 1, parentShas, tags: tagsFromDecoration(dec), message: String(subject || '').trim() };
         if (rest.length) bodyStart = rest.join('\x1f');
       } else {
         const p = line.split('|');

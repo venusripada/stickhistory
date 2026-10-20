@@ -71,7 +71,7 @@ export function createMovieUI({ player, movie, screen, onFollow }) {
       s.append(k, fx.s);
       const url = (fx.issues.length || fx.pr) ? player.fixUrl(fx) : null;
       const meta = [];
-      if (fx.files != null) meta.push(plural(fx.files, 'file'));
+      if (fx.files != null && fx.kind !== 'merge') meta.push(plural(fx.files, 'file')); // git lists no files for merges
       if (fx.issues.length > 1) meta.push(`also ${fx.issues.slice(1).map((x) => '#' + x.number).join(', ')}`);
       w.append(' ');
       if (fx.issues.length || fx.pr) {

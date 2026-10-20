@@ -52,6 +52,7 @@ repo link ──apps/server job──▶ clone ──readHistory()──▶ Hist
 - `packages/github-fetcher` (now used only by the CLI's `github` command): `fetchHistory()` uses GraphQL with a token (commits + PR + labels + closing issues + file counts + tags) and REST without one (60 requests an hour, no files or issues). `http.js` holds retries, rate limits and readable errors. Errors are `GitHubError` with a `code` (`not-found`, `rate-limit`, `bad-token`, `network`, …).
 - `packages/player`: a movie player for an episode. Every calendar day gets the same screen time, and `seek(day)` jumps anywhere. It touches no DOM except its canvas.
   - `player.js`: the clock, seeking, follow mode and the API. It emits `time`, `state`, `spotlight` and `loaded`.
+  - `floor.js`: depth (0 back to 1 front), each hero's patch, reach at the same depth. `effects.js`: hit stars, dust, pop-up words, at the depth they happen. `bosses.js` + `draw-bosses.js`: Tech Debt and feature bosses (shield, spawning their commits) and the release hive.
   - `director.js`: turns an episode into one sorted list of stage events (fix, duel, feat, revert, boss, release, chapter). Pure and unit-tested.
   - `sim.js`: hero, enemy, boss, orb and bolt physics.
   - `draw.js`: all canvas drawing.

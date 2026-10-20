@@ -60,7 +60,13 @@ player.on('spotlight', (e) => {
   const built = (fx) => fx.kind === 'feat';
   if (e.kind === 'duel') text = built(e.fx) ? `Feature duel: ${e.hero} builds "${player.fixLabel(e.fx, 90)}"${files(e.fx)}` : `Duel: ${e.hero} vs "${player.fixLabel(e.fx, 90)}" · ${e.typeName}${files(e.fx)}`;
   else if (e.kind === 'duel-won') text = `${e.hero} ${built(e.fx) ? 'shipped' : 'fixed'} "${player.fixLabel(e.fx, 90)}"${e.combo > 1 ? ` with a ${e.combo}-hit combo` : ''}${files(e.fx)} · ${fmtDate(e.fx.d)}`;
+  else if (e.kind === 'boss' && e.bossKind === 'feature') text = `Feature boss: ${e.who}'s "${e.s}". Beat its ${fmtN(e.commits)} commits, then ship it.`;
+  else if (e.kind === 'boss' && e.commits) text = `Tech Debt: the chapter's biggest cleanup, ${e.who}'s "${e.s}". Beat its ${fmtN(e.commits)} commits, then finish it.`;
   else if (e.kind === 'boss') text = `Tech Debt: the chapter's biggest cleanup. ${e.who}'s "${e.s}"${e.files != null ? ` (${fmtN(e.files)} files)` : ''} will finish it.`;
+  else if (e.kind === 'boss-open') text = `Shield down: ${e.title} can be hit now.`;
+  else if (e.kind === 'hive') text = `${e.tag} is being built: this period's fixes and features come out of it.`;
+  else if (e.kind === 'release-day') text = `Release day for ${e.tag}: break it open.`;
+  else if (e.kind === 'boss-down' && e.info.kind === 'feature') text = `${e.hero} shipped "${e.info.s}"${e.info.files != null ? `: ${fmtN(e.info.files)} files` : ''}.`;
   else if (e.kind === 'boss-down') text = `${e.hero} refactored Tech Debt away${e.info.files != null ? `: ${fmtN(e.info.files)} files changed` : ''}.`;
   else if (e.kind === 'release') text = `Release ${e.tag} shipped on ${fmtDate(e.d)}.`;
   else if (e.kind === 'chapter') text = `Chapter ${e.k + 1}: ${e.title}`;

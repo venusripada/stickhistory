@@ -15,6 +15,8 @@ import { validateEpisode, secondsPerDay, isoOfDay, activeAt, chapterAt, fixOf, c
 import { DEFAULT_THEME, HERO_COLORS, readTheme } from './theme.js';
 import { makeSim } from './sim.js';
 import { makeDraw } from './draw.js';
+import { makeBosses } from './bosses.js';
+import { makeBossDraw } from './draw-bosses.js';
 import { depthTransform } from './floor.js';
 import { buildEvents, firstEventAt, chooseLineup } from './director.js';
 import { clamp, rand, fmtN, fmtDate, range, fixTag, fixKind, fixLabel, ETYPES, ENEMY_NAMES, H, GY } from './util.js';
@@ -62,12 +64,14 @@ export function createPlayer(opts) {
   const heroColor = (name) => C.hero[(colorIdx.get(name) ?? 0) % HERO_COLORS];
   const E = { ctx: canvas.getContext('2d'), C, G, CAM, W: 700, S: 1, DPR: 1, EP: null, inset: { l: 0, r: 0 }, reduceMotion, heroColor, say: (kind, p) => emit('spotlight', { kind, ...p }) };
   const sim = makeSim(E);
+  const bosses = makeBosses(E, sim);
   const dr = makeDraw(E);
+  const drb = makeBossDraw(E, dr);
 
   function resetStage() {
     Object.assign(G, {
       time: G.time || 0, heroes: [], enemies: [], boss: null, finisher: null, bot: null, bolts: [], parts: [], fx: [], floaters: [], flags: [],
-      duel: null, banner: null, stamp: null, cards: [], pending: [], bigQ: [], shake: 0, hitstop: 0, slowmo: 0, kills: 0, duelsWon: 0, bestCombo: 0,
+      duel: null, banner: null, stamp: null, cards: [], pending: [], bigQ: [], hive: null, shake: 0, hitstop: 0, slowmo: 0, kills: 0, duelsWon: 0, bestCombo: 0,
       cheer: 0, fw: 0, fwT: 0, lineupT: 0, spawnT: 0, ended: false, endT: 0,
     });
     sim.camReset(); CAM.x = CAM.tx; CAM.z = CAM.tz;
@@ -116,6 +120,7 @@ export function createPlayer(opts) {
     const add = (name, reason) => { if (!name) return; busy.set(name, (busy.get(name) || 0) + 1); if (!why.has(name)) why.set(name, reason); };
     for (const e of G.enemies) if (sim.alive(e)) add(e.author, e.duel ? 'duel' : 'enemy');
     for (const ev of G.pending) add(TLN.people[ev.who].name, 'waiting');
+    if (G.boss && G.boss.minions) for (const i of G.boss.minions) add(TLN.people[TLN.commits[i][1]].name, 'boss');
     for (let k = cursor; k < events.length && events[k].t < G.day + 1.5; k++) {
       const ev = events[k];
       if (ev.who != null && ['fix', 'duel', 'feat', 'featduel'].includes(ev.type)) add(TLN.people[ev.who].name, `due ${ev.type}`);
@@ -147,19 +152,30 @@ export function createPlayer(opts) {
   }
   function startBoss(ev) {
     const fx = fixOf(TLN, ev.i);
-    ensureHero(fx.who);
-    G.boss = sim.makeBoss({ who: fx.who, s: fx.s, files: fx.files, d: fx.d, k: ev.k });
-    E.say('boss', { who: fx.who, s: fx.s, files: fx.files, d: fx.d });
+    const g = ev.g != null && TLN.groups ? TLN.groups[ev.g] : null;
+    const info = { who: (g && g.who) || fx.who, s: g ? g.title : fx.s, files: g ? g.files : fx.files, d: fx.d, k: ev.k };
+    ensureHero(info.who);
+    bosses.start(ev, info, { fixOf: (i) => fixOf(TLN, i), ensureHero, home: sim.home });
+    E.say('boss', { ...info, bossKind: ev.bossKind || 'debt', commits: (ev.members || []).length });
+  }
+  /** The release bot plants the flag (after the hive falls, when there is one). */
+  function plantRelease(ev) {
+    if (G.bot) { G.flags = G.flags.slice(-2); G.flags.push({ x: E.W * .4 + G.flags.length * 60, d: 0.03, tag: ev.tag, t: 0 }); G.fw = 2; }
+    else G.bot = { kind: 'bot', d: 0.03, x: -50, state: 'enter', t: 0, carry: true, tag: ev.tag };
+    G.cheer = 3;
+    E.say('release', { tag: ev.tag, d: isoOfDay(TLN, ev.t) });
   }
   function handle(ev) {
     if (ev.type === 'chapter') {
       G.cards.push({ kind: 'chapter', k: ev.k, t: 0 });
       E.say('chapter', { k: ev.k, title: EP.chapters[ev.k].title });
     } else if (ev.type === 'release') {
-      if (G.bot) { G.flags = G.flags.slice(-2); G.flags.push({ x: E.W * .4 + G.flags.length * 60, d: 0.03, tag: ev.tag, t: 0 }); G.fw = 2; }
-      else G.bot = { kind: 'bot', d: 0.03, x: -50, state: 'enter', t: 0, carry: true, tag: ev.tag };
-      G.cheer = 3;
-      E.say('release', { tag: ev.tag, d: isoOfDay(TLN, ev.t) });
+      // on release day the heroes break the hive open, then the flag goes up
+      if (!(G.hive && G.hive.tag === ev.tag && bosses.releaseHive(() => plantRelease(ev)))) plantRelease(ev);
+      else E.say('release-day', { tag: ev.tag });
+    } else if (ev.type === 'hive') {
+      bosses.startHive(ev, ev.tag, ev.until, ev.t);
+      E.say('hive', { tag: ev.tag });
     } else if (ev.type === 'fix' || ev.type === 'feat') G.pending.push(ev);
     else if (ev.type === 'duel' || ev.type === 'featduel') { if (G.duel || G.boss) G.pending.push(ev); else startDuel(ev); }
     else if (ev.type === 'boss') { if (G.duel || G.boss) G.bigQ.push(ev); else startBoss(ev); }
@@ -232,6 +248,8 @@ export function createPlayer(opts) {
       // head for the author's own patch of floor, so every fight has its own space
       if (owner) { const s = sim.home(owner); e.td = e.d = s.d; e.tx = clamp(s.x + rand(50, 110), 40, E.W - 40); }
       else { e.td = e.d = rand(0.1, 0.9); e.tx = side > 0 ? rand(E.W * .4, E.W * .85) : rand(E.W * .15, E.W * .55); }
+      // during a release period, the work comes out of the release hive
+      if (G.hive && G.hive.state === 'building') { e.x = G.hive.x - 30; e.d = G.hive.d; e.f = -1; }
       G.enemies.push(e);
       G.spawnT = rand(.12, .35);
     }
@@ -254,6 +272,10 @@ export function createPlayer(opts) {
     if (G.lineupT <= 0) { lineup(false); G.lineupT = .6; }
     if (G.cards.length && !G.banner) { G.cards[0].t += dt; if (G.cards[0].t > 2.8 && G.cards[0].kind !== 'end') G.cards.shift(); }
     sim.step(dt);
+    if (G.boss) bosses.updBoss(G.boss, dt);
+    bosses.updFinisher(dt);
+    bosses.tickBoss(dt);
+    bosses.tickHive(dt);
   }
 
   // ---------- drawing ----------
@@ -287,14 +309,15 @@ export function createPlayer(opts) {
     // everyone stands on the floor at their own depth: back first, each drawn at that depth's size
     const at = (x, d, fn) => { ctx.save(); depthTransform(ctx, x, d); fn(); ctx.restore(); };
     for (const f of G.flags) at(f.x, f.d ?? 0.03, () => dr.drawFlag(f));
-    const cast = [...(G.boss ? [G.boss] : []), ...G.enemies, ...G.heroes, ...(G.bot ? [G.bot] : []), ...G.bolts]
+    const cast = [...(G.hive ? [G.hive] : []), ...(G.boss ? [G.boss] : []), ...G.enemies, ...G.heroes, ...(G.bot ? [G.bot] : []), ...G.bolts]
       .sort((a, b) => (a.d ?? 0.5) - (b.d ?? 0.5));
     dr.resetLabels();
     for (const it of cast) {
       at(it.x, it.d ?? 0.5, () => {
         if (it.kind === 'hero') dr.drawFigure(it);
         else if (it.kind === 'enemy') dr.drawEnemy(it);
-        else if (it.kind === 'boss') dr.drawBoss(it);
+        else if (it.kind === 'boss') { if (it.info.kind === 'feature') drb.drawFeatureBoss(it); else dr.drawBoss(it); drb.drawShield(it); }
+        else if (it.kind === 'hive') drb.drawHive(it);
         else if (it.kind === 'bolt') dr.drawBolt(it);
         else dr.drawBot(it);
       });
@@ -344,6 +367,9 @@ export function createPlayer(opts) {
     lineup(true);
     const rel = TLN.releases.filter((r) => r.weight >= 2 && r.day <= G.day).pop();
     if (rel) G.flags.push({ x: E.W * .55 + 16, d: 0.03, tag: rel.tag, t: 0 });
+    // inside a release period, its hive is already standing
+    const period = (TLN.groups || []).find((g) => g.kind === 'release' && g.start <= G.day && G.day <= g.day + 0.95);
+    if (period) bosses.startHive(null, period.tag, period.day + 0.95, period.start);
     const k = chapterAt(EP, G.day);
     G.cards = [{ kind: 'chapter', k, t: 0 }];
     E.say('chapter', { k, title: EP.chapters[k].title });
@@ -401,6 +427,8 @@ export function createPlayer(opts) {
     stageSnapshot() {
       return {
         width: E.W, zoom: CAM.z, zoomTarget: CAM.tz,
+        boss: G.boss ? { kind: G.boss.info.kind, title: G.boss.info.s, shield: !!G.boss.shield, waiting: (G.boss.minions || []).length } : null,
+        hive: G.hive ? { tag: G.hive.tag, state: G.hive.state, progress: G.hive.progress } : null,
         heroes: G.heroes.map((h) => ({ name: h.name, x: h.x, d: h.d, leaving: h.leaving, entered: !!h.entered, fought: !!h.fought, filler: !!h.filler, reason: h.reason || null })),
         enemies: G.enemies.map((e) => ({ x: e.x, d: e.d, r: e.r, state: e.state, duel: !!e.duel, entered: !!e.entered, type: e.type, author: e.author })),
       };

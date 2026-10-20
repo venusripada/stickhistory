@@ -421,9 +421,17 @@ export function makeDraw(E) {
   function drawBossBar() {
     const B = G.boss; if (!B) return;
     const w = Math.min(span() * .55, 240), x = mid() - w / 2, y = 40;
-    haloText('Tech Debt', mid(), y - 8, C.bug, `700 18px ${FD}`, 'center', 4);
+    const feature = B.info.kind === 'feature', main = feature ? C.gold : C.bug;
+    haloText(feature ? `Feature: ${trunc(B.info.s, 30)}` : 'Tech Debt', mid(), y - 8, main, `700 18px ${FD}`, 'center', 4);
     ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.fillStyle = C.paper; ctx.fillRect(x, y, w, 14); ctx.strokeRect(x, y, w, 14);
-    ctx.fillStyle = C.bug; ctx.fillRect(x + 2, y + 2, (w - 4) * clamp(B.hp / 100, 0, 1), 10);
+    if (B.shield) {
+      // while shielded the bar counts its commits still to beat
+      const left = B.minions.length + G.enemies.filter((e) => e.fromBoss && alive(e)).length;
+      ctx.fillStyle = C.orb; ctx.fillRect(x + 2, y + 2, (w - 4) * clamp(left / Math.max(1, B.minionTotal), 0, 1), 10);
+      haloText(`shielded: beat its ${fmtN(left)} ${left === 1 ? 'commit' : 'commits'} first`, mid(), y + 30, C.muted, `11px ${FM}`, 'center', 3);
+      return;
+    }
+    ctx.fillStyle = main; ctx.fillRect(x + 2, y + 2, (w - 4) * clamp(B.hp / 100, 0, 1), 10);
     if (G.finisher && G.finisher.phase === 'cast') {
       haloText(trunc(B.info.s, Math.floor(span() / 8.5)), mid(), 84, C.ink, `600 12px ${FM}`, 'center', 5);
       if (B.info.files != null) haloText(`${fmtN(B.info.files)} files changed`, mid(), 112, E.heroColor(G.finisher.hero.name), `700 26px ${FD}`, 'center', 5);

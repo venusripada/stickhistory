@@ -74,7 +74,9 @@ library/                         ($COMMIT_WARS_LIBRARY overrides; git-ignored)
 3. **Play** (`createPlayer`). The episode plays as a movie, and every calendar day gets the same screen time: the whole history takes about ten minutes at 1×, with speeds from 0.5× to 8×.
    - **Fights:** every fix enters as a bug, and every feature as a gold, half-built Feature to finish, on the day it landed. Each is fought by its author: bugs end FIXED, features end SHIPPED. Fights that don't fit wait at the edge as a "+N" swarm.
    - **Who's on stage:** only people with something to fight (up to six), arriving just before their work does and leaving once it's done. A near-empty stage is topped up with recent committers.
-   - **Story beats:** each chapter's biggest fixes and features are spotlight duels, Tech Debt arrives on the date of the chapter's biggest real cleanup (a refactor, removal, migration or consolidation of 10+ files; see `isCleanup`), and minor and major releases plant a flag and set off fireworks.
+   - **The floor:** fighters move across and into the screen; each hero has their own patch of floor, further back is drawn smaller, and hits land only at about the same depth.
+   - **Bosses that spawn their work:** a big feature pull request (merged with a merge commit, 5+ commits) arrives on its merge date shielded and spawns its commits; once they're beaten it can be hit, and it ends SHIPPED. Each minor or major release stands as a hive from the previous release, the period's work comes out of it, and on release day the heroes break it open before the flag goes up. Squash-merged repos have no pull request commits in git, so they get no feature bosses.
+   - **Story beats:** each chapter's biggest fixes and features are spotlight duels, Tech Debt arrives on the date of the chapter's biggest real cleanup (a refactor, removal, migration or consolidation of 10+ files; see `isCleanup`; if it came in through a pull request, it spawns that pull request's commits first), and minor and major releases plant a flag and set off fireworks.
    - **Seeking:** `seek(day)` jumps anywhere.
    - **Events:** the player emits `time`, `state` and `spotlight`.
 
