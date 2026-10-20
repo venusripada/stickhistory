@@ -33,6 +33,16 @@
       <label class="opt" for="addName">named <input id="addName" type="text" placeholder="from the link"></label>
       <label class="opt" for="addBranch">branch <input id="addBranch" type="text" placeholder="default"></label>
     </div>
+    <details class="org" id="orgBox">
+      <summary>Add a GitHub organization</summary>
+      <form id="orgForm" class="build-row" novalidate>
+        <label for="orgName" class="sr">GitHub organization or user</label>
+        <input id="orgName" type="text" autocomplete="off" spellcheck="false" placeholder="organization or user name, such as acme">
+        <button class="btn" id="bListOrg" type="submit">List repos</button>
+      </form>
+      <p class="hint">Lists the repositories with the GitHub CLI (<code>gh</code>) signed in on this machine; tick the ones to add to the collection picked above.</p>
+      <div id="orgList"></div>
+    </details>
     <p class="hint">The server clones the history only (no file contents) with this machine's git, so private repos work when <code>git clone</code> does. Nothing is sent anywhere else.</p>
     <p class="notice watch-note">You're watching this library from another machine. Stories can be added and changed only on the machine running it.</p>
     <div class="offline" id="offline" hidden>

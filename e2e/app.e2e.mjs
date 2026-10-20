@@ -14,6 +14,7 @@ import { networkInterfaces } from 'node:os';
 import { chromium } from 'playwright';
 import { buildEpisode, parseGitLog, activeAt, isoOfDay, commitRange, TL } from '../packages/story-engine/src/index.js';
 import { startServer } from '../apps/server/src/server.js';
+import { createGitHub } from '../apps/server/src/github.js';
 import { makeRepo, addCommits, tempDir, removeDir } from '../packages/git-source/test/make-repo.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -27,7 +28,14 @@ const fmtDate = (d) => { const [y, m, dd] = d.split('-'); return `${MON[+m - 1]}
 
 // The real server, with a throwaway library.
 const libRoot = tempDir('cw-e2e-lib-');
-const app = await startServer({ port: 0, library: libRoot, staticDir: DIST, quiet: true });
+// A stand-in for `gh repo list acme`: made-up repos that point at generated local repositories.
+const orgRepos = [makeRepo({ n: 12 }), makeRepo({ n: 11 }), makeRepo({ n: 10 })];
+const fakeGh = async () => JSON.stringify([
+  { name: 'api', nameWithOwner: 'acme/api', sshUrl: orgRepos[0], url: 'https://github.com/acme/api', isArchived: false, isFork: false, isPrivate: true, pushedAt: '2024-06-01T00:00:00Z', diskUsage: 900, description: 'Made-up API service' },
+  { name: 'web', nameWithOwner: 'acme/web', sshUrl: orgRepos[1], url: 'https://github.com/acme/web', isArchived: false, isFork: false, isPrivate: false, pushedAt: '2024-05-01T00:00:00Z', diskUsage: 400, description: '' },
+  { name: 'legacy', nameWithOwner: 'acme/legacy', sshUrl: orgRepos[2], url: 'https://github.com/acme/legacy', isArchived: true, isFork: false, isPrivate: false, pushedAt: '2019-01-01T00:00:00Z', diskUsage: 50, description: 'Old' },
+]);
+const app = await startServer({ port: 0, library: libRoot, staticDir: DIST, quiet: true, github: createGitHub({ run: fakeGh }) });
 const BASE = app.url + '/';
 
 // A plain static server: the same app with no library server behind it.
@@ -41,7 +49,7 @@ const offline = createServer((req, res) => {
 });
 await new Promise((r) => offline.listen(0, '127.0.0.1', r));
 const OFFLINE_BASE = `http://127.0.0.1:${offline.address().port}/`;
-const repos = [];
+const repos = [...orgRepos];
 
 const results = [];
 const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ' — ' + detail : ''}`); };
@@ -270,6 +278,36 @@ try {
     }
     check('merging two developers makes them one', after === devCount - 1, `${devCount} → ${after}`);
     check('no page errors in collections', errors.length === 0, errors.join(' | '));
+    await ctx.close();
+  }
+  // 2c. Add a GitHub organization: list its repos, tick some, add them in one go.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
+    await fetch(`${app.url}/api/collections`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Acme' }) });
+    await page.goto(BASE);
+    await page.waitForSelector('[data-collection="acme"]');
+    await page.selectOption('#addCollection', 'acme');
+    await page.click('#orgBox summary');
+    await page.fill('#orgName', 'acme');
+    await page.click('#bListOrg');
+    await page.waitForSelector('.org-list li');
+    const ticked = await page.$$eval('.org-list input[type=checkbox]', (els) => els.map((e) => e.checked));
+    check('an org lists its repos with archived ones left unticked', ticked.join(',') === 'true,true,false', ticked.join(','));
+    await page.screenshot({ path: join(OUT, '15-org-checklist.png'), fullPage: true });
+    await page.click('.org-list li:has-text("web") input');
+    check('the add button counts the ticked repos', (await page.textContent('#bAddOrg')) === 'Add 1 repo to Acme', await page.textContent('#bAddOrg'));
+    await page.click('#bAddOrg');
+    await page.waitForSelector('[data-collection="acme"] .story-card a.btn.primary', { timeout: 30000 });
+    const cards = await page.$$eval('[data-collection="acme"] .story-card h4', (els) => els.map((e) => e.textContent));
+    check('adding from an org creates and builds the ticked stories', cards.join(',') === 'api', cards.join(','));
+    await page.fill('#orgName', 'acme');
+    await page.click('#bListOrg');
+    await page.waitForSelector('.org-list li');
+    const already = await page.$$eval('.org-list li', (els) => els.filter((e) => e.textContent.includes('already in Acme')).map((e) => e.querySelector('strong').textContent));
+    check('repos already in the collection are marked', already.join(',') === 'api', already.join(','));
+    check('no page errors adding an org', errors.length === 0, errors.join(' | '));
     await ctx.close();
   }
   // 2b. LAN mode: another machine can watch the library and play stories, but not change anything.

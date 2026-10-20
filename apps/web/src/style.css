@@ -287,6 +287,16 @@ a.btn { text-decoration: none; }
 .crumbs strong { color: var(--ink); }
 .notice { padding: 8px 12px; border-left: 4px solid var(--orb); background: var(--paper-2); border-radius: 0 8px 8px 0; font-size: 0.9rem; }
 
+/* adding a GitHub organization */
+.org summary { cursor: pointer; font-size: 0.9rem; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.org[open] { display: grid; gap: 8px; padding: 10px 12px; border: 1.5px dashed var(--rule); border-radius: 8px; }
+.org-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.org-head .st-status { flex: 1 1 200px; }
+.org-list { list-style: none; margin: 0; padding: 0; max-height: 420px; overflow-y: auto; border-top: 1px solid var(--rule); }
+.org-list li { padding: 5px 2px; border-bottom: 1px dashed var(--rule); }
+.org-list label { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: baseline; cursor: pointer; }
+.org-desc { margin-left: 22px; font-size: 0.8rem; color: var(--muted); }
+
 /* a collection's combined movie and its developers */
 .col-movie { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .devs { border: 1.5px solid var(--rule); border-radius: 8px; padding: 8px 12px; background: var(--paper); }
@@ -301,7 +311,7 @@ a.btn { text-decoration: none; }
 /* watch-only (another machine on the network): no way to change the library */
 .watch-note { display: none; }
 body.watch-only .watch-note { display: block; }
-body.watch-only #addForm, body.watch-only .library > .build-opts, body.watch-only .library > .hint, body.watch-only #colForm, body.watch-only #cacheNote button { display: none; }
+body.watch-only #addForm, body.watch-only #orgBox, body.watch-only .library > .build-opts, body.watch-only .library > .hint, body.watch-only #colForm, body.watch-only #cacheNote button { display: none; }
 
 /* ---------- embed mode: only the movie ---------- */
 body.embed .wrap { padding-block: 0; max-width: none; gap: 0; padding-left: 0; padding-right: 0; }

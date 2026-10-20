@@ -14,6 +14,7 @@ import { storage, dropLegacyCache } from './store.js';
 import { createMovieUI } from './movie-ui.js';
 import { api, subscribe, OFFLINE_MESSAGE } from './api.js';
 import { createLibraryUI, ago } from './library-ui.js';
+import { createOrgUI } from './org-ui.js';
 
 const $ = (s) => document.querySelector(s);
 const fmtN = (n) => Number(n).toLocaleString('en-US');
@@ -315,18 +316,33 @@ function route() {
 window.addEventListener('hashchange', route);
 
 $('#addCollection').addEventListener('change', () => { $('#newColWrap').hidden = $('#addCollection').value !== '__new'; });
+/** The collection picked in the add box, creating it first when "New collection…" is chosen. */
+async function pickedCollection() {
+  let c = $('#addCollection').value;
+  if (!c || c === '__new') {
+    const name = $('#newColName').value.trim() || (lib.collections.length ? '' : 'My stories');
+    if (!name) { showError('Give the new collection a name.'); $('#newColName').focus(); return null; }
+    const col = (await api.createCollection(name)).collection;
+    await lib.refresh();
+    $('#addCollection').value = col.slug; $('#newColWrap').hidden = true; $('#newColName').value = '';
+    return { slug: col.slug, name: col.name };
+  }
+  const col = lib.collections.find((x) => x.slug === c);
+  return { slug: c, name: col ? col.name : c };
+}
+createOrgUI({
+  form: $('#orgForm'), input: $('#orgName'), list: $('#orgList'), collection: pickedCollection, onError: (m) => showError(m),
+  onAdded: (r) => { lib.refresh(); if (r.skipped.length) showError(`Added ${r.added.length}; ${r.skipped.length} were already in the collection.`); },
+});
 $('#addForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   showError('');
   const url = $('#repoUrl').value.trim();
   if (!url) { showError('Paste a repository link, such as https://github.com/owner/repo, or a folder path on this machine.'); $('#repoUrl').focus(); return; }
   try {
-    let c = $('#addCollection').value;
-    if (!c || c === '__new') {
-      const name = $('#newColName').value.trim() || (lib.collections.length ? '' : 'My stories');
-      if (!name) { showError('Give the new collection a name.'); $('#newColName').focus(); return; }
-      c = (await api.createCollection(name)).collection.slug;
-    }
+    const picked = await pickedCollection();
+    if (!picked) return;
+    const c = picked.slug;
     await api.addStory(c, { url, name: $('#addName').value.trim(), branch: $('#addBranch').value.trim() });
     $('#repoUrl').value = ''; $('#addName').value = ''; $('#addBranch').value = ''; $('#newColName').value = '';
     await lib.refresh();

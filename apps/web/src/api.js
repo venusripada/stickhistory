@@ -40,6 +40,8 @@ export const api = {
   deleteStory: (c, s) => call('DELETE', `${story(c, s)}?confirm=${enc(s)}`),
   updateStory: (c, s) => call('POST', `${story(c, s)}/update`, {}),
   people: (c, body) => call('POST', `/collections/${enc(c)}/people`, body),
+  orgRepos: (owner, c) => call('GET', `/orgs/${enc(owner)}/repos${c ? `?collection=${enc(c)}` : ''}`),
+  addStories: (c, repos) => call('POST', `/collections/${enc(c)}/stories/batch`, { repos }),
   /** A collection's combined movie (all its stories), cached like a story's. */
   collectionEpisode: (c) => fetchEpisode(`/collections/${enc(c)}/episode`),
   /** The built episode, reusing the last copy when the server says it hasn't changed. */

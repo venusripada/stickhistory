@@ -54,6 +54,7 @@ library/                         ($COMMIT_WARS_LIBRARY overrides; git-ignored)
 ```
 
 - **Add a story:** paste any link this machine's `git` can clone (https, ssh, GitHub or not) or a local folder path. Private repos work when `git clone` works for them here; the app asks for no tokens.
+- **Add a GitHub organization:** type an org (or user) name and press **List repos**. The server lists its repositories with the GitHub CLI (`gh`) signed in on this machine and shows a checklist (last push, size, private, fork, archived). Active repos start ticked; repos already in the collection are marked. **Add N repos** creates one story per ticked repo, using its ssh link, and builds them one at a time. It's a one-time import, and only available on this machine.
 - **Update** (per story, or **Update all** per collection) fetches and rebuilds only when there are new commits. Opening a story that hasn't been fetched for a day checks in the background and offers the newer version.
 - **Rename**, **Move** and **Delete** change the folders. Folders changed by hand show up on the next refresh.
 - Progress streams to the page live while a story clones and builds.

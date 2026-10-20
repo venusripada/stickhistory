@@ -9,6 +9,7 @@ import { hostname } from 'node:os';
 import { join } from 'node:path';
 import { checkGitUrl, repoMeta, GitSourceError } from '@commit-wars/git-source';
 import { LibraryError } from './library.js';
+import { GitHubListError } from './github.js';
 
 const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
 const MAX_BODY = 64 * 1024;
@@ -43,10 +44,13 @@ function readBody(req) {
 }
 
 /**
- * @param {{ library: any, jobs: any, events: { add: (res: any) => void }, lan?: boolean }} o
+ * @param {{ library: any, jobs: any, events: { add: (res: any) => void }, lan?: boolean, github?: { listRepos: (owner: string) => Promise<any[]> } }} o
  * @returns {(req: any, res: any) => Promise<boolean>}  true when the request was an API request
  */
-export function createApi({ library, jobs, events, lan = false }) {
+export function createApi({ library, jobs, events, lan = false, github = null }) {
+  /** Same repository whatever form its link takes (ssh, https, with or without .git). */
+  const repoKey = (url) => String(url ? (repoMeta(url).webUrl || url) : '').toLowerCase().replace(/\.git$/, '').replace(/\/+$/, '');
+  const keysIn = (c) => new Set(library.collection(c).stories.flatMap((s) => [repoKey(s.webUrl), repoKey(s.url)]).filter(Boolean));
   const rebuildCollection = (c) => { const cj = library.readCollectionJson(c); if (cj && cj.id) jobs.enqueueCollection(cj.id); };
 
   /** Merge two developers ("the same person") or separate one again; saved in collection.json, applied by a rebuild. */
@@ -83,6 +87,33 @@ export function createApi({ library, jobs, events, lan = false }) {
     ['POST', /^\/api\/collections$/, (m, body) => { events.changed(); return [201, { collection: library.createCollection(body) }]; }],
     ['PATCH', /^\/api\/collections\/([^/]+)$/, ([c], body) => { const collection = library.updateCollection(c, body); events.changed(); if (body.name != null) rebuildCollection(collection.slug); return { collection }; }],
     ['POST', /^\/api\/collections\/([^/]+)\/people$/, ([c], body) => peopleAction(c, body)],
+    ['GET', /^\/api\/orgs\/([^/]+)\/repos$/, async ([owner], body, q, req) => {
+      // the list can include private repos and uses this machine's gh login: this machine only
+      if (!isLocalClient(req)) throw new HttpError(403, 'Organizations can be listed only on the machine running the library.');
+      if (!github) throw new HttpError(503, 'Listing organizations isn\'t available on this server.');
+      const repos = await github.listRepos(owner);
+      const have = q.get('collection') ? keysIn(q.get('collection')) : new Set();
+      return { owner, repos: repos.map((r) => ({ ...r, inCollection: have.has(repoKey(r.webUrl)) || have.has(repoKey(r.url)) })) };
+    }],
+    ['POST', /^\/api\/collections\/([^/]+)\/stories\/batch$/, ([c], body) => {
+      library.collection(c);
+      const list = Array.isArray(body.repos) ? body.repos : [];
+      if (!list.length) throw new HttpError(400, 'Tick at least one repository to add.');
+      if (list.length > 500) throw new HttpError(400, 'Add at most 500 repositories at a time.');
+      const checked = list.map((r) => ({ r, url: checkGitUrl(r.url).url }));
+      const have = keysIn(c);
+      const added = [], skipped = [];
+      for (const { r, url } of checked) {
+        const webUrl = r.webUrl || repoMeta(url).webUrl;
+        if (have.has(repoKey(webUrl)) || have.has(repoKey(url))) { skipped.push(r.name || url); continue; }
+        const story = library.createStory(c, { name: r.name || repoMeta(url).name, url, webUrl, branch: null });
+        jobs.enqueue('build', story.id);
+        have.add(repoKey(webUrl)); have.add(repoKey(url));
+        added.push(story.slug);
+      }
+      events.changed();
+      return [202, { added, skipped }];
+    }],
     ['DELETE', /^\/api\/collections\/([^/]+)$/, ([c], body, q) => { library.deleteCollection(c, { confirm: q.get('confirm') }); events.changed(); return { ok: true }; }],
     ['POST', /^\/api\/collections\/([^/]+)\/update$/, ([c]) => {
       const col = library.collection(c);
@@ -182,7 +213,7 @@ export function createApi({ library, jobs, events, lan = false }) {
       }
       throw new HttpError(404, `There's no ${req.method} ${route} in this API.`);
     } catch (e) {
-      const status = e instanceof HttpError || e instanceof LibraryError ? e.status : e instanceof GitSourceError ? 400 : 500;
+      const status = e instanceof HttpError || e instanceof LibraryError || e instanceof GitHubListError ? e.status : e instanceof GitSourceError ? 400 : 500;
       send(res, status, { error: e && e.message ? e.message : 'Something went wrong on the server.' });
       if (status === 500) console.error(e);
       return true;
