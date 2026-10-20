@@ -61,7 +61,8 @@ export function validateEpisode(ep) {
       let prev = 0;
       for (let i = 0; i < tl.commits.length; i++) {
         const c = tl.commits[i];
-        if (!need(Array.isArray(c) && c.length === 9, `timeline.commits[${i}] must be a 9-item array.`)) break;
+        if (!need(Array.isArray(c) && c.length === (tl.repos ? 10 : 9), `timeline.commits[${i}] must be a ${tl.repos ? 10 : 9}-item array.`)) break;
+        if (tl.repos && !need(Number.isInteger(c[9]) && c[9] >= 0 && c[9] < tl.repos.length, `timeline.commits[${i}] names an unknown repo.`)) break;
         if (!need(Number.isInteger(c[0]) && c[0] >= prev && c[0] < tl.days, `timeline.commits[${i}] has a day out of order or range.`)) break;
         if (!need(Number.isInteger(c[1]) && c[1] >= 0 && c[1] < tl.people.length, `timeline.commits[${i}] names an unknown person.`)) break;
         if (c[2] === 'fix' && !need(TYPES.has(c[4]), `timeline.commits[${i}].type "${c[4]}" is not an enemy type.`)) break;
