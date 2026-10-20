@@ -1,0 +1,14 @@
+{
+  "name": "@commit-wars/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "commit-wars": "bin/commit-wars.js"
+  },
+  "dependencies": {
+    "@commit-wars/github-fetcher": "*",
+    "@commit-wars/story-engine": "*",
+    "@commit-wars/git-source": "*"
+  }
+}

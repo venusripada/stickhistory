@@ -1,0 +1,16 @@
+{
+  "name": "@commit-wars/git-source",
+  "version": "0.1.0",
+  "description": "Node only: clone, fetch and read a git repository's history for Commit Wars, using the git command line.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./test-repo": "./test/make-repo.js"
+  },
+  "files": ["src"],
+  "dependencies": {
+    "@commit-wars/story-engine": "*"
+  },
+  "license": "MIT"
+}

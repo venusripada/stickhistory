@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Commit Wars</title>
+  <meta name="description" content="Paste a GitHub link and watch its history as a stick-figure fight: developers duel the bugs and issues they actually fixed.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='%231c2433' stroke-width='3' stroke-linecap='round'%3E%3Ccircle cx='16' cy='7' r='4.5'/%3E%3Cpath d='M16 12v10M16 22l-6 8M16 22l6 8M16 15l-8 2M16 15l9-5'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Gaegu:wght@400;700&family=Spline+Sans+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+<main class="wrap">
+  <header class="mast">
+    <p class="eyebrow">Commit Wars · git history replay</p>
+    <h1><span id="repoTitle">Commit Wars</span></h1>
+    <p class="lede" id="lede">Keep a library of repositories and watch each one's history as a stick-figure fight: <b>every hero is someone who wrote the commits, and every enemy is a bug or issue they actually fixed.</b></p>
+  </header>
+  <p class="error" id="errorBox" role="alert" hidden></p>
+
+  <section class="library" id="libraryView" aria-labelledby="libH" data-view-only="library">
+    <div class="panel-head"><h2 id="libH">Library</h2><span class="eyebrow">collections of stories, kept in the library folder on this machine</span></div>
+    <form id="addForm" class="build-row" novalidate>
+      <label for="repoUrl" class="sr">Repository link or folder</label>
+      <input id="repoUrl" name="repoUrl" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://github.com/owner/repo, git@host:owner/repo.git or a folder" required>
+      <button class="btn primary" id="bAdd" type="submit">Add story</button>
+    </form>
+    <div class="build-opts">
+      <label class="opt" for="addCollection">to <select id="addCollection"></select></label>
+      <label class="opt" for="newColName" id="newColWrap" hidden>new collection <input id="newColName" type="text" placeholder="Collection name"></label>
+      <label class="opt" for="addName">named <input id="addName" type="text" placeholder="from the link"></label>
+      <label class="opt" for="addBranch">branch <input id="addBranch" type="text" placeholder="default"></label>
+    </div>
+    <p class="hint">The server clones the history only (no file contents) with this machine's git, so private repos work when <code>git clone</code> does. Nothing is sent anywhere else.</p>
+    <p class="notice watch-note">You're watching this library from another machine. Stories can be added and changed only on the machine running it.</p>
+    <div class="offline" id="offline" hidden>
+      <p id="offlineMsg"></p>
+      <p><button class="btn small" type="button" data-sample="opencode">Play the bundled opencode sample</button></p>
+    </div>
+    <div id="collections" class="collections"></div>
+    <form id="colForm" class="build-row col-form" novalidate>
+      <label for="colName" class="sr">New collection name</label>
+      <input id="colName" type="text" placeholder="New collection name">
+      <button class="btn" type="submit">New collection</button>
+    </form>
+  </section>
+
+  <section class="stage-wrap" id="stageWrap" aria-label="History movie" data-view-only="story">
+    <nav class="crumbs" aria-label="Where you are"><a href="#/" id="crumbHome">Library</a><span aria-hidden="true">/</span><span id="crumbCol"></span><span aria-hidden="true">/</span><strong id="crumbStory"></strong></nav>
+    <p class="notice" id="storyNotice" role="status" hidden></p>
+    <div class="modebar">
+      <p class="mode" id="modeLabel">Everyone</p>
+      <p class="cache-note" id="cacheNote" hidden></p>
+      <button class="btn small" id="bAll" type="button" hidden>Show everyone</button>
+    </div>
+    <div class="movie" id="movie">
+      <div class="screen" id="screen">
+        <canvas id="stage" role="img" aria-label="Stick-figure fight"></canvas>
+        <div class="ov-head">
+          <p class="ov-date"><time id="ovDate">&nbsp;</time></p>
+          <p class="ov-ch" id="ovChapter"></p>
+          <p class="ov-tot" id="ovTotals"></p>
+        </div>
+        <aside class="ov ov-people" id="ovPeople" aria-labelledby="peopleH">
+          <h3 id="peopleH">Active now <span>last 14 days</span></h3>
+          <ol id="peopleList"></ol>
+        </aside>
+        <aside class="ov ov-feed" id="ovFeed" aria-labelledby="feedH">
+          <h3 id="feedH">Commits <span id="feedNote">newest first</span></h3>
+          <ol id="feedList"></ol>
+        </aside>
+      </div>
+      <div class="bar">
+        <div class="scrub" id="scrubBox">
+          <canvas id="tlCanvas" aria-hidden="true"></canvas>
+          <input type="range" id="scrub" min="0" max="1" step="1" value="0" aria-label="Date in the history">
+        </div>
+        <div class="ctrl">
+          <button class="btn primary" id="bPlay" type="button"><svg viewBox="0 0 24 24" fill="currentColor" id="playIcon"><path d="M7 4l13 8-13 8z"/></svg><span id="playLabel">Play</span></button>
+          <button class="btn" id="bPrevCh" type="button" aria-label="Previous chapter" title="Previous chapter (Shift+←)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14M19 5l-9 7 9 7z"/></svg></button>
+          <button class="btn" id="bBack" type="button" aria-label="Back one week" title="Back one week (←)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 6l-6 6 6 6M19 6l-6 6 6 6"/></svg></button>
+          <button class="btn" id="bFwd" type="button" aria-label="Forward one week" title="Forward one week (→)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 6l6 6-6 6M5 6l6 6-6 6"/></svg></button>
+          <button class="btn" id="bNextCh" type="button" aria-label="Next chapter" title="Next chapter (Shift+→)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5v14M5 5l9 7-9 7z"/></svg></button>
+          <button class="btn speed" id="bSpeed" type="button" aria-label="Playback speed" title="Playback speed">1×</button>
+          <p class="caption" id="caption" aria-live="polite"></p>
+          <button class="btn toggle" id="bPeople" type="button" aria-pressed="true" title="People (P)">People</button>
+          <button class="btn toggle" id="bFeed" type="button" aria-pressed="true" title="Commit feed (L)">Feed</button>
+          <button class="btn" id="bFull" type="button" aria-label="Full screen" title="Full screen (F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" id="fullIcon"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+        </div>
+      </div>
+    </div>
+    <div class="share">
+      <button class="btn small" id="bShare" type="button">Copy link</button>
+      <button class="btn small" id="bEmbed" type="button">Copy embed code</button>
+      <button class="btn small" id="bDownload" type="button">Download episode</button>
+      <label class="btn small file-btn" for="episodeFile">Open episode file<input id="episodeFile" type="file" accept=".json,application/json"></label>
+      <span class="share-status" id="shareStatus" role="status"></span>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="chapH" data-view-only="story">
+    <div class="panel-head"><h2 id="chapH">Chapters</h2><span class="eyebrow">tap to jump</span></div>
+    <ol class="chapters" id="chapters"></ol>
+  </section>
+
+  <section class="panel" aria-labelledby="rosterH" data-view-only="story">
+    <div class="panel-head"><h2 id="rosterH">Follow a hero</h2><span class="eyebrow">the movie plays only their fixes and features</span></div>
+    <div class="roster" id="roster"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="legendH" data-view-only="story">
+    <h2 id="legendH">Who's who on the stage</h2>
+    <dl class="legend" id="legend"></dl>
+  </section>
+
+  <section class="own" aria-labelledby="ownH" data-view-only="library">
+    <h2 id="ownH">Replay a git log file</h2>
+    <p>Without the library server, run this inside any git repository and open the file here; it plays without being saved. To keep a repo in the library, add its folder path above instead.</p>
+    <div class="cmd">
+      <pre id="cmdText"></pre>
+      <button class="btn" id="bCopyCmd" type="button">Copy</button>
+    </div>
+    <div class="file-row">
+      <label for="logFile" class="sr">git log file</label>
+      <input type="file" id="logFile" accept=".txt,.log,text/plain">
+    </div>
+  </section>
+
+  <footer id="footer"></footer>
+</main>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
