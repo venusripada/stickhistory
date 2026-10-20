@@ -43,6 +43,7 @@ repo link ──apps/server job──▶ clone ──readHistory()──▶ Hist
   - `chapters.js`: chapter count and release-snapped boundaries.
   - `git-log.js`: parses `git log` output (including bodies) into a History; `closingIssues()` finds "Fixes #12" references.
   - `index.js`: `buildEpisode()`.
+  - `groups.js`: `findPullRequests()` (the commits a merge brought in, from parent links) and the bosses in `timeline.groups`: feature pull requests, Tech Debt, release hives.
   - `validate.js`: `validateEpisode()`.
   - `types.js`: JSDoc for History and Fix.
   - `episode.schema.json`: the Episode contract.
