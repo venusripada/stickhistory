@@ -15,6 +15,7 @@ import { validateEpisode, secondsPerDay, isoOfDay, activeAt, chapterAt, fixOf, c
 import { DEFAULT_THEME, HERO_COLORS, readTheme } from './theme.js';
 import { makeSim } from './sim.js';
 import { makeDraw } from './draw.js';
+import { depthTransform } from './floor.js';
 import { buildEvents, firstEventAt, chooseLineup } from './director.js';
 import { clamp, rand, fmtN, fmtDate, range, fixTag, fixKind, fixLabel, ETYPES, ENEMY_NAMES, H, GY } from './util.js';
 
@@ -101,7 +102,7 @@ export function createPlayer(opts) {
   function addHero(name, placed) {
     const h = sim.makeHero(name, freeSlot());
     h.arrivedAt = G.time;
-    if (placed) h.x = sim.homeX(h);
+    if (placed) { const s = sim.home(h); h.x = s.x; h.d = s.d; }
     G.heroes.push(h);
     return h;
   }
@@ -138,7 +139,7 @@ export function createPlayer(opts) {
     const hero = ensureHero(fx.who);
     hero.state = 'idle'; hero.chain = null; hero.leaving = false;
     const e = sim.makeEnemy(fx, hero, 1, true);
-    e.tx = E.W * .72;
+    e.tx = E.W * .72; e.td = e.d = hero.d;
     G.enemies.push(e);
     G.duel = { hero, fx, enemy: e, t: 0, combo: 0, comboT: 0, comboPop: 0, won: false };
     G.banner = { hero: hero.name, fx, t: 0 };
@@ -155,8 +156,8 @@ export function createPlayer(opts) {
       G.cards.push({ kind: 'chapter', k: ev.k, t: 0 });
       E.say('chapter', { k: ev.k, title: EP.chapters[ev.k].title });
     } else if (ev.type === 'release') {
-      if (G.bot) { G.flags = G.flags.slice(-2); G.flags.push({ x: E.W * .4 + G.flags.length * 60, tag: ev.tag, t: 0 }); G.fw = 2; }
-      else G.bot = { x: -50, state: 'enter', t: 0, carry: true, tag: ev.tag };
+      if (G.bot) { G.flags = G.flags.slice(-2); G.flags.push({ x: E.W * .4 + G.flags.length * 60, d: 0.03, tag: ev.tag, t: 0 }); G.fw = 2; }
+      else G.bot = { kind: 'bot', d: 0.03, x: -50, state: 'enter', t: 0, carry: true, tag: ev.tag };
       G.cheer = 3;
       E.say('release', { tag: ev.tag, d: isoOfDay(TLN, ev.t) });
     } else if (ev.type === 'fix' || ev.type === 'feat') G.pending.push(ev);
@@ -226,9 +227,11 @@ export function createPlayer(opts) {
       if (k < 0) k = 0;
       const fx = fixOf(TLN, G.pending.splice(k, 1)[0].i);
       const side = Math.random() < .8 ? 1 : -1;
-      const e = sim.makeEnemy(fx, onStage(fx.who), side, false);
-      // walk well into the stage before engaging, so fights spread out instead of piling up at the edges
-      e.tx = side > 0 ? rand(E.W * .4, E.W * .85) : rand(E.W * .15, E.W * .55);
+      const owner = onStage(fx.who);
+      const e = sim.makeEnemy(fx, owner, side, false);
+      // head for the author's own patch of floor, so every fight has its own space
+      if (owner) { const s = sim.home(owner); e.td = e.d = s.d; e.tx = clamp(s.x + rand(50, 110), 40, E.W - 40); }
+      else { e.td = e.d = rand(0.1, 0.9); e.tx = side > 0 ? rand(E.W * .4, E.W * .85) : rand(E.W * .15, E.W * .55); }
       G.enemies.push(e);
       G.spawnT = rand(.12, .35);
     }
@@ -281,15 +284,22 @@ export function createPlayer(opts) {
     dr.worldTransform(sh[0], sh[1]);
     dr.drawGrid();
     dr.drawGround();
-    for (const f of G.flags) dr.drawFlag(f);
-    if (G.boss) dr.drawBoss(G.boss);
+    // everyone stands on the floor at their own depth: back first, each drawn at that depth's size
+    const at = (x, d, fn) => { ctx.save(); depthTransform(ctx, x, d); fn(); ctx.restore(); };
+    for (const f of G.flags) at(f.x, f.d ?? 0.03, () => dr.drawFlag(f));
+    const cast = [...(G.boss ? [G.boss] : []), ...G.enemies, ...G.heroes, ...(G.bot ? [G.bot] : []), ...G.bolts]
+      .sort((a, b) => (a.d ?? 0.5) - (b.d ?? 0.5));
     dr.resetLabels();
-    // newest enemies first, so fresh arrivals get their label when the crowd is thick
-    for (let k = G.enemies.length - 1; k >= 0; k--) dr.drawEnemy(G.enemies[k]);
-    if (G.bot) dr.drawBot(G.bot);
-    for (const h of G.heroes) dr.drawFigure(h);
+    for (const it of cast) {
+      at(it.x, it.d ?? 0.5, () => {
+        if (it.kind === 'hero') dr.drawFigure(it);
+        else if (it.kind === 'enemy') dr.drawEnemy(it);
+        else if (it.kind === 'boss') dr.drawBoss(it);
+        else if (it.kind === 'bolt') dr.drawBolt(it);
+        else dr.drawBot(it);
+      });
+    }
     dr.drawBeam();
-    for (const x of G.bolts) dr.drawBolt(x);
     dr.drawFx();
     dr.drawParts();
     dr.screenTransform();
@@ -333,7 +343,7 @@ export function createPlayer(opts) {
     cursor = firstEventAt(events, G.day);
     lineup(true);
     const rel = TLN.releases.filter((r) => r.weight >= 2 && r.day <= G.day).pop();
-    if (rel) G.flags.push({ x: E.W * .55 + 16, tag: rel.tag, t: 0 });
+    if (rel) G.flags.push({ x: E.W * .55 + 16, d: 0.03, tag: rel.tag, t: 0 });
     const k = chapterAt(EP, G.day);
     G.cards = [{ kind: 'chapter', k, t: 0 }];
     E.say('chapter', { k, title: EP.chapters[k].title });
@@ -391,8 +401,8 @@ export function createPlayer(opts) {
     stageSnapshot() {
       return {
         width: E.W, zoom: CAM.z, zoomTarget: CAM.tz,
-        heroes: G.heroes.map((h) => ({ name: h.name, x: h.x, leaving: h.leaving, entered: !!h.entered, fought: !!h.fought, filler: !!h.filler, reason: h.reason || null })),
-        enemies: G.enemies.map((e) => ({ x: e.x, r: e.r, state: e.state, duel: !!e.duel, entered: !!e.entered, type: e.type, author: e.author })),
+        heroes: G.heroes.map((h) => ({ name: h.name, x: h.x, d: h.d, leaving: h.leaving, entered: !!h.entered, fought: !!h.fought, filler: !!h.filler, reason: h.reason || null })),
+        enemies: G.enemies.map((e) => ({ x: e.x, d: e.d, r: e.r, state: e.state, duel: !!e.duel, entered: !!e.entered, type: e.type, author: e.author })),
       };
     },
     get episode() { return EP; },
