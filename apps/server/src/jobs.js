@@ -14,11 +14,35 @@ import { buildEpisode, validateEpisode, combineHistories, ENGINE_VERSION } from 
 const now = () => new Date().toISOString();
 
 /**
+ * Which queued job runs next. Jobs run in order, except that a collection's
+ * combined movie jumps ahead of story builds once 25 of its stories have
+ * changed, or 3 minutes have passed with at least one change, since it was
+ * last combined. Without that, a big import would leave it stale until the
+ * very last clone finished.
+ * @param {{ kind: string, collectionId?: string }[]} queue
+ * @param {{ now: number, stale: Map<string, { changed: number, since: number }> }} o
+ */
+export function pickNext(queue, { now: t, stale }) {
+  const i = queue.findIndex((j) => {
+    if (j.kind !== 'collection') return false;
+    const s = stale.get(j.collectionId);
+    return !!s && s.changed > 0 && (s.changed >= 25 || t - s.since >= 3 * 60000);
+  });
+  return i >= 0 ? i : 0;
+}
+
+/**
  * @param {{ library: ReturnType<import('./library.js').createLibrary>, emit: (type: string, data: any) => void }} o
  */
 export function createJobs({ library, emit }) {
   const queue = [];
   let running = null, seq = 0;
+  const stale = new Map(); // collectionId -> { changed, since }: stories changed since its movie was last combined
+  const noteChange = (collectionId) => {
+    if (!collectionId) return;
+    const s = stale.get(collectionId) || { changed: 0, since: Date.now() };
+    s.changed++; stale.set(collectionId, s);
+  };
 
   const view = (j) => ({ id: j.id, kind: j.kind, storyId: j.storyId, story: j.story, collectionId: j.collectionId || null, collection: j.collection || null, state: j.state, phase: j.phase, message: j.message, frac: j.frac, changed: j.changed ?? null });
   const publish = (j) => emit('job', view(j));
@@ -54,12 +78,13 @@ export function createJobs({ library, emit }) {
 
   async function pump() {
     if (running || !queue.length) return;
-    const job = running = queue.shift();
+    const job = running = queue.splice(pickNext(queue, { now: Date.now(), stale }), 1)[0];
     job.state = 'running'; publish(job);
     try {
       await (job.kind === 'collection' ? runCollection(job) : run(job));
       job.state = 'done'; job.frac = 1;
-      if (job.kind !== 'collection' && job.changed) enqueueCollection(collectionOfStory(job.storyId));
+      if (job.kind !== 'collection' && job.changed) { const cid = collectionOfStory(job.storyId); noteChange(cid); enqueueCollection(cid); }
+      if (job.kind === 'collection') stale.set(job.collectionId, { changed: 0, since: Date.now() });
     } catch (e) {
       job.state = 'error'; job.message = e && e.message ? e.message : 'The job stopped without saying why.';
       if (job.kind === 'collection') {
@@ -191,7 +216,10 @@ export function createJobs({ library, emit }) {
         for (const s of col.stories) if (s.setUp && ['queued', 'cloning', 'building'].includes(s.status)) enqueue('build', s.id);
         // collection movies that are missing, half-built or made by an older engine are combined again
         const ep = col.episode;
-        if (col.id && col.stories.some((s) => s.hasEpisode) && (!ep || ep.status === 'building' || (ep.status === 'ready' && ep.engine !== ENGINE_VERSION))) enqueueCollection(col.id);
+        const built = col.stories.filter((s) => s.hasEpisode).length;
+        if (col.id && built && (!ep || ep.status === 'building' || (ep.status === 'ready' && ep.engine !== ENGINE_VERSION))) enqueueCollection(col.id);
+        // a movie that covers fewer stories than are built is combined again before anything else
+        else if (col.id && ep && ep.status === 'ready' && (ep.repos || 0) < built) { stale.set(col.id, { changed: built - (ep.repos || 0), since: 0 }); enqueueCollection(col.id); }
       }
     },
   };

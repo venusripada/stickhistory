@@ -364,3 +364,26 @@ describe('adding a GitHub organization', async () => {
     await expect(missing.listRepos('acme')).rejects.toThrow(/needs the GitHub CLI. Install it/);
   });
 });
+
+describe('a combined movie behind its stories after a restart', () => {
+  it('is combined again first thing', async () => {
+    const r1 = makeRepo({ n: 11 }), r2 = makeRepo({ n: 12 }), lroot = tempDir('cw-restart-');
+    dirs.push(r1, r2, lroot);
+    let s = await startServer({ port: 0, library: lroot, quiet: true });
+    const post = (p, b) => fetch(s.url + '/api' + p, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) });
+    const lib = async () => (await (await fetch(s.url + '/api/library')).json()).collections[0];
+    await post('/collections', { name: 'R' });
+    await post('/collections/r/stories', { url: r1, name: 'One' });
+    for (let k = 0; k < 200 && !((await lib()).episode?.status === 'ready'); k++) await new Promise((res) => setTimeout(res, 80));
+    await post('/collections/r/stories', { url: r2, name: 'Two' });
+    for (let k = 0; k < 200 && !(await lib()).stories.every((x) => x.status === 'ready'); k++) await new Promise((res) => setTimeout(res, 50));
+    await s.close(); // stop before (or while) the movie is recombined
+    const { readFileSync: rf, writeFileSync: wf } = await import('node:fs');
+    const cj = JSON.parse(rf(join(lroot, 'r', 'collection.json'), 'utf8'));
+    wf(join(lroot, 'r', 'collection.json'), JSON.stringify({ ...cj, episode: { ...cj.episode, status: 'ready', repos: 1 } }));
+    s = await startServer({ port: 0, library: lroot, quiet: true });
+    for (let k = 0; k < 200 && (await lib()).episode.repos !== 2; k++) await new Promise((res) => setTimeout(res, 80));
+    expect((await lib()).episode.repos).toBe(2);
+    await s.close();
+  });
+});

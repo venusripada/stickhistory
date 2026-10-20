@@ -154,7 +154,12 @@ export function createLibraryUI({ root, select, onError, onServer, tools, onView
       row.append(
         el('a', { class: 'btn small primary', href: `#/c/${encodeURIComponent(col.slug)}`, text: 'Play collection' }),
         el('button', { class: 'btn small', type: 'button', 'aria-expanded': String(!!open.get(key)), text: `${open.get(key) ? 'Hide' : 'Show'} developers (${fmtN(ep.people)})`, onclick: () => { if (open.get(key)) open.delete(key); else open.set(key, 'open'); render(); } }),
-        el('span', { class: 'st-status', text: `All ${ep.repos} ${ep.repos === 1 ? 'story' : 'stories'} as one movie · ${fmtN(ep.commits)} commits · combined ${ago(ep.builtAt)}` }));
+        el('span', { class: 'st-status', text: (() => {
+          // while stories are still being built, say how much of the collection the movie covers
+          const built = col.stories.filter((s) => s.hasEpisode).length;
+          const covers = ep.repos < built ? `Includes ${fmtN(ep.repos)} of ${fmtN(built)} built stories, updating as more finish` : `All ${fmtN(ep.repos)} ${ep.repos === 1 ? 'story' : 'stories'} as one movie`;
+          return `${covers} · ${fmtN(ep.commits)} commits · combined ${ago(ep.builtAt)}`;
+        })() }));
     } else if (ep.status === 'building') row.append(el('span', { class: 'st-status busy', text: 'Combining the stories into one movie…' }));
     else if (ep.status === 'error') row.append(el('span', { class: 'st-status err', text: `The combined movie didn't build: ${ep.error}` }));
     else return null;
