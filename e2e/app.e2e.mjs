@@ -9,7 +9,7 @@
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, extname, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { networkInterfaces } from 'node:os';
 import { chromium } from 'playwright';
 import { buildEpisode, parseGitLog, activeAt, isoOfDay, commitRange, TL } from '../packages/story-engine/src/index.js';
@@ -277,7 +277,8 @@ try {
     const second = (await page.$$eval('[data-collection="team"] .dev .dev-name', (els) => els.map((e) => e.textContent)))[1];
     await page.selectOption(`[data-collection="team"] .dev:has(.dev-name:text-is("${second}")) select`, dev);
     let after = devCount;
-    for (let k = 0; k < 100 && after === devCount; k++) {
+    // the list hides while the movie is combined again; wait for it to come back
+    for (let k = 0; k < 100 && (after === devCount || after === 0); k++) {
       await page.waitForTimeout(150);
       after = await page.locator('[data-collection="team"] .dev').count();
     }
@@ -385,6 +386,88 @@ try {
     check('a feature pull request is a shielded boss that spawns its commits', sawShield && sawSpawned, `shield ${sawShield}, spawned ${sawSpawned}`);
     check('beating its commits, then the boss, ships the feature', /shipped "Add the command palette"/.test(cap), cap);
     check('no page errors with bosses', errors.length === 0, errors.join(' | '));
+    await ctx.close();
+  }
+  // 2f. A quarter (or any dates) of a collection: its own movie and report, and one .html file to share.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true });
+    const page = await ctx.newPage();
+    const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
+    const post = (p, body) => fetch(`${app.url}/api${p}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json());
+    const one = makeRepo({ n: 20, start: '2024-03-20' }), two = makeRepo({ n: 15, start: '2024-04-01' }); repos.push(one, two);
+    await post('/collections', { name: 'Quarters' });
+    await post('/collections/quarters/stories', { url: one, name: 'Alpha' });
+    await post('/collections/quarters/stories', { url: two, name: 'Beta' });
+    for (let k = 0; k < 300; k++) {
+      const q = (await (await fetch(`${app.url}/api/library`)).json()).collections.find((c) => c.slug === 'quarters');
+      if (q && q.episode && q.episode.status === 'ready' && q.episode.repos === 2) break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    await page.goto(BASE + '#/?q=nothing-matches-this');
+    await page.goto(BASE + '#/');
+    const box = '[data-collection="quarters"] .periods';
+    await page.waitForSelector(`${box} select`);
+    const opts = await page.$$eval(`${box} select option`, (els) => els.map((e) => e.textContent));
+    check('the period picker lists the quarters that have commits', opts[0] === 'Q2 2024 · 23 commits' && opts[1] === 'Q1 2024 · 12 commits' && opts.at(-1) === 'Custom dates…', opts.join(' | '));
+    await page.click(`${box} button:has-text("Make movie and report")`);
+    const row = `${box} li[data-period="2024-04-01_2024-06-30"]`;
+    await page.waitForSelector(`${row} a:has-text("Play")`, { timeout: 30000 });
+    await page.locator(box).screenshot({ path: join(OUT, '18-periods.png') });
+
+    await page.click(`${row} a:has-text("Play")`);
+    await page.waitForFunction(() => document.querySelector('#ovDate').textContent.trim().length > 4);
+    const crumb = await page.textContent('#crumbStory');
+    const ep = await page.evaluate(() => window.__cwPlayer.episode);
+    check('a quarter plays as its own movie', crumb === 'Q2 2024' && ep.timeline.start >= '2024-04-01' && ep.summary.commits === 23, `${crumb}, from ${ep.timeline.start}, ${ep.summary.commits} commits`);
+
+    await page.click('#cacheNote a:has-text("Q2 2024 report")');
+    await page.waitForSelector('#reportView:not([hidden]) .rep-totals');
+    const head = await page.textContent('#repH');
+    const total = await page.textContent('.rep-totals div:first-child dd');
+    const devRows = await page.locator('#reportView .rep-table').first().locator('tbody tr').count();
+    check('the quarter has a report: totals, every developer, stories and features', head === 'Quarters · Q2 2024' && total === '23' && devRows === 3 && (await page.locator('#reportView [aria-labelledby="repFeats"] li').count()) > 0, `${head}, ${total} commits, ${devRows} developers`);
+    await page.screenshot({ path: join(OUT, '19-report.png'), fullPage: true });
+    // sorting by a column reorders rows only
+    await page.click('#reportView .rep-table thead button:has-text("Developer")');
+    const names = await page.locator('#reportView [aria-labelledby="repDevs"] .rep-table tbody th').allTextContents();
+    check('report tables sort by a column', names.join(',') === [...names].sort((a, b) => b.toLowerCase().localeCompare(a.toLowerCase())).join(',') || names.join(',') === [...names].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())).join(','), names.join(', '));
+    const dev = names[0];
+    await page.click(`#reportView .rep-table tbody a:text-is("${dev}")`);
+    await page.waitForFunction((d) => document.querySelector('#crumbStory').textContent === `${d} · Q2 2024`, dev);
+    check('a developer in the report opens the quarter following them', (await page.evaluate(() => window.__cwPlayer.following)) === dev, dev);
+
+    // too few commits for a movie: the report still comes
+    await page.goto(BASE + '#/');
+    await page.waitForSelector(`${box} select`);
+    await page.selectOption(`${box} select`, 'custom');
+    await page.fill(`${box} input[aria-label="From"]`, '2024-03-20');
+    await page.fill(`${box} input[aria-label="To"]`, '2024-03-22');
+    await page.click(`${box} button:has-text("Make movie and report")`);
+    const small = `${box} li[data-period="2024-03-20_2024-03-22"]`;
+    await page.waitForSelector(`${small} a:has-text("Report")`, { timeout: 30000 });
+    check('a period too short for a movie still gets a report', (await page.locator(`${small} a:has-text("Play")`).count()) === 0 && /too few for a movie/.test(await page.textContent(small)), await page.textContent(small));
+
+    // one .html file with the movie and the report, opened with no server
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click(`${row} a:has-text("Download")`)]);
+    const file = join(OUT, 'period-share.html');
+    await dl.saveAs(file);
+    check('Download saves the quarter as one .html file', dl.suggestedFilename() === 'Quarters-Q2-2024.commit-wars.html', dl.suggestedFilename());
+    const shared = await ctx.newPage();
+    const sharedErrors = []; shared.on('pageerror', (e) => sharedErrors.push(String(e)));
+    const asked = []; shared.on('request', (r) => { if (!/^(file:|data:|https:\/\/fonts\.)/.test(r.url())) asked.push(r.url()); });
+    await shared.goto(pathToFileURL(file).href);
+    await shared.waitForFunction(() => document.querySelector('#ovDate').textContent.trim().length > 4);
+    const sharedCrumb = await shared.textContent('#crumbStory');
+    check('the downloaded file plays the quarter with no server', sharedCrumb === 'Q2 2024' && (await shared.evaluate(() => window.__cwPlayer.episode.summary.commits)) === 23 && !(await shared.isVisible('#crumbHome')) && asked.length === 0, `${sharedCrumb}; asked for ${asked.join(', ') || 'nothing'}`);
+    await shared.click('#cacheNote a:has-text("Q2 2024 report")');
+    await shared.waitForSelector('#reportView:not([hidden]) .rep-totals');
+    check('the downloaded file has the report too', (await shared.textContent('#repH')) === 'Quarters · Q2 2024' && !(await shared.locator('#reportView .crumbs a:has-text("Library")').count()), await shared.textContent('#repH'));
+    await shared.setViewportSize({ width: 390, height: 844 });
+    await shared.waitForTimeout(200);
+    const sw = await shared.evaluate(() => document.documentElement.scrollWidth);
+    check('the report fits a phone without sideways scrolling', sw <= 390, `scrollWidth ${sw}`);
+    await shared.screenshot({ path: join(OUT, '20-report-phone.png'), fullPage: true });
+    check('no page errors with periods', errors.length === 0 && sharedErrors.length === 0, [...errors, ...sharedErrors].join(' | '));
     await ctx.close();
   }
   // 2b. LAN mode: another machine can watch the library and play stories, but not change anything.

@@ -5,6 +5,7 @@
 //   update  fetch; rebuild only if the branch head moved
 //   reread  read the history again and rebuild (branch, aliases or titles changed)
 //   collection  combine a collection's built stories into one movie (runs after its stories change)
+//   period  a collection's movie and report for a quarter or any dates (from the saved histories)
 
 import { existsSync, rmSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
@@ -21,7 +22,7 @@ function buildInWorker(task) {
     w.once('exit', (code) => { if (code !== 0) reject(new Error(`The build stopped unexpectedly (code ${code}).`)); });
   });
 }
-import { ENGINE_VERSION } from '@commit-wars/story-engine';
+import { ENGINE_VERSION, checkPeriod } from '@commit-wars/story-engine';
 
 const now = () => new Date().toISOString();
 
@@ -56,7 +57,7 @@ export function createJobs({ library, emit }) {
     s.changed++; stale.set(collectionId, s);
   };
 
-  const view = (j) => ({ id: j.id, kind: j.kind, storyId: j.storyId, story: j.story, collectionId: j.collectionId || null, collection: j.collection || null, state: j.state, phase: j.phase, message: j.message, frac: j.frac, changed: j.changed ?? null });
+  const view = (j) => ({ id: j.id, kind: j.kind, storyId: j.storyId, story: j.story, collectionId: j.collectionId || null, collection: j.collection || null, periodId: j.periodId || null, state: j.state, phase: j.phase, message: j.message, frac: j.frac, changed: j.changed ?? null });
   const publish = (j) => emit('job', view(j));
 
   function enqueue(kind, storyId) {
@@ -81,6 +82,17 @@ export function createJobs({ library, emit }) {
     setImmediate(pump);
     return view(job);
   }
+  /** A period's movie and report; its period.json says it's waiting until the job runs. */
+  function enqueuePeriod(collectionId, periodId) {
+    const same = queue.find((j) => j.kind === 'period' && j.collectionId === collectionId && j.periodId === periodId);
+    if (same) return view(same);
+    const loc = library.findCollectionById(collectionId);
+    const job = { id: String(++seq), kind: 'period', storyId: null, collectionId, periodId, collection: loc ? { slug: loc.c, name: loc.json.name } : null, story: null, state: 'queued', phase: 'queued', message: 'Waiting to build this period.', frac: null };
+    queue.push(job);
+    publish(job);
+    setImmediate(pump);
+    return view(job);
+  }
   /** After a story changes, its collection's movie is rebuilt. */
   function collectionOfStory(storyId) {
     const loc = storyId && library.findById(storyId);
@@ -93,13 +105,16 @@ export function createJobs({ library, emit }) {
     const job = running = queue.splice(pickNext(queue, { now: Date.now(), stale }), 1)[0];
     job.state = 'running'; publish(job);
     try {
-      await (job.kind === 'collection' ? runCollection(job) : run(job));
+      await (job.kind === 'collection' ? runCollection(job) : job.kind === 'period' ? runPeriod(job) : run(job));
       job.state = 'done'; job.frac = 1;
-      if (job.kind !== 'collection' && job.changed) { const cid = collectionOfStory(job.storyId); noteChange(cid); enqueueCollection(cid); }
+      if (job.storyId && job.changed) { const cid = collectionOfStory(job.storyId); noteChange(cid); enqueueCollection(cid); }
       if (job.kind === 'collection') stale.set(job.collectionId, { changed: 0, since: Date.now() });
     } catch (e) {
       job.state = 'error'; job.message = e && e.message ? e.message : 'The job stopped without saying why.';
-      if (job.kind === 'collection') {
+      if (job.kind === 'period') {
+        const loc = library.findCollectionById(job.collectionId);
+        if (loc) { try { library.writePeriodJson(loc.c, job.periodId, { ...(library.readPeriodJson(loc.c, job.periodId) || {}), status: 'error', error: job.message }); } catch { /* deleted meanwhile */ } emit('library', {}); }
+      } else if (job.kind === 'collection') {
         const loc = library.findCollectionById(job.collectionId);
         if (loc) { library.writeCollectionJson(loc.c, { ...loc.json, episode: { ...(loc.json.episode || {}), status: 'error', error: job.message } }); emit('library', {}); }
       } else {
@@ -194,9 +209,7 @@ export function createJobs({ library, emit }) {
     setEpisode({ status: 'building', error: null });
     step('building', 'Combining the stories…', 0.3);
     const info = library.collection(loc.c);
-    const parts = info.stories
-      .filter((s) => s.setUp && existsSync(join(loc.dir, s.slug, 'history.json')))
-      .map((s) => ({ path: join(loc.dir, s.slug, 'history.json'), name: s.name, url: s.webUrl }));
+    const parts = partsOf(loc.c, loc.dir);
     const file = join(loc.dir, 'collection-episode.json');
     if (!parts.length) {
       if (existsSync(file)) rmSync(file, { force: true });
@@ -206,14 +219,41 @@ export function createJobs({ library, emit }) {
     }
     const aliases = Object.fromEntries((info.people.merge || []).map((m) => [m.name, m.ids]));
     const sum = await buildInWorker({ kind: 'collection', name: info.name, parts, aliases, separate: info.people.separate || [], out: join(where().dir, 'collection-episode.json') });
-    setEpisode({ status: 'ready', error: null, builtAt: now(), engine: ENGINE_VERSION, commits: sum.commits, people: sum.people, repos: parts.length });
+    setEpisode({ status: 'ready', error: null, builtAt: now(), engine: ENGINE_VERSION, commits: sum.commits, people: sum.people, repos: parts.length, quarters: sum.quarters });
     job.changed = true;
     step('done', `Combined ${parts.length} ${parts.length === 1 ? 'story' : 'stories'}, ${sum.commits.toLocaleString('en-US')} commits.`, 1);
+  }
+
+  /** Built stories of a collection, as the worker reads them. */
+  const partsOf = (c, dir) => library.collection(c).stories
+    .filter((s) => s.setUp && existsSync(join(dir, s.slug, 'history.json')))
+    .map((s) => ({ path: join(dir, s.slug, 'history.json'), name: s.name, url: s.webUrl }));
+
+  async function runPeriod(job) {
+    const where = () => { const loc = library.findCollectionById(job.collectionId); if (!loc) throw new Error('This collection was deleted before its period was built.'); job.collection = { slug: loc.c, name: loc.json.name }; return loc; };
+    const save = (fields) => { const { c } = where(); library.writePeriodJson(c, job.periodId, { ...(library.readPeriodJson(c, job.periodId) || {}), ...fields }); emit('library', {}); };
+    const step = (phase, message, frac = null) => { job.phase = phase; job.message = message; job.frac = frac; publish(job); };
+    const loc = where();
+    if (!library.readPeriodJson(loc.c, job.periodId)) throw new Error('This period was deleted before it was built.');
+    const [from, to] = job.periodId.split('_');
+    const p = checkPeriod(from, to);
+    save({ status: 'building', error: null });
+    const info = library.collection(loc.c);
+    const parts = partsOf(loc.c, loc.dir);
+    if (!parts.length) throw new Error('This collection has no built stories yet. Add a story and wait for it to build, then build the period again.');
+    step('building', `Building ${p.label} from ${parts.length} ${parts.length === 1 ? 'story' : 'stories'}…`, 0.3);
+    const dir = library.periodDir(loc.c, job.periodId);
+    const aliases = Object.fromEntries((info.people.merge || []).map((m) => [m.name, m.ids]));
+    const sum = await buildInWorker({ kind: 'period', name: info.name, parts, aliases, separate: info.people.separate || [], from, to, out: join(dir, 'episode.json'), reportOut: join(dir, 'report.json') });
+    save({ status: sum.small ? 'small' : 'ready', error: null, builtAt: now(), engine: ENGINE_VERSION, commits: sum.commits, people: sum.people, repos: parts.length });
+    job.changed = true;
+    step('done', `${p.label}: ${sum.commits.toLocaleString('en-US')} commits by ${sum.people.toLocaleString('en-US')} developers${sum.small ? ' (too few for a movie; the report is ready)' : ''}.`, 1);
   }
 
   return {
     enqueue,
     enqueueCollection,
+    enqueuePeriod,
     list: () => [running, ...queue].filter(Boolean).map(view),
     /** Stories left half-done by a stopped server get built again. */
     recover() {
@@ -225,6 +265,8 @@ export function createJobs({ library, emit }) {
         if (col.id && built && (!ep || ep.status === 'building' || (ep.status === 'ready' && ep.engine !== ENGINE_VERSION))) enqueueCollection(col.id);
         // a movie that covers fewer stories than are built is combined again before anything else
         else if (col.id && ep && ep.status === 'ready' && (ep.repos || 0) < built) { stale.set(col.id, { changed: built - (ep.repos || 0), since: 0 }); enqueueCollection(col.id); }
+        // periods left half-built or made by an older engine are built again
+        for (const p of col.periods || []) if (col.id && (['queued', 'building'].includes(p.status) || (['ready', 'small'].includes(p.status) && p.engine !== ENGINE_VERSION))) enqueuePeriod(col.id, p.id);
       }
     },
   };

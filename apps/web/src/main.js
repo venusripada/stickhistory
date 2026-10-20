@@ -5,6 +5,9 @@
 //   #/s/collection/story      play a story from the library
 //   #/c/collection            play all of a collection's stories as one movie
 //   #/c/collection/dev/name   the same, following one developer
+//   #/c/collection/p/id       a period's movie (a quarter or any dates); /dev/name follows one developer
+//   #/c/collection/p/id/report   that period's report
+//   a downloaded period file (window.__CW_SHARE__) plays its own movie; #/report, #/dev/name
 //   #/sample/opencode         the bundled sample (works without the server)
 //   ?embed=1                  movie only, autoplay, loops (for iframes)
 
@@ -16,6 +19,7 @@ import { api, subscribe, OFFLINE_MESSAGE } from './api.js';
 import { createLibraryUI, ago } from './library-ui.js';
 import { parseLibraryState, libraryStateHash } from './library-view.js';
 import { createOrgUI } from './org-ui.js';
+import { renderReport } from './report-ui.js';
 
 const $ = (s) => document.querySelector(s);
 const fmtN = (n) => Number(n).toLocaleString('en-US');
@@ -28,6 +32,9 @@ const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const params = new URLSearchParams(location.search);
 const EMBED = params.has('embed');
 if (EMBED) document.body.classList.add('embed');
+// a period downloaded as one .html file: its movie and report are inside the page, there is no server
+const SHARE = window.__CW_SHARE__ || null;
+if (SHARE) document.body.classList.add('shared');
 
 // ================= player =================
 const player = createPlayer({ canvas: $('#stage'), autoplay: true, loop: EMBED || params.has('loop') });
@@ -52,6 +59,7 @@ player.on('state', (s) => {
   else { b.textContent = 'everyone'; ml.append('Showing ', b); }
   $('#bAll').hidden = !s.following;
   if (current && current.collection) setCrumbs({ collection: current.collection.name, story: s.following ? `${s.following} · all stories` : 'All stories' });
+  if (current && current.period) setCrumbs({ collection: current.crumbs.collection, story: s.following ? `${s.following} · ${current.period.label}` : current.period.label });
 });
 // story beats become a one-line caption (and a polite announcement for screen readers)
 player.on('spotlight', (e) => {
@@ -192,6 +200,12 @@ function showEpisode(ep, meta) {
     b.addEventListener('click', () => api.updateStory(meta.c, meta.s).then(() => showNotice('Checking for new commits…')).catch((e) => showError(e.message)));
     note.append(b);
     note.hidden = false;
+  } else if (meta && meta.period) {
+    // a period's movie links to its report and to the file for sharing
+    const a = document.createElement('a'); a.href = meta.reportHref; a.textContent = `${meta.period.label} report`;
+    note.append(a);
+    if (meta.downloadHref) { const d = document.createElement('a'); d.href = meta.downloadHref; d.download = ''; d.textContent = 'Download for sharing'; note.append(' · ', d); }
+    note.hidden = false;
   } else note.hidden = true;
   setCrumbs(meta && meta.crumbs);
   showView('story');
@@ -234,12 +248,18 @@ function setServer(up, canManage = true) {
   document.querySelectorAll('#addForm input, #addForm button, #colForm input, #colForm button').forEach((el) => { el.disabled = !up; });
 }
 let waiting = null; // { c, s, id } story opened before its build finished
-subscribe({
+if (!SHARE) subscribe({
   onOpen: () => { if (serverUp === false) { setServer(true); lib.refresh(); } },
   onDown: () => { if (serverUp) setServer(false); },
   onLibrary: () => lib.refreshSoon(),
   onJob: (job) => {
     lib.onJob(job);
+    if (job.kind === 'period' && current && current.period && current.period.id === job.periodId && current.c === (job.collection && job.collection.slug)) {
+      if (job.state !== 'done') return;
+      if (waiting) { waiting = null; route(); return; }
+      if (job.changed && document.body.dataset.view === 'story') showNotice(`${current.period.label} was built again.`, { label: 'Reload it', run: () => route() });
+      return;
+    }
     if (job.kind === 'collection' && current && current.collection && job.collectionId === current.collection.id) {
       if (job.state !== 'done') return;
       if (waiting) { waiting = null; openCollection(current.c, player.following); return; }
@@ -303,6 +323,75 @@ async function openCollection(c, dev) {
   if (dev && !follow(dev)) showNotice(`There's no developer named "${dev}" in ${col.name} now; showing everyone.`);
 }
 
+/** A period's place in the library, or a message saying why it can't open. */
+async function findPeriod(c, id) {
+  await lib.refresh();
+  const col = lib.collections.find((x) => x.slug === c);
+  if (!col) return { error: serverUp === false ? '' : `There's no collection "${c}". It may have been renamed.` };
+  const p = (col.periods || []).find((x) => x.id === id);
+  if (!p) return { error: `There's no period ${id} in ${col.name}. It may have been deleted.` };
+  const enc = encodeURIComponent, base = `#/c/${enc(c)}/p/${enc(id)}`;
+  return { col, p, base, downloadHref: api.periodShareUrl(c, id) };
+}
+const isBusy = (p) => ['queued', 'building'].includes(p.status);
+
+async function openPeriod(c, id, dev) {
+  showError(''); showNotice('');
+  const f = await findPeriod(c, id);
+  if (f.error != null) { showView('library'); showError(f.error); return; }
+  const { col, p, base } = f;
+  const meta = { link: `${base}${dev ? `/dev/${encodeURIComponent(dev)}` : ''}`, c, period: p, reportHref: `${base}/report`, downloadHref: f.downloadHref, crumbs: { collection: col.name, story: p.label } };
+  current = meta;
+  if (isBusy(p) || p.status === 'error' || !p.hasEpisode) {
+    setCrumbs(meta.crumbs); showView('story');
+    if (isBusy(p)) { waiting = { c, id }; showNotice(`${p.label} is being built. It will start as soon as it is ready.`); }
+    else if (p.status === 'error') showNotice(`${p.label} didn't build: ${p.error}`);
+    else showNotice(`${p.label} has too few commits for a movie.`, { label: 'Open its report', run: () => { location.hash = meta.reportHref; } });
+    return;
+  }
+  try { showEpisode(await api.periodEpisode(c, id), meta); }
+  catch (e) { showError(e.message); return; }
+  if (dev && !follow(dev)) showNotice(`There's no developer named "${dev}" in ${p.label}; showing everyone.`);
+}
+
+function showReport(rep, o) {
+  renderReport($('#reportView'), rep, o);
+  setCrumbs(null);
+  document.title = `${rep.collection} · ${rep.label} report · Commit Wars`;
+  $('#repoTitle').textContent = `${rep.collection} · ${rep.label}`;
+  showView('report');
+  window.scrollTo(0, 0);
+}
+
+async function openPeriodReport(c, id) {
+  showError(''); showNotice('');
+  const f = await findPeriod(c, id);
+  if (f.error != null) { showView('library'); showError(f.error); return; }
+  const { p, base } = f;
+  current = { link: `${base}/report`, c, period: p, crumbs: { collection: f.col.name, story: p.label } };
+  if (isBusy(p) || !p.hasReport) {
+    showView('library');
+    showError(isBusy(p) ? `${p.label} is still being built. Its report opens from the library when it is ready.` : `${p.label} didn't build: ${p.error}`);
+    return;
+  }
+  let rep;
+  try { rep = await api.periodReport(c, id); } catch (e) { showError(e.message); return; }
+  showReport(rep, { movieHref: p.hasEpisode ? base : null, devHref: p.hasEpisode ? (name) => `${base}/dev/${encodeURIComponent(name)}` : null, downloadHref: f.downloadHref, homeHref: '#/' });
+}
+
+/** A downloaded period file: the movie, or #/report, or #/dev/name following one developer. */
+function routeShare() {
+  const h = location.hash || '';
+  const rep = SHARE.report;
+  const reportOpts = { movieHref: SHARE.episode ? '#/' : null, devHref: SHARE.episode ? (name) => `#/dev/${encodeURIComponent(name)}` : null,
+    note: `Made with Commit Wars on ${new Date(SHARE.madeAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}, from git history only.` };
+  if (h === '#/report' || !SHARE.episode) { showReport(rep, reportOpts); return; }
+  const m = h.match(/^#\/dev\/(.+)$/);
+  const meta = { link: null, shared: true, period: { id: `${rep.from}_${rep.to}`, label: rep.label }, reportHref: '#/report', downloadHref: null, crumbs: { collection: rep.collection, story: rep.label } };
+  if (!player.episode) showEpisode(SHARE.episode, meta); else { current = meta; showView('story'); setCrumbs(meta.crumbs); }
+  follow(m ? decodeURIComponent(m[1]) : null);
+}
+
 async function openSample(name) {
   showError(''); showNotice('');
   try {
@@ -313,8 +402,13 @@ async function openSample(name) {
 }
 
 function route() {
+  if (SHARE) { routeShare(); return; }
   const h = location.hash || '';
-  let m = h.match(/^#\/s\/([^/]+)\/([^/]+)$/);
+  let m = h.match(/^#\/c\/([^/]+)\/p\/([^/]+)\/report$/);
+  if (m) { openPeriodReport(decodeURIComponent(m[1]), decodeURIComponent(m[2])); return; }
+  m = h.match(/^#\/c\/([^/]+)\/p\/([^/]+)(?:\/dev\/(.+))?$/);
+  if (m) { openPeriod(decodeURIComponent(m[1]), decodeURIComponent(m[2]), m[3] ? decodeURIComponent(m[3]) : null); return; }
+  m = h.match(/^#\/s\/([^/]+)\/([^/]+)$/);
   if (m) { openStory(decodeURIComponent(m[1]), decodeURIComponent(m[2])); return; }
   m = h.match(/^#\/c\/([^/]+)(?:\/dev\/(.+))?$/);
   if (m) { openCollection(decodeURIComponent(m[1]), m[2] ? decodeURIComponent(m[2]) : null); return; }
@@ -434,6 +528,7 @@ async function copy(text, label) {
 }
 const baseUrl = () => location.href.split('#')[0].split('?')[0];
 $('#bShare').addEventListener('click', () => {
+  if (current && current.shared) { flash('This movie is a file. To share it, send the file itself.'); return; }
   if (!current || !current.link) { flash('Episodes opened from a file have no link. Use Download episode to share it.'); return; }
   copy(baseUrl() + current.link, 'Link');
 });

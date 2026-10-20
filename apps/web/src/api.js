@@ -44,6 +44,14 @@ export const api = {
   addStories: (c, repos) => call('POST', `/collections/${enc(c)}/stories/batch`, { repos }),
   /** A collection's combined movie (all its stories), cached like a story's. */
   collectionEpisode: (c) => fetchEpisode(`/collections/${enc(c)}/episode`),
+  /** Periods: a collection's movie and report for a quarter or any dates. */
+  createPeriod: (c, from, to) => call('POST', `/collections/${enc(c)}/periods`, { from, to }),
+  rebuildPeriod: (c, id) => call('POST', `/collections/${enc(c)}/periods/${enc(id)}/rebuild`, {}),
+  deletePeriod: (c, id) => call('DELETE', `/collections/${enc(c)}/periods/${enc(id)}`),
+  periodEpisode: (c, id) => fetchEpisode(`/collections/${enc(c)}/periods/${enc(id)}/episode`),
+  periodReport: (c, id) => fetchEpisode(`/collections/${enc(c)}/periods/${enc(id)}/report`),
+  /** The one-file download (movie and report) for sharing. */
+  periodShareUrl: (c, id) => `/api/collections/${enc(c)}/periods/${enc(id)}/share`,
   /** The built episode, reusing the last copy when the server says it hasn't changed. */
   episode: (c, s) => fetchEpisode(story(c, s) + '/episode'),
 };

@@ -10,6 +10,8 @@ import { join } from 'node:path';
 import { checkGitUrl, repoMeta, GitSourceError } from '@commit-wars/git-source';
 import { LibraryError } from './library.js';
 import { GitHubListError } from './github.js';
+import { checkPeriod } from '@commit-wars/story-engine';
+import { shareHtml } from './share.js';
 
 const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
 const MAX_BODY = 64 * 1024;
@@ -52,10 +54,10 @@ function readBody(req, max = MAX_BODY) {
 }
 
 /**
- * @param {{ library: any, jobs: any, events: { add: (res: any) => void }, lan?: boolean, github?: { listRepos: (owner: string) => Promise<any[]> } }} o
+ * @param {{ library: any, jobs: any, events: { add: (res: any) => void }, lan?: boolean, github?: { listRepos: (owner: string) => Promise<any[]> }, staticDir?: string|null }} o
  * @returns {(req: any, res: any) => Promise<boolean>}  true when the request was an API request
  */
-export function createApi({ library, jobs, events, lan = false, github = null }) {
+export function createApi({ library, jobs, events, lan = false, github = null, staticDir = null }) {
   /** Same repository whatever form its link takes (ssh, https, with or without .git). */
   const repoKey = (url) => String(url ? (repoMeta(url).webUrl || url) : '').toLowerCase().replace(/\.git$/, '').replace(/\/+$/, '');
   const keysIn = (c) => new Set(library.collection(c).stories.flatMap((s) => [repoKey(s.webUrl), repoKey(s.url)]).filter(Boolean));
@@ -122,6 +124,23 @@ export function createApi({ library, jobs, events, lan = false, github = null })
       events.changed();
       return [202, { added, skipped }];
     }],
+    ['POST', /^\/api\/collections\/([^/]+)\/periods$/, ([c], body) => {
+      const cj = library.readCollectionJson(c);
+      if (!cj || !cj.id) throw new HttpError(404, 'That collection doesn\'t exist.');
+      let p; try { p = checkPeriod(body.from, body.to); } catch (e) { throw new HttpError(400, e.message); }
+      if (!library.collection(c).stories.some((s) => s.hasHistory)) throw new HttpError(409, 'This collection has no built stories yet. Add a story and wait for it to build, then make a period.');
+      library.writePeriodJson(c, p.id, { ...(library.readPeriodJson(c, p.id) || { createdAt: new Date().toISOString() }), ...p, status: 'queued', error: null });
+      events.changed();
+      return [202, { period: library.periods(c).find((x) => x.id === p.id), job: jobs.enqueuePeriod(cj.id, p.id) }];
+    }],
+    ['POST', /^\/api\/collections\/([^/]+)\/periods\/([^/]+)\/rebuild$/, ([c, id]) => {
+      const cj = library.readCollectionJson(c);
+      library.periodDir(c, id);
+      library.writePeriodJson(c, id, { ...(library.readPeriodJson(c, id) || {}), status: 'queued', error: null });
+      events.changed();
+      return [202, { job: jobs.enqueuePeriod(cj.id, id) }];
+    }],
+    ['DELETE', /^\/api\/collections\/([^/]+)\/periods\/([^/]+)$/, ([c, id]) => { library.deletePeriod(c, id); events.changed(); return { ok: true }; }],
     ['DELETE', /^\/api\/collections\/([^/]+)$/, ([c], body, q) => { library.deleteCollection(c, { confirm: q.get('confirm') }); events.changed(); return { ok: true }; }],
     ['POST', /^\/api\/collections\/([^/]+)\/update$/, ([c]) => {
       const col = library.collection(c);
@@ -193,6 +212,32 @@ export function createApi({ library, jobs, events, lan = false, github = null })
         if (req.headers['if-none-match'] === etag) { res.writeHead(304, { etag, 'cache-control': 'no-cache' }); res.end(); return true; }
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', etag, 'cache-control': 'no-cache' });
         res.end(readFileSync(file));
+        return true;
+      }
+      // a period's movie, report, or both as one shareable .html file
+      const per = route.match(/^\/api\/collections\/([^/]+)\/periods\/([^/]+)\/(episode|report|share)$/);
+      if (req.method === 'GET' && per) {
+        const [c, id, what] = [path[3], path[5], per[3]];
+        const dir = library.periodDir(c, id);
+        const pj = library.readPeriodJson(c, id) || {};
+        const label = pj.label || id;
+        const file = (f) => join(dir, f);
+        if (!existsSync(file('report.json'))) throw new HttpError(404, pj.status === 'error' ? `${label} didn't build: ${pj.error}` : `${label} is still being built. It will open as soon as it is ready.`);
+        if (what === 'episode' && !existsSync(file('episode.json'))) throw new HttpError(404, `${label} has too few commits for a movie. Its report is ready.`);
+        if (what === 'share') {
+          const report = JSON.parse(readFileSync(file('report.json'), 'utf8'));
+          const episode = existsSync(file('episode.json')) ? JSON.parse(readFileSync(file('episode.json'), 'utf8')) : null;
+          const html = shareHtml(staticDir, { episode, report, madeAt: new Date().toISOString(), title: `${report.collection} · ${label}` });
+          if (!html) throw new HttpError(409, 'The web app hasn\'t been built, so there is nothing to put in the file. Run npm run build (or start with npm run serve), then download again.');
+          const name = `${report.collection} ${label}`.replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '') || 'period';
+          res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'content-disposition': `attachment; filename="${name}.commit-wars.html"`, 'cache-control': 'no-store' });
+          res.end(html);
+          return true;
+        }
+        const etag = `"${pj.builtAt || 'built'}"`;
+        if (req.headers['if-none-match'] === etag) { res.writeHead(304, { etag, 'cache-control': 'no-cache' }); res.end(); return true; }
+        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', etag, 'cache-control': 'no-cache' });
+        res.end(readFileSync(file(`${what}.json`)));
         return true;
       }
       const ep = route.match(/^\/api\/collections\/([^/]+)\/stories\/([^/]+)\/episode$/);

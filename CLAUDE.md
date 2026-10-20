@@ -44,12 +44,14 @@ repo link ──apps/server job──▶ clone ──readHistory()──▶ Hist
   - `git-log.js`: parses `git log` output (including bodies) into a History; `closingIssues()` finds "Fixes #12" references.
   - `index.js`: `buildEpisode()`.
   - `groups.js`: `findPullRequests()` (the commits a merge brought in, from parent links) and the bosses in `timeline.groups`: feature pull requests, Tech Debt, release hives.
+  - `period.js`: periods of a collection (a quarter or any dates). `cutHistory()` keeps a period's commits, `periodReport()` makes the report (developers, stories, features, fixes, releases), `quartersOf()` lists quarters with commits, `checkPeriod()` checks dates.
   - `validate.js`: `validateEpisode()`.
   - `types.js`: JSDoc for History and Fix.
   - `episode.schema.json`: the Episode contract.
 - `packages/story-engine/src/collection.js`: `combineHistories()` joins a collection's histories; collection episodes have `timeline.repos` and a 10th tuple slot (repo), and `peopleSummary()` lists developers with per-repo counts.
 - `packages/git-source` (Node only): `checkGitUrl`, `cloneRepo` (bare, blobless), `fetchRepo`, `headOf`, `readHistory`. Git runs with an allowed-protocol list and no prompts. `test/make-repo.js` builds throwaway repos for tests.
-- `apps/server`: the local library server (127.0.0.1 only, no new dependencies). `library.js` is the folder tree (folders are the database), `jobs.js` runs one build/update/reread at a time, `api.js` the routes and local-only checks, `server.js` the entry point and server-sent events.
+- `apps/server`: the local library server (127.0.0.1 only, no new dependencies). `library.js` is the folder tree (folders are the database), `jobs.js` runs one build/update/reread/collection/period job at a time, and the heavy builds run on a worker thread (`build-worker.js`) so the server keeps answering. `api.js` holds the routes and local-only checks, `server.js` the entry point and server-sent events, `share.js` the one-file .html download of a period (the built web app inlined, with the period's movie and report inside).
+  - Periods live in `<collection>/_periods/<from>_<to>/` (period.json, episode.json, report.json). Folders starting with `_` are never stories.
 - `packages/github-fetcher` (now used only by the CLI's `github` command): `fetchHistory()` uses GraphQL with a token (commits + PR + labels + closing issues + file counts + tags) and REST without one (60 requests an hour, no files or issues). `http.js` holds retries, rate limits and readable errors. Errors are `GitHubError` with a `code` (`not-found`, `rate-limit`, `bad-token`, `network`, …).
 - `packages/player`: a movie player for an episode. Every calendar day gets the same screen time, and `seek(day)` jumps anywhere. It touches no DOM except its canvas.
   - `player.js`: the clock, seeking, follow mode and the API. It emits `time`, `state`, `spotlight` and `loaded`.
@@ -60,7 +62,7 @@ repo link ──apps/server job──▶ clone ──readHistory()──▶ Hist
   - `poses.js`, `theme.js`, `util.js`.
   - Shared state lives in one object `E` (`E.G` holds the stage). Colors come from CSS custom properties (`DEFAULT_THEME` lists them).
   - The stage is decoration. Every number on screen comes from the engine's `timeline.js` helpers, so a seek never has to replay anything.
-- `apps/web`: Vite, plain JS, no framework. `main.js` holds routing (`#/` library, `#/s/collection/story`, `#/sample/name`, `?embed=1`), controls and keys. `library-ui.js` draws collections and story cards, `api.js` talks to the server (including live job events), `movie-ui.js` draws the overlays (date, people, feed) and the timeline. `store.js` keeps small settings in localStorage.
+- `apps/web`: Vite, plain JS, no framework. `main.js` holds routing (`#/` library, `#/s/collection/story`, `#/sample/name`, `?embed=1`), controls and keys. `library-ui.js` draws collections and story cards, `api.js` talks to the server (including live job events), `movie-ui.js` draws the overlays (date, people, feed) and the timeline. `report-ui.js` shows a period's report. A downloaded period file sets `window.__CW_SHARE__` and the app plays it with no server. `store.js` keeps small settings in localStorage.
 - `apps/cli`: `bin/commit-wars.js`.
 - `e2e/app.e2e.mjs`: starts the real server on a temporary library (serving `apps/web/dist`), drives the library flow with generated repos, checks the no-server fallback, and opens `e2e/fixtures/ky-git-log.txt` (real public ky `git log` in `GIT_LOG_FORMAT`) as a local history.
 

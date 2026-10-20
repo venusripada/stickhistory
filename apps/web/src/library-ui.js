@@ -49,6 +49,7 @@ export function createLibraryUI({ root, select, onError, onServer, tools, onView
     tools.sort.addEventListener('change', () => setView({ sort: tools.sort.value }));
   }
   const jobs = new Map(); // storyId -> latest job
+  const periodJobs = new Map(); // 'collectionId/periodId' -> latest job
   const devs = new Map(); // collection slug -> { builtAt, list } once its developers are loaded
   const open = new Map(); // panel open per card/collection key: 'rename' | 'delete'
   const fail = (e) => onError(e && e.message ? e.message : String(e));
@@ -127,6 +128,8 @@ export function createLibraryUI({ root, select, onError, onServer, tools, onView
     if (col.description) sec.append(el('p', { class: 'col-desc', text: col.description }));
     const movie = collectionMovie(col);
     if (movie) sec.append(movie);
+    const per = periodsPanel(col);
+    if (per) sec.append(per);
     if (open.get(`d:${col.slug}`) && col.episode && col.episode.status === 'ready') sec.append(developersPanel(col));
     if (panel === 'delete') {
       sec.append(el('div', { class: 'confirm', role: 'group', 'aria-label': 'Confirm delete' },
@@ -165,6 +168,53 @@ export function createLibraryUI({ root, select, onError, onServer, tools, onView
     else if (ep.status === 'error') row.append(el('span', { class: 'st-status err', text: `The combined movie didn't build: ${ep.error}` }));
     else return null;
     return row;
+  }
+
+  /** Periods: pick a quarter (or dates) to get its own movie and report; each one listed with its links. */
+  function periodsPanel(col) {
+    const list = col.periods || [];
+    const canMake = canManage && col.stories.some((s) => s.hasHistory);
+    if (!list.length && !canMake) return null;
+    const enc = encodeURIComponent;
+    const box = el('div', { class: 'periods', role: 'region', 'aria-label': `Periods of ${col.name}` }, el('h4', { text: 'Quarters and periods' }));
+    if (canMake) {
+      const quarters = (col.episode && col.episode.quarters) || [];
+      const pick = el('select', { 'aria-label': 'Period' },
+        quarters.map((q) => el('option', { value: `${q.from}_${q.to}`, text: `${q.label} · ${fmtN(q.commits)} commits` })),
+        el('option', { value: 'custom', text: 'Custom dates…' }));
+      const from = el('input', { type: 'date', 'aria-label': 'From', required: true });
+      const to = el('input', { type: 'date', 'aria-label': 'To', required: true });
+      const dates = el('span', { class: 'inline', hidden: quarters.length ? true : null }, from, el('span', { text: 'to' }), to);
+      pick.addEventListener('change', () => { dates.hidden = pick.value !== 'custom'; });
+      const make = () => {
+        const [f, t] = pick.value === 'custom' ? [from.value, to.value] : pick.value.split('_');
+        if (!f || !t) { onError('Pick both dates for the period.'); return; }
+        act(() => api.createPeriod(col.slug, f, t));
+      };
+      box.append(el('div', { class: 'period-form' }, pick, dates,
+        el('button', { class: 'btn small', type: 'button', text: 'Make movie and report', onclick: make }),
+        quarters.length ? null : el('span', { class: 'st-status', text: col.episode && col.episode.status === 'ready' ? 'Quarters show here once the collection movie is combined again.' : 'Pick the dates; quarters show here once the collection movie is built.' })));
+    }
+    if (list.length) {
+      box.append(el('ul', { class: 'period-list' }, list.map((p) => {
+        const base = `#/c/${enc(col.slug)}/p/${enc(p.id)}`;
+        const job = periodJobs.get(`${col.id}/${p.id}`);
+        const busy = (job && (job.state === 'queued' || job.state === 'running')) || ['queued', 'building'].includes(p.status);
+        let status;
+        if (busy) status = el('span', { class: 'st-status busy', role: 'status', text: (job && job.state === 'running' && job.message) || 'Waiting to build…' });
+        else if (p.status === 'error') status = el('span', { class: 'st-status err', text: p.error || 'This period didn\'t build.' });
+        else status = el('span', { class: 'st-status', text: `${fmtN(p.commits || 0)} commits · ${fmtN(p.people || 0)} developers${p.status === 'small' ? ' · too few for a movie' : ''} · built ${ago(p.builtAt)}` });
+        return el('li', { 'data-period': p.id },
+          el('span', { class: 'label', text: p.label || p.id }), status,
+          el('span', { class: 'actions' },
+            !busy && p.hasEpisode ? el('a', { class: 'btn small primary', href: base, text: 'Play' }) : null,
+            !busy && p.hasReport ? el('a', { class: 'btn small', href: `${base}/report`, text: 'Report' }) : null,
+            !busy && p.hasReport ? el('a', { class: 'btn small', href: api.periodShareUrl(col.slug, p.id), download: '', title: 'One .html file with the movie and the report. Anyone can open it in a browser.', text: 'Download' }) : null,
+            canManage && !busy ? el('button', { class: 'btn small', type: 'button', text: 'Rebuild', onclick: () => act(() => api.rebuildPeriod(col.slug, p.id)) }) : null,
+            canManage && !busy ? el('button', { class: 'btn small', type: 'button', text: 'Delete', 'aria-label': `Delete ${p.label || p.id}`, onclick: () => act(() => api.deletePeriod(col.slug, p.id)) }) : null));
+      })));
+    }
+    return box;
   }
 
   function developersPanel(col) {
@@ -253,6 +303,7 @@ export function createLibraryUI({ root, select, onError, onServer, tools, onView
     refreshSoon() { clearTimeout(pending); pending = setTimeout(refresh, 120); },
     onJob(job) {
       if (job.kind === 'collection') { if (job.state === 'done' || job.state === 'error') this.refreshSoon(); return; }
+      if (job.kind === 'period') { periodJobs.set(`${job.collectionId}/${job.periodId}`, job); this.refreshSoon(); return; }
       jobs.set(job.storyId, job);
       const card = root.querySelector(`[data-story="${CSS.escape(job.storyId)}"]`);
       const col = card && collections.find((c) => c.slug === card.closest('[data-collection]').dataset.collection);

@@ -3,31 +3,49 @@
 //
 //   { kind: 'collection', name, parts: [{ path, name, url }], aliases, separate, out }
 //   { kind: 'story', historyPath, aliases, titles, out }
+//   { kind: 'period', name, parts, aliases, separate, from, to, out, reportOut }
 //
 // Reads the saved histories, builds and checks the episode, writes it to
 // `out` (atomically) and answers with a short summary.
 
 import { parentPort, workerData } from 'node:worker_threads';
-import { readFileSync, writeFileSync, renameSync } from 'node:fs';
-import { buildEpisode, validateEpisode, combineHistories } from '@commit-wars/story-engine';
+import { readFileSync, writeFileSync, renameSync, rmSync } from 'node:fs';
+import { buildEpisode, validateEpisode, combineHistories, cutHistory, quartersOf, periodReport, periodLabel } from '@commit-wars/story-engine';
+
+function write(file, value) {
+  const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
+  writeFileSync(tmp, JSON.stringify(value, null, 2) + '\n');
+  renameSync(tmp, file);
+}
+const check = (episode) => { const errs = validateEpisode(episode); if (errs.length) throw new Error(`The built episode is not playable: ${errs[0]}`); };
+const combined = (task) => combineHistories(task.parts.map((p) => ({ history: JSON.parse(readFileSync(p.path, 'utf8')), name: p.name, url: p.url })), { name: task.name });
+const peopleOf = (episode) => episode.timeline.people.filter((p) => !p.bot).length;
 
 function run(task) {
+  if (task.kind === 'period') {
+    const cut = cutHistory(combined(task), { from: task.from, to: task.to });
+    if (!cut.commits.length) throw new Error(`None of this collection's stories has commits from ${periodLabel(task.from, task.to)}. Pick another period.`);
+    const opts = { identities: true, aliases: task.aliases || {}, separate: task.separate || [] };
+    // too few commits for a movie still makes a report
+    let episode, small = false;
+    try { episode = buildEpisode(cut, opts); check(episode); }
+    catch (e) { if (!/A replay needs at least/.test(e.message)) throw e; small = true; episode = buildEpisode(cut, { ...opts, minCommits: 1 }); }
+    if (small) rmSync(task.out, { force: true }); else write(task.out, episode);
+    write(task.reportOut, periodReport(episode, { from: task.from, to: task.to, collection: task.name }));
+    return { commits: episode.summary.commits, people: peopleOf(episode), small };
+  }
   let episode;
-  if (task.kind === 'collection') {
-    const parts = task.parts.map((p) => ({ history: JSON.parse(readFileSync(p.path, 'utf8')), name: p.name, url: p.url }));
-    episode = buildEpisode(combineHistories(parts, { name: task.name }), { identities: true, aliases: task.aliases || {}, separate: task.separate || [] });
-  } else {
+  if (task.kind === 'collection') episode = buildEpisode(combined(task), { identities: true, aliases: task.aliases || {}, separate: task.separate || [] });
+  else {
     const history = JSON.parse(readFileSync(task.historyPath, 'utf8'));
     episode = buildEpisode(history, { aliases: task.aliases || {}, titles: task.titles && task.titles.length ? task.titles : undefined });
   }
-  const errs = validateEpisode(episode);
-  if (errs.length) throw new Error(`The built episode is not playable: ${errs[0]}`);
-  const tmp = `${task.out}.${process.pid}.${Date.now()}.tmp`;
-  writeFileSync(tmp, JSON.stringify(episode, null, 2) + '\n');
-  renameSync(tmp, task.out);
+  check(episode);
+  write(task.out, episode);
   return {
     commits: episode.summary.commits, issuesLinked: episode.summary.issuesLinked,
-    start: episode.timeline.start, end: episode.timeline.end, people: episode.timeline.people.filter((p) => !p.bot).length,
+    start: episode.timeline.start, end: episode.timeline.end, people: peopleOf(episode),
+    ...(task.kind === 'collection' ? { quarters: quartersOf(episode.timeline) } : {}),
   };
 }
 
