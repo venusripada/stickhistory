@@ -28,7 +28,7 @@
       <button class="btn primary" id="bAdd" type="submit">Add story</button>
     </form>
     <div class="build-opts">
-      <label class="opt" for="addCollection">to <select id="addCollection"></select></label>
+      <label class="opt" for="addCollection">to <select id="addCollection" autocomplete="off"></select></label>
       <label class="opt" for="newColName" id="newColWrap" hidden>new collection <input id="newColName" type="text" placeholder="Collection name"></label>
       <label class="opt" for="addName">named <input id="addName" type="text" placeholder="from the link"></label>
       <label class="opt" for="addBranch">branch <input id="addBranch" type="text" placeholder="default"></label>
@@ -48,6 +48,13 @@
     <div class="offline" id="offline" hidden>
       <p id="offlineMsg"></p>
       <p><button class="btn small" type="button" data-sample="opencode">Play the bundled opencode sample</button></p>
+    </div>
+    <div class="lib-tools" id="libTools" role="search">
+      <label class="sr" for="libSearch">Search stories</label>
+      <input id="libSearch" type="search" autocomplete="off" spellcheck="false" placeholder="Search stories by name or repo   ( / )">
+      <div class="chips" id="libStatus" role="group" aria-label="Show stories that are"></div>
+      <label class="opt" for="libSort">sort <select id="libSort"></select></label>
+      <span class="st-status" id="libCount" role="status"></span>
     </div>
     <div id="collections" class="collections"></div>
     <form id="colForm" class="build-row col-form" novalidate>

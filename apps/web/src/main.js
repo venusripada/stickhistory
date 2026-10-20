@@ -14,6 +14,7 @@ import { storage, dropLegacyCache } from './store.js';
 import { createMovieUI } from './movie-ui.js';
 import { api, subscribe, OFFLINE_MESSAGE } from './api.js';
 import { createLibraryUI, ago } from './library-ui.js';
+import { parseLibraryState, libraryStateHash } from './library-view.js';
 import { createOrgUI } from './org-ui.js';
 
 const $ = (s) => document.querySelector(s);
@@ -212,7 +213,12 @@ function showNotice(msg, action) {
 }
 
 let serverUp = null;
-const lib = createLibraryUI({ root: $('#collections'), select: $('#addCollection'), onError: (m) => showError(m), onServer: (up, canManage) => setServer(up, canManage) });
+const lib = createLibraryUI({
+  root: $('#collections'), select: $('#addCollection'), onError: (m) => showError(m), onServer: (up, canManage) => setServer(up, canManage),
+  tools: { search: $('#libSearch'), status: $('#libStatus'), sort: $('#libSort'), count: $('#libCount') },
+  // keep search, filter, sort and pages in the address, so reloading or sharing keeps the place
+  onView: (v) => { if (document.body.dataset.view === 'library') history.replaceState(null, '', location.pathname + location.search + libraryStateHash(v)); },
+});
 function setServer(up, canManage = true) {
   serverUp = up;
   // watching from another machine: the page shows the library but no way to change it
@@ -245,6 +251,7 @@ subscribe({
 
 async function openLibrary() {
   showView('library');
+  lib.setView(parseLibraryState(location.hash));
   setCrumbs(null);
   document.title = 'Library · Commit Wars';
   $('#repoTitle').textContent = 'Commit Wars';
@@ -404,6 +411,7 @@ document.addEventListener('keydown', (e) => {
   if (t.closest('input[type=range]') && e.key.startsWith('Arrow')) return;
   if (t.closest('button, a, summary') && (e.key === ' ' || e.key === 'Enter')) return;
   const k = e.key.toLowerCase();
+  if (document.body.dataset.view === 'library') { if (e.key === '/') { e.preventDefault(); lib.focusSearch(); } return; }
   if (e.key === ' ') { e.preventDefault(); player.toggle(); }
   else if (e.key === 'ArrowRight') { e.preventDefault(); e.shiftKey ? jumpChapter(1) : player.seekBy(7); }
   else if (e.key === 'ArrowLeft') { e.preventDefault(); e.shiftKey ? jumpChapter(-1) : player.seekBy(-7); }

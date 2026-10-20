@@ -7,7 +7,7 @@
 // sindresorhus/ky `git log` output in GIT_LOG_COMMAND's format (public).
 
 import { createServer } from 'node:http';
-import { readFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { networkInterfaces } from 'node:os';
@@ -308,6 +308,42 @@ try {
     const already = await page.$$eval('.org-list li', (els) => els.filter((e) => e.textContent.includes('already in Acme')).map((e) => e.querySelector('strong').textContent));
     check('repos already in the collection are marked', already.join(',') === 'api', already.join(','));
     check('no page errors adding an org', errors.length === 0, errors.join(' | '));
+    await ctx.close();
+  }
+  // 2d. Hundreds of stories: quick search, status filter and pages that survive a reload.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
+    await fetch(`${app.url}/api/collections`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Big' }) });
+    // story folders written directly (no cloning): every tenth one failed
+    for (let n = 1; n <= 130; n++) {
+      const slug = `repo-${String(n).padStart(3, '0')}`;
+      mkdirSync(join(libRoot, 'big', slug), { recursive: true });
+      writeFileSync(join(libRoot, 'big', slug, 'story.json'), JSON.stringify({ id: `big-${n}`, name: slug, url: `git@github.com:big/${slug}.git`, webUrl: `https://github.com/big/${slug}`, status: n % 10 === 0 ? 'error' : 'ready', error: n % 10 === 0 ? 'git couldn\'t find it' : null, commits: n, fetchedAt: '2026-01-01T00:00:00Z' }));
+    }
+    await page.goto(BASE);
+    await page.waitForSelector('[data-collection="big"] .story-card');
+    const big = '[data-collection="big"]';
+    check('a big collection shows one page of 60', (await page.locator(`${big} .story-card`).count()) === 60 && (await page.textContent(`${big} .pager`)).includes('1–60 of 130'));
+    await page.click(`${big} .pager button:has-text("Next")`);
+    await page.waitForFunction(() => location.hash.includes('page.big=2'));
+    const first2 = await page.textContent(`${big} .story-card h4`);
+    await page.reload();
+    await page.waitForSelector(`${big} .story-card`);
+    check('pages move and are kept on reload', first2 === 'repo-061' && (await page.textContent(`${big} .story-card h4`)) === 'repo-061', first2);
+    await page.screenshot({ path: join(OUT, '16-pages.png'), fullPage: false });
+    await page.keyboard.press('/');
+    await page.keyboard.type('repo-12');
+    await page.waitForFunction(() => document.querySelectorAll('[data-collection="big"] .story-card').length === 10);
+    check('quick search narrows the stories as you type', (await page.textContent('#libCount')).startsWith('10 of'), await page.textContent('#libCount'));
+    await page.keyboard.press('Escape');
+    await page.click('#libStatus button:has-text("Failed")');
+    await page.waitForFunction(() => document.querySelectorAll('[data-collection="big"] .story-card').length === 13);
+    const filteredHash = await page.evaluate(() => location.hash);
+    check('the status filter shows only failed stories', (await page.textContent(`${big} .story-card`)).includes('couldn\'t find it') && filteredHash.includes('status=failed'), filteredHash);
+    await page.click('#libStatus button:has-text("All")');
+    check('no page errors with many stories', errors.length === 0, errors.join(' | '));
     await ctx.close();
   }
   // 2b. LAN mode: another machine can watch the library and play stories, but not change anything.

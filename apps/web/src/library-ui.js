@@ -4,6 +4,7 @@
 
 import { api } from './api.js';
 import { peopleSummary } from '@commit-wars/story-engine';
+import { filterStories, paginate, statusOf, STATUSES, SORTS, PAGE_SIZE } from './library-view.js';
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const fmtMonth = (d) => { if (!d) return ''; const [y, m] = d.split('-'); return `${MON[+m - 1]} ${y}`; };
@@ -28,11 +29,25 @@ const el = (tag, props = {}, ...kids) => {
 const STATUS = { queued: 'Waiting to build', cloning: 'Cloning', building: 'Building', fetching: 'Fetching' };
 
 /**
- * @param {{ root: HTMLElement, select: HTMLSelectElement, onError: (msg: string) => void, onServer?: (up: boolean) => void }} o
+ * @param {{ root: HTMLElement, select: HTMLSelectElement, onError: (msg: string) => void, onServer?: (up: boolean) => void,
+ *           tools?: { search: HTMLInputElement, status: HTMLElement, sort: HTMLSelectElement, count: HTMLElement }, onView?: (view: any) => void }} o
  */
-export function createLibraryUI({ root, select, onError, onServer }) {
+export function createLibraryUI({ root, select, onError, onServer, tools, onView }) {
   let collections = [];
   let canManage = true; // false when watching from another machine on the network
+  let view = { q: '', status: 'all', sort: 'name', pages: {} }; // search, status filter, sort and page per collection
+  const setView = (patch, keepPages) => {
+    view = { ...view, ...patch, pages: keepPages ? { ...view.pages, ...(patch.pages || {}) } : (patch.pages || {}) };
+    onView && onView(view);
+    render();
+  };
+  if (tools) {
+    let t = null;
+    tools.search.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => setView({ q: tools.search.value }), 120); });
+    tools.search.addEventListener('keydown', (e) => { if (e.key === 'Escape') { tools.search.value = ''; setView({ q: '' }); } });
+    for (const s of SORTS) tools.sort.append(el('option', { value: s.key, text: s.label }));
+    tools.sort.addEventListener('change', () => setView({ sort: tools.sort.value }));
+  }
   const jobs = new Map(); // storyId -> latest job
   const devs = new Map(); // collection slug -> { builtAt, list } once its developers are loaded
   const open = new Map(); // panel open per card/collection key: 'rename' | 'delete'
@@ -118,7 +133,14 @@ export function createLibraryUI({ root, select, onError, onServer }) {
         el('button', { class: 'btn small danger', type: 'button', text: 'Delete', onclick: () => act(() => api.deleteCollection(col.slug, col.slug).then(() => open.delete(key))) }),
         el('button', { class: 'btn small', type: 'button', text: 'Cancel', onclick: () => { open.delete(key); render(); } })));
     }
-    sec.append(col.stories.length ? el('div', { class: 'stories' }, col.stories.map((st) => storyCard(col, st))) : el('p', { class: 'col-empty', text: 'No stories yet. Paste a repository link above and pick this collection.' }));
+    if (!col.stories.length) { sec.append(el('p', { class: 'col-empty', text: 'No stories yet. Paste a repository link above and pick this collection.' })); return sec; }
+    const shown = filterStories(col.stories, view);
+    const filtering = view.q.trim() || view.status !== 'all';
+    if (!shown.length) { sec.append(el('p', { class: 'col-empty', text: `None of its ${col.stories.length} stories match.` })); return sec; }
+    const pg = paginate(shown, view.pages[col.slug] || 1, PAGE_SIZE);
+    if (filtering) sec.append(el('p', { class: 'st-status', text: `${fmtN(shown.length)} of ${fmtN(col.stories.length)} stories match` }));
+    sec.append(el('div', { class: 'stories' }, pg.items.map((st) => storyCard(col, st))));
+    if (pg.pages > 1) sec.append(pager(col, pg, shown.length));
     return sec;
   }
 
@@ -170,7 +192,39 @@ export function createLibraryUI({ root, select, onError, onServer }) {
     return box;
   }
 
+  /** Previous / page numbers / next for one collection; pages around the current one, plus first and last. */
+  function pager(col, pg, total) {
+    const go = (p) => { setView({ pages: { [col.slug]: p } }, true); const top = root.querySelector(`[data-collection="${CSS.escape(col.slug)}"]`); if (top) top.scrollIntoView({ block: 'start' }); };
+    const nums = [...new Set([1, pg.page - 2, pg.page - 1, pg.page, pg.page + 1, pg.page + 2, pg.pages])].filter((n) => n >= 1 && n <= pg.pages).sort((a, b) => a - b);
+    const nav = el('nav', { class: 'pager', 'aria-label': `Pages of ${col.name}` },
+      el('button', { class: 'btn small', type: 'button', text: '‹ Previous', disabled: pg.page === 1, onclick: () => go(pg.page - 1) }));
+    nums.forEach((n, i) => {
+      if (i && n - nums[i - 1] > 1) nav.append(el('span', { class: 'gap', text: '…' }));
+      nav.append(el('button', { class: `btn small${n === pg.page ? ' primary' : ''}`, type: 'button', text: String(n), 'aria-current': n === pg.page ? 'page' : null, onclick: () => go(n) }));
+    });
+    nav.append(el('button', { class: 'btn small', type: 'button', text: 'Next ›', disabled: pg.page === pg.pages, onclick: () => go(pg.page + 1) }),
+      el('span', { class: 'st-status', text: `${fmtN(pg.from + 1)}–${fmtN(pg.to)} of ${fmtN(total)}` }));
+    return nav;
+  }
+
+  function renderTools() {
+    if (!tools) return;
+    const all = collections.flatMap((c) => c.stories);
+    tools.search.closest('.lib-tools').hidden = !all.length;
+    if (document.activeElement !== tools.search) tools.search.value = view.q;
+    tools.sort.value = view.sort;
+    tools.status.textContent = '';
+    for (const s of STATUSES) {
+      const n = s.key === 'all' ? all.length : all.filter((x) => statusOf(x) === s.key).length;
+      if (!n && s.key !== 'all' && view.status !== s.key) continue;
+      tools.status.append(el('button', { class: 'chip', type: 'button', 'aria-pressed': String(view.status === s.key), text: `${s.label} ${fmtN(n)}`, onclick: () => setView({ status: s.key }) }));
+    }
+    const matches = filterStories(all, view).length;
+    tools.count.textContent = view.q.trim() || view.status !== 'all' ? `${fmtN(matches)} of ${fmtN(all.length)} stories` : '';
+  }
+
   function render() {
+    renderTools();
     root.textContent = '';
     if (!collections.length) root.append(el('p', { class: 'col-empty', text: 'Your library is empty. Create a collection, then paste a repository link to add its first story.' }));
     for (const col of collections) root.append(collectionSection(col));
@@ -202,6 +256,9 @@ export function createLibraryUI({ root, select, onError, onServer }) {
     },
     get collections() { return collections; },
     get canManage() { return canManage; },
+    /** Restore search, filter, sort and pages (from the address). */
+    setView(v) { view = { ...view, ...v }; render(); },
+    focusSearch() { if (tools) tools.search.focus(); },
     find(c, s) { const col = collections.find((x) => x.slug === c); return col ? { col, story: col.stories.find((x) => x.slug === s) || null } : null; },
   };
 }
