@@ -216,11 +216,10 @@ function showEpisode(ep, meta) {
     b.addEventListener('click', () => api.updateStory(meta.c, meta.s).then(() => showNotice('Checking for new commits…')).catch((e) => showError(e.message)));
     note.append(b);
     note.hidden = false;
-  } else if (meta && meta.period) {
-    // a period's movie links to its report and to the file for sharing
-    const a = document.createElement('a'); a.href = meta.reportHref; a.textContent = `${meta.period.label} report`;
-    note.append(a);
-    if (meta.downloadHref) { const d = document.createElement('a'); d.href = meta.downloadHref; d.download = ''; d.textContent = 'Download for sharing'; note.append(' · ', d); }
+  } else if (meta && meta.period && meta.downloadHref) {
+    // a period's movie offers the file for sharing (the report is the other tab)
+    const d = document.createElement('a'); d.href = meta.downloadHref; d.download = ''; d.textContent = 'Download for sharing';
+    note.append(d);
     note.hidden = false;
   } else note.hidden = true;
   setCrumbs(meta && meta.crumbs);
@@ -231,6 +230,16 @@ function showEpisode(ep, meta) {
 function showView(v) {
   document.body.dataset.view = v;
   document.querySelectorAll('[data-view-only]').forEach((el) => { el.hidden = el.dataset.viewOnly !== v; });
+  if (v === 'library' || !current || !current.period) $('#periodTabs').hidden = true;
+}
+/** A period's Movie and Report tabs. movieHref is null when the period has too few commits for a movie. */
+function setTabs({ movieHref, reportHref, active }) {
+  const nav = $('#periodTabs'), mv = $('#tabMovie'), rp = $('#tabReport');
+  if (movieHref) { mv.href = movieHref; mv.removeAttribute('aria-disabled'); } else { mv.removeAttribute('href'); mv.setAttribute('aria-disabled', 'true'); mv.title = 'Too few commits in this period for a movie'; }
+  rp.href = reportHref;
+  mv.toggleAttribute('aria-current', active === 'movie'); if (active === 'movie') mv.setAttribute('aria-current', 'page');
+  rp.toggleAttribute('aria-current', active === 'report'); if (active === 'report') rp.setAttribute('aria-current', 'page');
+  nav.hidden = false;
 }
 function setCrumbs(c) {
   $('#crumbCol').textContent = c ? c.collection : '';
@@ -358,8 +367,9 @@ async function openPeriod(c, id, dev) {
   const { col, p, base } = f;
   const meta = { link: `${base}${dev ? `/dev/${encodeURIComponent(dev)}` : ''}`, c, period: p, reportHref: `${base}/report`, downloadHref: f.downloadHref, crumbs: { collection: col.name, story: p.label } };
   current = meta;
+  const tabs = { movieHref: p.hasEpisode || isBusy(p) ? base : null, reportHref: meta.reportHref, active: 'movie' };
   if (isBusy(p) || p.status === 'error' || !p.hasEpisode) {
-    setCrumbs(meta.crumbs); showView('story');
+    setCrumbs(meta.crumbs); showView('story'); setTabs(tabs);
     if (isBusy(p)) { waiting = { c, id }; showNotice(`${p.label} is being built. It will start as soon as it is ready.`); }
     else if (p.status === 'error') showNotice(`${p.label} didn't build: ${p.error}`);
     else showNotice(`${p.label} has too few commits for a movie.`, { label: 'Open its report', run: () => { location.hash = meta.reportHref; } });
@@ -367,10 +377,12 @@ async function openPeriod(c, id, dev) {
   }
   try { showEpisode(await api.periodEpisode(c, id), meta); }
   catch (e) { showError(e.message); return; }
+  setTabs(tabs);
   if (dev && !follow(dev)) showNotice(`There's no developer named "${dev}" in ${p.label}; showing everyone.`);
 }
 
 function showReport(rep, o) {
+  player.pause(); // the movie waits on its own tab, quietly
   renderReport($('#reportView'), rep, o);
   setCrumbs(null);
   document.title = `${rep.collection} · ${rep.label} report · Commit Wars`;
@@ -393,6 +405,7 @@ async function openPeriodReport(c, id) {
   let rep;
   try { rep = await api.periodReport(c, id); } catch (e) { showError(e.message); return; }
   showReport(rep, { movieHref: p.hasEpisode ? base : null, devHref: p.hasEpisode ? (name) => `${base}/dev/${encodeURIComponent(name)}` : null, downloadHref: f.downloadHref, homeHref: '#/' });
+  setTabs({ movieHref: p.hasEpisode ? base : null, reportHref: `${base}/report`, active: 'report' });
 }
 
 /** A downloaded period file: the movie, or #/report, or #/dev/name following one developer. */
@@ -401,10 +414,13 @@ function routeShare() {
   const rep = SHARE.report;
   const reportOpts = { movieHref: SHARE.episode ? '#/' : null, devHref: SHARE.episode ? (name) => `#/dev/${encodeURIComponent(name)}` : null,
     note: `Made with Commit Wars on ${new Date(SHARE.madeAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}, from git history only.` };
-  if (h === '#/report' || !SHARE.episode) { showReport(rep, reportOpts); return; }
+  current = { link: null, shared: true, period: { id: `${rep.from}_${rep.to}`, label: rep.label }, crumbs: { collection: rep.collection, story: rep.label } };
+  const tabs = { movieHref: SHARE.episode ? '#/' : null, reportHref: '#/report' };
+  if (h === '#/report' || !SHARE.episode) { showReport(rep, reportOpts); setTabs({ ...tabs, active: 'report' }); return; }
   const m = h.match(/^#\/dev\/(.+)$/);
   const meta = { link: null, shared: true, period: { id: `${rep.from}_${rep.to}`, label: rep.label }, reportHref: '#/report', downloadHref: null, crumbs: { collection: rep.collection, story: rep.label } };
   if (!player.episode) showEpisode(SHARE.episode, meta); else { current = meta; showView('story'); setCrumbs(meta.crumbs); }
+  setTabs({ ...tabs, active: 'movie' });
   follow(m ? decodeURIComponent(m[1]) : null);
 }
 

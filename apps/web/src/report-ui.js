@@ -54,9 +54,10 @@ export function renderReport(root, rep, o = {}) {
     el('div', { class: 'panel-head' },
       el('h2', { id: 'repH', text: `${rep.collection} · ${rep.label}` }),
       dates ? el('span', { class: 'eyebrow', text: dates } ) : null),
-    el('div', { class: 'actions rep-actions' },
-      o.movieHref ? el('a', { class: 'btn small primary', href: o.movieHref, text: 'Play the movie' }) : el('span', { class: 'st-status', text: 'Too few commits in this period for a movie.' }),
-      o.downloadHref ? el('a', { class: 'btn small', href: o.downloadHref, download: '', text: 'Download for sharing' }) : null),
+    // the movie is the other tab; say so when there isn't one
+    !o.movieHref || o.downloadHref ? el('div', { class: 'actions rep-actions' },
+      o.movieHref ? null : el('span', { class: 'st-status', text: 'Too few commits in this period for a movie.' }),
+      o.downloadHref ? el('a', { class: 'btn small', href: o.downloadHref, download: '', text: 'Download for sharing' }) : null) : null,
     o.note ? el('p', { class: 'st-status', text: o.note }) : null,
     el('dl', { class: 'rep-totals' }, [
       ['Commits', t.commits], ['Developers', t.developers], ['Stories', t.stories], ['Fixes', t.fixes],

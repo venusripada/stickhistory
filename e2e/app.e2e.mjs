@@ -420,8 +420,10 @@ try {
     const ep = await page.evaluate(() => window.__cwPlayer.episode);
     check('a quarter plays as its own movie', crumb === 'Q2 2024' && ep.timeline.start >= '2024-04-01' && ep.summary.commits === 23, `${crumb}, from ${ep.timeline.start}, ${ep.summary.commits} commits`);
 
-    await page.click('#cacheNote a:has-text("Q2 2024 report")');
+    check('a quarter has Movie and Report tabs', await page.isVisible('#periodTabs') && (await page.getAttribute('#tabMovie', 'aria-current')) === 'page');
+    await page.click('#tabReport');
     await page.waitForSelector('#reportView:not([hidden]) .rep-totals');
+    check('the Report tab shows the report and pauses the movie', (await page.getAttribute('#tabReport', 'aria-current')) === 'page' && !(await page.evaluate(() => window.__cwPlayer.playing)));
     const head = await page.textContent('#repH');
     const total = await page.textContent('.rep-totals div:first-child dd');
     const devRows = await page.locator('#reportView .rep-table').first().locator('tbody tr').count();
@@ -459,9 +461,16 @@ try {
     await shared.waitForFunction(() => document.querySelector('#ovDate').textContent.trim().length > 4);
     const sharedCrumb = await shared.textContent('#crumbStory');
     check('the downloaded file plays the quarter with no server', sharedCrumb === 'Q2 2024' && (await shared.evaluate(() => window.__cwPlayer.episode.summary.commits)) === 23 && !(await shared.isVisible('#crumbHome')) && asked.length === 0, `${sharedCrumb}; asked for ${asked.join(', ') || 'nothing'}`);
-    await shared.click('#cacheNote a:has-text("Q2 2024 report")');
+    check('the downloaded file has Movie and Report tabs', await shared.isVisible('#periodTabs') && (await shared.getAttribute('#tabMovie', 'aria-current')) === 'page');
+    await shared.click('#tabReport');
     await shared.waitForSelector('#reportView:not([hidden]) .rep-totals');
     check('the downloaded file has the report too', (await shared.textContent('#repH')) === 'Quarters · Q2 2024' && !(await shared.locator('#reportView .crumbs a:has-text("Library")').count()), await shared.textContent('#repH'));
+    await shared.screenshot({ path: join(OUT, '21-shared-report-tab.png') });
+    await shared.click('#tabMovie');
+    await shared.waitForSelector('#stageWrap:not([hidden])');
+    check('the Movie tab goes back to the movie', (await shared.getAttribute('#tabMovie', 'aria-current')) === 'page' && (await shared.textContent('#crumbStory')) === 'Q2 2024');
+    await shared.click('#tabReport');
+    await shared.waitForSelector('#reportView:not([hidden]) .rep-totals');
     await shared.setViewportSize({ width: 390, height: 844 });
     await shared.waitForTimeout(200);
     const sw = await shared.evaluate(() => document.documentElement.scrollWidth);
