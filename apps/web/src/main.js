@@ -3,6 +3,8 @@
 // Routes:
 //   #/                        the library
 //   #/s/collection/story      play a story from the library
+//   #/c/collection            play all of a collection's stories as one movie
+//   #/c/collection/dev/name   the same, following one developer
 //   #/sample/opencode         the bundled sample (works without the server)
 //   ?embed=1                  movie only, autoplay, loops (for iframes)
 
@@ -12,6 +14,7 @@ import { storage, dropLegacyCache } from './store.js';
 import { createMovieUI } from './movie-ui.js';
 import { api, subscribe, OFFLINE_MESSAGE } from './api.js';
 import { createLibraryUI, ago } from './library-ui.js';
+import { createOrgUI } from './org-ui.js';
 
 const $ = (s) => document.querySelector(s);
 const fmtN = (n) => Number(n).toLocaleString('en-US');
@@ -47,11 +50,12 @@ player.on('state', (s) => {
   if (s.following) { b.textContent = s.following; ml.append('Following ', b, ' · only their fixes and features'); }
   else { b.textContent = 'everyone'; ml.append('Showing ', b); }
   $('#bAll').hidden = !s.following;
+  if (current && current.collection) setCrumbs({ collection: current.collection.name, story: s.following ? `${s.following} · all stories` : 'All stories' });
 });
 // story beats become a one-line caption (and a polite announcement for screen readers)
 player.on('spotlight', (e) => {
   let text = '';
-  const files = (fx) => (fx.files != null ? ` · ${fmtN(fx.files)} file${fx.files === 1 ? '' : 's'}` : '');
+  const files = (fx) => `${fx.repo ? ` in ${fx.repo}` : ''}${fx.files != null ? ` · ${fmtN(fx.files)} file${fx.files === 1 ? '' : 's'}` : ''}`;
   const built = (fx) => fx.kind === 'feat';
   if (e.kind === 'duel') text = built(e.fx) ? `Feature duel: ${e.hero} builds "${player.fixLabel(e.fx, 90)}"${files(e.fx)}` : `Duel: ${e.hero} vs "${player.fixLabel(e.fx, 90)}" · ${e.typeName}${files(e.fx)}`;
   else if (e.kind === 'duel-won') text = `${e.hero} ${built(e.fx) ? 'shipped' : 'fixed'} "${player.fixLabel(e.fx, 90)}"${e.combo > 1 ? ` with a ${e.combo}-hit combo` : ''}${files(e.fx)} · ${fmtDate(e.fx.d)}`;
@@ -62,8 +66,9 @@ player.on('spotlight', (e) => {
   if (text) $('#caption').textContent = text;
 });
 function follow(name) {
-  if (!player.follow(name)) return;
+  if (!player.follow(name)) return false;
   ui.setFollow(name);
+  return true;
 }
 
 // legend and log icons
@@ -223,6 +228,12 @@ subscribe({
   onLibrary: () => lib.refreshSoon(),
   onJob: (job) => {
     lib.onJob(job);
+    if (job.kind === 'collection' && current && current.collection && job.collectionId === current.collection.id) {
+      if (job.state !== 'done') return;
+      if (waiting) { waiting = null; openCollection(current.c, player.following); return; }
+      if (job.changed) showNotice('The combined movie was updated.', { label: 'Reload it', run: () => openCollection(current.c, player.following) });
+      return;
+    }
     if (!current || !current.story || job.storyId !== current.story.id) return;
     if (job.state === 'running' || job.state === 'queued') { if (!player.episode || waiting) showNotice(`${job.message || 'Working…'}`); return; }
     if (job.state === 'error') { showNotice(`The last ${job.kind} failed: ${job.message}`); return; }
@@ -261,6 +272,24 @@ async function openStory(c, s) {
   if (story.setUp && story.status === 'ready' && (!story.fetchedAt || Date.now() - Date.parse(story.fetchedAt) > 864e5)) api.updateStory(c, s).catch(() => {});
 }
 
+async function openCollection(c, dev) {
+  showError(''); showNotice('');
+  await lib.refresh();
+  const col = lib.collections.find((x) => x.slug === c);
+  if (!col) { showView('library'); showError(serverUp === false ? '' : `There's no collection "${c}". It may have been renamed.`); return; }
+  const enc = encodeURIComponent;
+  const meta = { link: `#/c/${enc(c)}${dev ? `/dev/${enc(dev)}` : ''}`, c, collection: col, crumbs: { collection: col.name, story: dev ? `${dev} · all stories` : 'All stories' } };
+  current = meta;
+  let ep;
+  try { ep = await api.collectionEpisode(c); }
+  catch (e) {
+    if (e.status === 404) { waiting = { c }; setCrumbs(meta.crumbs); showView('story'); showNotice(e.message); return; }
+    showError(e.message); return;
+  }
+  showEpisode(ep, meta);
+  if (dev && !follow(dev)) showNotice(`There's no developer named "${dev}" in ${col.name} now; showing everyone.`);
+}
+
 async function openSample(name) {
   showError(''); showNotice('');
   try {
@@ -274,6 +303,8 @@ function route() {
   const h = location.hash || '';
   let m = h.match(/^#\/s\/([^/]+)\/([^/]+)$/);
   if (m) { openStory(decodeURIComponent(m[1]), decodeURIComponent(m[2])); return; }
+  m = h.match(/^#\/c\/([^/]+)(?:\/dev\/(.+))?$/);
+  if (m) { openCollection(decodeURIComponent(m[1]), m[2] ? decodeURIComponent(m[2]) : null); return; }
   m = h.match(/^#\/sample\/([\w-]+)$/);
   if (m || EMBED && !h) { openSample(m ? m[1] : 'opencode'); return; }
   m = h.match(/^#\/r\/([\w.-]+)\/([\w.-]+)/);
@@ -285,18 +316,33 @@ function route() {
 window.addEventListener('hashchange', route);
 
 $('#addCollection').addEventListener('change', () => { $('#newColWrap').hidden = $('#addCollection').value !== '__new'; });
+/** The collection picked in the add box, creating it first when "New collection…" is chosen. */
+async function pickedCollection() {
+  let c = $('#addCollection').value;
+  if (!c || c === '__new') {
+    const name = $('#newColName').value.trim() || (lib.collections.length ? '' : 'My stories');
+    if (!name) { showError('Give the new collection a name.'); $('#newColName').focus(); return null; }
+    const col = (await api.createCollection(name)).collection;
+    await lib.refresh();
+    $('#addCollection').value = col.slug; $('#newColWrap').hidden = true; $('#newColName').value = '';
+    return { slug: col.slug, name: col.name };
+  }
+  const col = lib.collections.find((x) => x.slug === c);
+  return { slug: c, name: col ? col.name : c };
+}
+createOrgUI({
+  form: $('#orgForm'), input: $('#orgName'), list: $('#orgList'), collection: pickedCollection, onError: (m) => showError(m),
+  onAdded: (r) => { lib.refresh(); if (r.skipped.length) showError(`Added ${r.added.length}; ${r.skipped.length} were already in the collection.`); },
+});
 $('#addForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   showError('');
   const url = $('#repoUrl').value.trim();
   if (!url) { showError('Paste a repository link, such as https://github.com/owner/repo, or a folder path on this machine.'); $('#repoUrl').focus(); return; }
   try {
-    let c = $('#addCollection').value;
-    if (!c || c === '__new') {
-      const name = $('#newColName').value.trim() || (lib.collections.length ? '' : 'My stories');
-      if (!name) { showError('Give the new collection a name.'); $('#newColName').focus(); return; }
-      c = (await api.createCollection(name)).collection.slug;
-    }
+    const picked = await pickedCollection();
+    if (!picked) return;
+    const c = picked.slug;
     await api.addStory(c, { url, name: $('#addName').value.trim(), branch: $('#addBranch').value.trim() });
     $('#repoUrl').value = ''; $('#addName').value = ''; $('#addBranch').value = ''; $('#newColName').value = '';
     await lib.refresh();

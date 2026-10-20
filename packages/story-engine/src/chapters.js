@@ -2,7 +2,8 @@
 // slices and then snap to a nearby release tag, so chapters tend to end on
 // real releases ("v1.0.0") instead of arbitrary commits.
 
-const SEMVER_RE = /^v?(\d+)\.(\d+)\.(\d+)$/;
+// a plain release tag, optionally labelled with its repo in a collection ("ky v1.0.0")
+const SEMVER_RE = /(?:^|\s)v?(\d+)\.(\d+)\.(\d+)$/;
 
 /** 3 = major (x.0.0), 2 = minor (x.y.0), 1 = patch, 0 = not a plain release tag. */
 export function releaseWeight(tag) {

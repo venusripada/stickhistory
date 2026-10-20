@@ -14,6 +14,7 @@ import { networkInterfaces } from 'node:os';
 import { chromium } from 'playwright';
 import { buildEpisode, parseGitLog, activeAt, isoOfDay, commitRange, TL } from '../packages/story-engine/src/index.js';
 import { startServer } from '../apps/server/src/server.js';
+import { createGitHub } from '../apps/server/src/github.js';
 import { makeRepo, addCommits, tempDir, removeDir } from '../packages/git-source/test/make-repo.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -27,7 +28,14 @@ const fmtDate = (d) => { const [y, m, dd] = d.split('-'); return `${MON[+m - 1]}
 
 // The real server, with a throwaway library.
 const libRoot = tempDir('cw-e2e-lib-');
-const app = await startServer({ port: 0, library: libRoot, staticDir: DIST, quiet: true });
+// A stand-in for `gh repo list acme`: made-up repos that point at generated local repositories.
+const orgRepos = [makeRepo({ n: 12 }), makeRepo({ n: 11 }), makeRepo({ n: 10 })];
+const fakeGh = async () => JSON.stringify([
+  { name: 'api', nameWithOwner: 'acme/api', sshUrl: orgRepos[0], url: 'https://github.com/acme/api', isArchived: false, isFork: false, isPrivate: true, pushedAt: '2024-06-01T00:00:00Z', diskUsage: 900, description: 'Made-up API service' },
+  { name: 'web', nameWithOwner: 'acme/web', sshUrl: orgRepos[1], url: 'https://github.com/acme/web', isArchived: false, isFork: false, isPrivate: false, pushedAt: '2024-05-01T00:00:00Z', diskUsage: 400, description: '' },
+  { name: 'legacy', nameWithOwner: 'acme/legacy', sshUrl: orgRepos[2], url: 'https://github.com/acme/legacy', isArchived: true, isFork: false, isPrivate: false, pushedAt: '2019-01-01T00:00:00Z', diskUsage: 50, description: 'Old' },
+]);
+const app = await startServer({ port: 0, library: libRoot, staticDir: DIST, quiet: true, github: createGitHub({ run: fakeGh }) });
 const BASE = app.url + '/';
 
 // A plain static server: the same app with no library server behind it.
@@ -41,7 +49,7 @@ const offline = createServer((req, res) => {
 });
 await new Promise((r) => offline.listen(0, '127.0.0.1', r));
 const OFFLINE_BASE = `http://127.0.0.1:${offline.address().port}/`;
-const repos = [];
+const repos = [...orgRepos];
 
 const results = [];
 const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ' — ' + detail : ''}`); };
@@ -209,6 +217,97 @@ try {
     await page.waitForSelector('#errorBox:not([hidden])');
     check('odd links are refused with a reason', /isn't a repository link/.test(await page.textContent('#errorBox')), await page.textContent('#errorBox'));
     check('no page errors in the library', errors.length === 0, errors.join(' | '));
+    await ctx.close();
+  }
+  // 2a. A collection plays all its stories as one movie, and can follow one developer across them.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
+    const post = (p, body) => fetch(`${app.url}/api${p}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json());
+    const one = makeRepo({ n: 20 }), two = makeRepo({ n: 16, start: '2024-02-01' }); repos.push(one, two);
+    await post('/collections', { name: 'Team' });
+    await post('/collections/team/stories', { url: one, name: 'Alpha' });
+    await post('/collections/team/stories', { url: two, name: 'Beta' });
+    const teamReady = async () => {
+      for (let k = 0; k < 300; k++) {
+        const lib = await (await fetch(`${app.url}/api/library`)).json();
+        const t = lib.collections.find((c) => c.slug === 'team');
+        if (t && t.episode && t.episode.status === 'ready' && t.stories.every((s) => s.status === 'ready')) return t;
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      return null;
+    };
+    const team = await teamReady();
+    check('a collection combines its stories into one movie', team && team.episode.repos === 2 && team.episode.commits === 36, team ? JSON.stringify(team.episode) : 'not built');
+
+    await page.goto(BASE);
+    await page.click('[data-collection="team"] a:has-text("Play collection")');
+    await page.waitForFunction(() => document.querySelector('#ovDate').textContent.trim().length > 4);
+    const ep = await page.evaluate(() => fetch('/api/collections/team/episode').then((r) => r.json()));
+    await pauseAndScrub(page, ep.timeline.days - 1);
+    const repoBadges = await page.$$eval('#feedList .repo', (els) => [...new Set(els.map((e) => e.textContent))].sort());
+    check('the collection movie shows which repo each commit is from', (await page.textContent('#crumbStory')) === 'All stories' && repoBadges.join(',') === 'Alpha,Beta', repoBadges.join(', '));
+    await page.locator('#movie').screenshot({ path: join(OUT, '13-collection.png') });
+
+    await page.click('#crumbHome');
+    await page.waitForSelector('#libraryView:not([hidden]) [data-collection="team"]');
+    if (await page.locator('[data-collection="team"] button:has-text("Show developers")').count()) await page.click('[data-collection="team"] button:has-text("Show developers")');
+    await page.waitForSelector('[data-collection="team"] .dev');
+    const devCount = await page.locator('[data-collection="team"] .dev').count();
+    const dev = await page.textContent('[data-collection="team"] .dev .dev-name');
+    await page.screenshot({ path: join(OUT, '14-developers.png'), fullPage: true });
+    await page.click(`[data-collection="team"] .dev-name:has-text("${dev}")`);
+    await page.waitForFunction((d) => document.querySelector('#crumbStory').textContent.startsWith(d) && !document.querySelector('#stageWrap').hidden, dev);
+    await page.waitForTimeout(300);
+    await pauseAndScrub(page, ep.timeline.days - 1);
+    const who = await page.$$eval('#feedList li .who', (els) => [...new Set(els.map((e) => e.firstChild.textContent))]);
+    const devRepos = await page.$$eval('#feedList .repo', (els) => [...new Set(els.map((e) => e.textContent))].sort());
+    check('following a developer shows only their work, across the collection\'s repos', who.length === 1 && who[0] === dev && devRepos.length === 2 && (await page.textContent('#crumbStory')).startsWith(dev), `${who.join(', ')} in ${devRepos.join(', ')}`);
+
+    await page.click('#crumbHome');
+    await page.waitForSelector('#libraryView:not([hidden]) [data-collection="team"]');
+    if (await page.locator('[data-collection="team"] button:has-text("Show developers")').count()) await page.click('[data-collection="team"] button:has-text("Show developers")');
+    await page.waitForSelector('[data-collection="team"] .dev');
+    const second = (await page.$$eval('[data-collection="team"] .dev .dev-name', (els) => els.map((e) => e.textContent)))[1];
+    await page.selectOption(`[data-collection="team"] .dev:has(.dev-name:text-is("${second}")) select`, dev);
+    let after = devCount;
+    for (let k = 0; k < 100 && after === devCount; k++) {
+      await page.waitForTimeout(150);
+      after = await page.locator('[data-collection="team"] .dev').count();
+    }
+    check('merging two developers makes them one', after === devCount - 1, `${devCount} → ${after}`);
+    check('no page errors in collections', errors.length === 0, errors.join(' | '));
+    await ctx.close();
+  }
+  // 2c. Add a GitHub organization: list its repos, tick some, add them in one go.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
+    await fetch(`${app.url}/api/collections`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Acme' }) });
+    await page.goto(BASE);
+    await page.waitForSelector('[data-collection="acme"]');
+    await page.selectOption('#addCollection', 'acme');
+    await page.click('#orgBox summary');
+    await page.fill('#orgName', 'acme');
+    await page.click('#bListOrg');
+    await page.waitForSelector('.org-list li');
+    const ticked = await page.$$eval('.org-list input[type=checkbox]', (els) => els.map((e) => e.checked));
+    check('an org lists its repos with archived ones left unticked', ticked.join(',') === 'true,true,false', ticked.join(','));
+    await page.screenshot({ path: join(OUT, '15-org-checklist.png'), fullPage: true });
+    await page.click('.org-list li:has-text("web") input');
+    check('the add button counts the ticked repos', (await page.textContent('#bAddOrg')) === 'Add 1 repo to Acme', await page.textContent('#bAddOrg'));
+    await page.click('#bAddOrg');
+    await page.waitForSelector('[data-collection="acme"] .story-card a.btn.primary', { timeout: 30000 });
+    const cards = await page.$$eval('[data-collection="acme"] .story-card h4', (els) => els.map((e) => e.textContent));
+    check('adding from an org creates and builds the ticked stories', cards.join(',') === 'api', cards.join(','));
+    await page.fill('#orgName', 'acme');
+    await page.click('#bListOrg');
+    await page.waitForSelector('.org-list li');
+    const already = await page.$$eval('.org-list li', (els) => els.filter((e) => e.textContent.includes('already in Acme')).map((e) => e.querySelector('strong').textContent));
+    check('repos already in the collection are marked', already.join(',') === 'api', already.join(','));
+    check('no page errors adding an org', errors.length === 0, errors.join(' | '));
     await ctx.close();
   }
   // 2b. LAN mode: another machine can watch the library and play stories, but not change anything.

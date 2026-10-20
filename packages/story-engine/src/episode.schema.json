@@ -36,7 +36,8 @@
           "enum": [
             "github-graphql",
             "github-rest",
-            "git-log"
+            "git-log",
+            "collection"
           ]
         },
         "truncated": {
@@ -523,13 +524,27 @@
               },
               "commits": {
                 "type": "integer"
+              },
+              "names": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "collection episodes: every name this person committed under"
+              },
+              "emails": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "collection episodes: every email this person committed under"
               }
             }
           }
         },
         "commits": {
           "type": "array",
-          "description": "Sorted by day. [day, who, kind, files, type, sha, subject, pr, issues]",
+          "description": "Sorted by day. [day, who, kind, files, type, sha, subject, pr, issues] plus repo in collection episodes",
           "items": {
             "type": "array",
             "prefixItems": [
@@ -596,10 +611,16 @@
                   "type": "integer"
                 },
                 "description": "issues closed"
+              },
+              {
+                "type": "integer",
+                "minimum": 0,
+                "description": "collection episodes: index into repos"
               }
             ],
             "minItems": 9,
-            "maxItems": 9
+            "maxItems": 10,
+            "description": "9 slots for one repo; a 10th (repo index) in collection episodes"
           }
         },
         "releases": {
@@ -620,6 +641,27 @@
               },
               "weight": {
                 "type": "integer"
+              }
+            }
+          }
+        },
+        "repos": {
+          "type": "array",
+          "description": "Collection episodes only: the stories (repositories) combined, in order; a commit's 10th slot indexes this list.",
+          "items": {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "url": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             }
           }

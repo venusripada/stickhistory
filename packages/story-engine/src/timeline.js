@@ -2,11 +2,12 @@
 // these, so every number on screen comes from one place. All pure.
 //
 // A timeline commit is a tuple; C names its slots:
-//   [day, who, kind, files, type, sha, subject, pr, issues]
+//   [day, who, kind, files, type, sha, subject, pr, issues]          one repo
+//   [day, who, kind, files, type, sha, subject, pr, issues, repo]    a collection (repo indexes timeline.repos)
 
 import { cleanTitle, scopeOf } from './classify.js';
 
-export const C = { day: 0, who: 1, kind: 2, files: 3, type: 4, sha: 5, s: 6, pr: 7, issues: 8 };
+export const C = { day: 0, who: 1, kind: 2, files: 3, type: 4, sha: 5, s: 6, pr: 7, issues: 8, repo: 9 };
 
 const DAY_MS = 86400000;
 const utc = (iso) => { const [y, m, d] = iso.split('-').map(Number); return Date.UTC(y, m - 1, d); };
@@ -104,13 +105,16 @@ export function chapterAt(ep, day) {
 }
 
 /**
- * A timeline commit as a display record: { i, sha, who, pr, issues, t, s, sc, d, files, type, kind }.
+ * A timeline commit as a display record: { i, sha, who, pr, issues, t, s, sc, d, files, type, kind, repo, repoUrl }.
+ * `repo` and `repoUrl` are set in collection episodes (null for a single repo).
  * `t` is the short title, `s` the subject, `sc` the conventional-commit scope (or null);
  * issue titles are not kept in the timeline.
  */
 export function fixOf(tl, i) {
   const c = tl.commits[i];
+  const repo = tl.repos && c[C.repo] != null ? tl.repos[c[C.repo]] : null;
   return {
+    repo: repo ? repo.name : null, repoUrl: repo ? repo.url : null,
     i, sha: c[C.sha], who: tl.people[c[C.who]].name, kind: c[C.kind],
     pr: c[C.pr], issues: (c[C.issues] || []).map((number) => ({ number, title: null })),
     t: cleanTitle(c[C.s]) || c[C.s], s: c[C.s], sc: scopeOf(c[C.s]) || null, d: isoOfDay(tl, c[C.day]), files: c[C.files], type: c[C.type],
@@ -119,7 +123,31 @@ export function fixOf(tl, i) {
 
 /** Link to the issue a fix closed, else its pull request, else the commit. Null without a repo URL. */
 export function commitUrl(repoUrl, fx) {
+  if (fx.repo != null) repoUrl = fx.repoUrl; // in a collection, each commit links into its own repo
   if (!repoUrl) return null;
   if (fx.issues && fx.issues.length) return `${repoUrl}/issues/${fx.issues[0].number}`;
   return fx.pr ? `${repoUrl}/pull/${fx.pr}` : `${repoUrl}/commit/${fx.sha}`;
+}
+
+/**
+ * Everyone in a timeline who isn't a bot, busiest first: commits, fixes and
+ * features, first and last commit dates, and (in a collection) commits per repo.
+ * Names and emails are included when the episode recorded them.
+ */
+export function peopleSummary(tl) {
+  const rows = tl.people.map((p) => ({ who: 0, name: p.name, bot: p.bot, commits: 0, fixes: 0, feats: 0, first: null, last: null, perRepo: new Map(), names: p.names || [], emails: p.emails || [] }));
+  rows.forEach((r, i) => { r.who = i; });
+  for (const c of tl.commits) {
+    const r = rows[c[C.who]];
+    r.commits++;
+    if (c[C.kind] === 'fix') r.fixes++; else if (c[C.kind] === 'feat') r.feats++;
+    const d = isoOfDay(tl, c[C.day]);
+    if (!r.first || d < r.first) r.first = d;
+    if (!r.last || d > r.last) r.last = d;
+    if (tl.repos && c[C.repo] != null) r.perRepo.set(c[C.repo], (r.perRepo.get(c[C.repo]) || 0) + 1);
+  }
+  return rows.filter((r) => !r.bot && r.commits).map(({ perRepo, ...r }) => ({
+    ...r,
+    repos: [...perRepo.entries()].map(([k, n]) => ({ name: tl.repos[k].name, commits: n })).sort((a, b) => b.commits - a.commits || (a.name < b.name ? -1 : 1)),
+  })).sort((a, b) => b.commits - a.commits || (a.name < b.name ? -1 : 1));
 }

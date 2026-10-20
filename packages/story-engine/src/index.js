@@ -6,13 +6,14 @@ import { kindOf, scopeOf, areaOf, enemyTypeOf, cleanTitle, clip, prFromSubject, 
 import { resolveIdentities } from './identity.js';
 import { splitChapters, releaseWeight } from './chapters.js';
 import { dayOfIso } from './timeline.js';
+export { combineHistories } from './collection.js';
 
 export { parseGitLog, closingIssues, GIT_LOG_COMMAND, GIT_LOG_FORMAT } from './git-log.js';
 export { validateEpisode } from './validate.js';
 export { kindOf, scopeOf, areaOf, enemyTypeOf, cleanTitle, fixScore, isCleanup, ENEMY_TYPES } from './classify.js';
 export { resolveIdentities, isBot } from './identity.js';
 export { splitChapters, chapterCount, releaseWeight } from './chapters.js';
-export { C as TL, secondsPerDay, isoOfDay, dayOfIso, commitRange, weekBuckets, totalsAt, activeAt, chapterAt, fixOf, commitUrl } from './timeline.js';
+export { C as TL, secondsPerDay, isoOfDay, dayOfIso, commitRange, weekBuckets, totalsAt, activeAt, chapterAt, fixOf, commitUrl, peopleSummary } from './timeline.js';
 
 export const SCHEMA_VERSION = 2;
 export const ENGINE_VERSION = '0.3.0';
@@ -42,6 +43,8 @@ const scopeLabel = (sc) => (ACRONYMS.has(sc) ? sc.toUpperCase() : sc.split(/[-_/
  * @param {import('./types.js').History} history
  * @param {object} [opts]
  * @param {Record<string,string[]>} [opts.aliases]  Merge authors by hand: { "Dax": ["Dax Raad", "mail@thdxr.com"] }.
+ * @param {string[]} [opts.separate]     Full names not to merge just because they match.
+ * @param {boolean} [opts.identities]    List each person's names and emails in timeline.people (collections).
  * @param {number} [opts.chapters]        Force a chapter count (default grows with history size, 3–9).
  * @param {string[]} [opts.titles]        Override chapter titles by position.
  * @param {number} [opts.maxFixFiles=120] Fixes touching more files than this are treated as mass edits and never fought.
@@ -71,7 +74,7 @@ export function buildEpisode(history, opts = {}) {
     const kind = merge ? 'merge' : kindOf(message, labels);
     return {
       sha: c.sha, d: String(c.date).slice(0, 10), message, author: c.author || {}, files: c.files ?? null, paths,
-      prNumber: pr ? pr.number : prFromSubject(message), issues, labels, scope, area, kind,
+      prNumber: pr ? pr.number : prFromSubject(message), issues, labels, scope, area, kind, repo: c.repo ?? null,
       type: enemyTypeOf(message, area, labels, scope),
       tags: [...(c.tags || []), ...(tagMap.get(c.sha) || [])],
       order: newestFirst ? -idx : idx,
@@ -80,7 +83,7 @@ export function buildEpisode(history, opts = {}) {
   if (commits.length < 10) throw new Error(`Only ${commits.length} commits found. A replay needs at least 10.`);
   commits.sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : a.order - b.order));
 
-  const ids = resolveIdentities(commits, { aliases, repoName, preferLogin: history.source !== 'git-log' });
+  const ids = resolveIdentities(commits, { aliases, separate: opts.separate, repoName, preferLogin: !['git-log', 'collection'].includes(history.source) });
   for (const c of commits) { const p = ids.personOf(c); c.who = p.name; c.bot = p.bot; c.person = p; }
 
   const isFixCandidate = (c) => c.kind === 'fix' && !c.bot && (c.files == null || (c.files > 0 && c.files <= maxFixFiles));
@@ -191,7 +194,11 @@ export function buildEpisode(history, opts = {}) {
   const peopleMap = new Map();
   for (const c of commits) {
     let p = peopleMap.get(c.who);
-    if (!p) { p = { name: c.who, login: c.person.login || null, avatarUrl: c.person.avatarUrl || null, bot: !!c.bot, commits: 0 }; peopleMap.set(c.who, p); }
+    if (!p) {
+      p = { name: c.who, login: c.person.login || null, avatarUrl: c.person.avatarUrl || null, bot: !!c.bot, commits: 0 };
+      if (opts.identities) { p.names = c.person.names; p.emails = c.person.emails; }
+      peopleMap.set(c.who, p);
+    }
     p.commits++;
   }
   const people = [...peopleMap.values()].sort((a, b) => b.commits - a.commits || (a.name < b.name ? -1 : 1));
@@ -201,6 +208,7 @@ export function buildEpisode(history, opts = {}) {
     if (seenTags.has(tag)) continue; seenTags.add(tag);
     releases.push({ tag, day: dayOfIso(tlBase, c.d), weight: releaseWeight(tag) });
   }
+  const multi = Array.isArray(history.repos) && history.repos.length > 0;
   const timeline = {
     start: tlBase.start,
     end: commits[commits.length - 1].d,
@@ -209,9 +217,11 @@ export function buildEpisode(history, opts = {}) {
     commits: commits.map((c) => [
       dayOfIso(tlBase, c.d), whoIdx.get(c.who), c.kind, c.files, c.kind === 'fix' ? c.type : null,
       String(c.sha).slice(0, 12), clip(c.message, 100), c.prNumber ?? null, c.issues.length ? c.issues.map((i) => i.number) : null,
+      ...(multi ? [c.repo ?? 0] : []),
     ]),
     releases,
   };
+  if (multi) timeline.repos = history.repos.map((r) => ({ name: r.name, url: r.url ?? null }));
 
   // ---- summary ----
   const count = (f) => commits.filter(f).length;

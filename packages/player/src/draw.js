@@ -380,7 +380,7 @@ export function makeDraw(E) {
       const lx = bx + bw * .47, lw = bw * .5;
       ctx.font = `700 14px ${FM}`; ctx.fillStyle = main; ctx.textAlign = 'left';
       wrapLines(fixLabel(fx, 80), lw, 2).forEach((line, i) => ctx.fillText(line, lx, 26 + i * 17));
-      ctx.font = `11px ${FM}`; ctx.fillStyle = C.muted; ctx.fillText(trunc(`${fixKind(fx)}${num ? ' #' + num : ''} · ${ETYPES[e.type].name} · ${fmtDate(fx.d)}`, Math.floor(lw / 6.8)), lx, 66);
+      ctx.font = `11px ${FM}`; ctx.fillStyle = C.muted; ctx.fillText(trunc(`${fixKind(fx)}${num ? ' #' + num : ''}${fx.repo ? ' · ' + fx.repo : ''} · ${ETYPES[e.type].name} · ${fmtDate(fx.d)}`, Math.floor(lw / 6.8)), lx, 66);
       ctx.restore();
     }
   }

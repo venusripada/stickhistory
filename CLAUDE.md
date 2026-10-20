@@ -46,6 +46,7 @@ repo link ──apps/server job──▶ clone ──readHistory()──▶ Hist
   - `validate.js`: `validateEpisode()`.
   - `types.js`: JSDoc for History and Fix.
   - `episode.schema.json`: the Episode contract.
+- `packages/story-engine/src/collection.js`: `combineHistories()` joins a collection's histories; collection episodes have `timeline.repos` and a 10th tuple slot (repo), and `peopleSummary()` lists developers with per-repo counts.
 - `packages/git-source` (Node only): `checkGitUrl`, `cloneRepo` (bare, blobless), `fetchRepo`, `headOf`, `readHistory`. Git runs with an allowed-protocol list and no prompts. `test/make-repo.js` builds throwaway repos for tests.
 - `apps/server`: the local library server (127.0.0.1 only, no new dependencies). `library.js` is the folder tree (folders are the database), `jobs.js` runs one build/update/reread at a time, `api.js` the routes and local-only checks, `server.js` the entry point and server-sent events.
 - `packages/github-fetcher` (now used only by the CLI's `github` command): `fetchHistory()` uses GraphQL with a token (commits + PR + labels + closing issues + file counts + tags) and REST without one (60 requests an hour, no files or issues). `http.js` holds retries, rate limits and readable errors. Errors are `GitHubError` with a `code` (`not-found`, `rate-limit`, `bad-token`, `network`, …).

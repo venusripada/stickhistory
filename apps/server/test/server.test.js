@@ -213,3 +213,144 @@ describe('LAN mode: other machines can watch, only this machine can change', asy
     if (lanIp) await expect(fetch(`http://${lanIp}:${srv.port}/api/library`)).rejects.toThrow();
   });
 });
+
+describe('collection movies', async () => {
+  let col, colRoot;
+  const dirs2 = [];
+  const api2 = async (method, path, body) => {
+    const res = await fetch(col.url + path, { method, headers: body !== undefined ? { 'content-type': 'application/json' } : {}, body: body !== undefined ? JSON.stringify(body) : undefined });
+    const text = await res.text(); let json = null; try { json = JSON.parse(text); } catch { /* not json */ }
+    return { status: res.status, json };
+  };
+  const collectionReady = async (c, timeout = 30000) => {
+    const t0 = Date.now();
+    for (;;) {
+      const lib = (await api2('GET', '/api/library')).json;
+      const info = lib.collections.find((x) => x.slug === c);
+      if (info && info.episode && ['ready', 'error'].includes(info.episode.status) && !info.stories.some((s) => ['queued', 'cloning', 'building'].includes(s.status))) return info;
+      if (Date.now() - t0 > timeout) throw new Error(`collection ${c} not built: ${JSON.stringify(info && info.episode)}`);
+      await new Promise((r) => setTimeout(r, 80));
+    }
+  };
+  beforeAll(async () => {
+    colRoot = tempDir('cw-col-'); dirs2.push(colRoot);
+    col = await startServer({ port: 0, library: colRoot, quiet: true });
+    const a = makeRepo({ n: 14 }); const b = makeRepo({ n: 12, start: '2024-02-01' }); dirs2.push(a, b);
+    await api2('POST', '/api/collections', { name: 'Team' });
+    await api2('POST', '/api/collections/team/stories', { url: a, name: 'Alpha' });
+    await api2('POST', '/api/collections/team/stories', { url: b, name: 'Beta' });
+  });
+  afterAll(async () => { await col.close(); dirs2.forEach(removeDir); });
+
+  it('builds one movie from all the stories in the collection', async () => {
+    const info = await collectionReady('team');
+    expect(info.episode).toMatchObject({ status: 'ready', commits: 26, repos: 2 });
+    expect(existsSync(join(colRoot, 'team', 'collection-episode.json'))).toBe(true);
+    const ep = (await api2('GET', '/api/collections/team/episode')).json;
+    expect(ep.timeline.repos.map((r) => r.name)).toEqual(['Alpha', 'Beta']);
+    const ada = ep.timeline.people.find((p) => p.names.includes('Ada Test'));
+    const repos = new Set(ep.timeline.commits.filter((c) => ep.timeline.people[c[1]] === ada).map((c) => c[9]));
+    expect([...repos].sort()).toEqual([0, 1]);
+    expect(ep.timeline.people.filter((p) => p.names.includes('Ada Test'))).toHaveLength(1);
+  });
+  it('rebuilds when a story in it changes', async () => {
+    const before = (await collectionReady('team')).episode.builtAt;
+    await api2('PATCH', '/api/collections/team/stories/beta', { name: 'Beta Two' });
+    await new Promise((r) => setTimeout(r, 150));
+    const info = await collectionReady('team');
+    expect(info.episode.builtAt).not.toBe(before);
+    const ep = (await api2('GET', '/api/collections/team/episode')).json;
+    expect(ep.timeline.repos.map((r) => r.name)).toEqual(['Alpha', 'Beta Two']);
+  });
+  it('merges two developers the owner says are the same, and separates them again', async () => {
+    let ep = (await api2('GET', '/api/collections/team/episode')).json;
+    const [a, b] = ep.timeline.people.filter((p) => !p.bot).map((p) => p.name);
+    const r = await api2('POST', '/api/collections/team/people', { action: 'merge', names: [a, b] });
+    expect(r.status).toBe(202);
+    await new Promise((res) => setTimeout(res, 150));
+    await collectionReady('team');
+    ep = (await api2('GET', '/api/collections/team/episode')).json;
+    const merged = ep.timeline.people.find((p) => p.name === a);
+    expect(merged.emails.length).toBeGreaterThanOrEqual(2);
+    expect(ep.timeline.people.some((p) => p.name === b)).toBe(false);
+    const saved = JSON.parse(readFileSync(join(colRoot, 'team', 'collection.json'), 'utf8'));
+    expect(saved.people.merge[0].name).toBe(a);
+    await api2('POST', '/api/collections/team/people', { action: 'separate', name: a });
+    await new Promise((res) => setTimeout(res, 150));
+    await collectionReady('team');
+    ep = (await api2('GET', '/api/collections/team/episode')).json;
+    expect(ep.timeline.people.some((p) => p.name === b)).toBe(true);
+  });
+  it('explains an unknown developer', async () => {
+    const r = await api2('POST', '/api/collections/team/people', { action: 'merge', names: ['Nobody', 'Ada'] });
+    expect(r.status).toBe(400);
+    expect(r.json.error).toMatch(/Nobody/);
+  });
+});
+
+describe('adding a GitHub organization', async () => {
+  const { createGitHub } = await import('../src/github.js');
+  let org, orgRoot;
+  const dirs3 = [];
+  const repoA = makeRepo({ n: 11 }), repoB = makeRepo({ n: 12 }), repoC = makeRepo({ n: 10 });
+  dirs3.push(repoA, repoB, repoC);
+  const listing = [
+    { name: 'api', nameWithOwner: 'acme/api', sshUrl: repoA, url: 'https://github.com/acme/api', isArchived: false, isFork: false, isPrivate: true, pushedAt: '2024-05-01T00:00:00Z', diskUsage: 1200, description: 'The API' },
+    { name: 'web', nameWithOwner: 'acme/web', sshUrl: repoB, url: 'https://github.com/acme/web', isArchived: false, isFork: false, isPrivate: false, pushedAt: '2024-06-01T00:00:00Z', diskUsage: 800, description: '' },
+    { name: 'old', nameWithOwner: 'acme/old', sshUrl: repoC, url: 'https://github.com/acme/old', isArchived: true, isFork: false, isPrivate: false, pushedAt: '2020-01-01T00:00:00Z', diskUsage: 10, description: null },
+  ];
+  const calls = [];
+  const fakeGh = async (args) => {
+    calls.push(args);
+    if (args[2] === 'nobody') { const e = new Error('gh failed'); e.stderr = 'GraphQL: Could not resolve to a Repository Owner with the login of \'nobody\'.'; throw e; }
+    return JSON.stringify(listing);
+  };
+  const call3 = async (method, path, body) => {
+    const res = await fetch(org.url + path, { method, headers: body !== undefined ? { 'content-type': 'application/json' } : {}, body: body !== undefined ? JSON.stringify(body) : undefined });
+    return { status: res.status, json: await res.json().catch(() => null) };
+  };
+  beforeAll(async () => {
+    orgRoot = tempDir('cw-org-'); dirs3.push(orgRoot);
+    org = await startServer({ port: 0, library: orgRoot, quiet: true, github: createGitHub({ run: fakeGh }) });
+    await call3('POST', '/api/collections', { name: 'Acme' });
+  });
+  afterAll(async () => { await org.close(); dirs3.forEach(removeDir); });
+
+  it('lists an org\'s repos, newest push first, with what is already in the collection', async () => {
+    const r = await call3('GET', '/api/orgs/acme/repos?collection=acme');
+    expect(r.status).toBe(200);
+    expect(calls[0].slice(0, 3)).toEqual(['repo', 'list', 'acme']);
+    expect(r.json.repos.map((x) => x.name)).toEqual(['web', 'api', 'old']);
+    expect(r.json.repos.find((x) => x.name === 'old')).toMatchObject({ archived: true, inCollection: false });
+    expect(r.json.repos.find((x) => x.name === 'api')).toMatchObject({ private: true, webUrl: 'https://github.com/acme/api', sizeKb: 1200 });
+  });
+  it('adds the chosen repos as stories and builds them one at a time', async () => {
+    const pick = listing.filter((x) => !x.isArchived).map((x) => ({ url: x.sshUrl, name: x.name, webUrl: x.url }));
+    const r = await call3('POST', '/api/collections/acme/stories/batch', { repos: pick });
+    expect(r.status).toBe(202);
+    expect(r.json.added).toEqual(['api', 'web']);
+    for (let k = 0; k < 200; k++) {
+      const lib = (await call3('GET', '/api/library')).json;
+      const col = lib.collections.find((c) => c.slug === 'acme');
+      if (col.stories.every((s) => s.status === 'ready') && col.episode && col.episode.status === 'ready') break;
+      await new Promise((res) => setTimeout(res, 80));
+    }
+    const col = (await call3('GET', '/api/library')).json.collections.find((c) => c.slug === 'acme');
+    expect(col.stories.map((s) => [s.slug, s.status, s.webUrl])).toEqual([['api', 'ready', 'https://github.com/acme/api'], ['web', 'ready', 'https://github.com/acme/web']]);
+    expect(col.episode).toMatchObject({ status: 'ready', repos: 2 });
+  });
+  it('marks and skips repos that are already in the collection', async () => {
+    const list = (await call3('GET', '/api/orgs/acme/repos?collection=acme')).json.repos;
+    expect(list.filter((x) => x.inCollection).map((x) => x.name).sort()).toEqual(['api', 'web']);
+    const r = await call3('POST', '/api/collections/acme/stories/batch', { repos: [{ url: listing[1].sshUrl, name: 'web', webUrl: listing[1].url }] });
+    expect(r.json).toMatchObject({ added: [], skipped: ['web'] });
+  });
+  it('explains an unknown org and a missing gh in plain words', async () => {
+    const r = await call3('GET', '/api/orgs/nobody/repos');
+    expect(r.status).toBe(404);
+    expect(r.json.error).toMatch(/no organization or user named "nobody"/);
+    expect((await call3('GET', '/api/orgs/bad%20name/repos')).status).toBe(400);
+    const missing = createGitHub({ run: async () => { const e = new Error('spawn gh ENOENT'); e.code = 'ENOENT'; throw e; } });
+    await expect(missing.listRepos('acme')).rejects.toThrow(/needs the GitHub CLI. Install it/);
+  });
+});

@@ -44,7 +44,8 @@ Collections and stories are folders, and the folders are the whole database:
 ```
 library/                         ($COMMIT_WARS_LIBRARY overrides; git-ignored)
   open-source-ai/                a collection
-    collection.json              name, description, story order
+    collection.json              name, description, story order, merge/separate choices
+    collection-episode.json      all of the collection's stories as one movie
     opencode/                    a story
       story.json                 repo URL, branch, aliases, titles, status, last fetch and build
       repo.git/                  bare, blobless clone
@@ -53,9 +54,12 @@ library/                         ($COMMIT_WARS_LIBRARY overrides; git-ignored)
 ```
 
 - **Add a story:** paste any link this machine's `git` can clone (https, ssh, GitHub or not) or a local folder path. Private repos work when `git clone` works for them here; the app asks for no tokens.
+- **Add a GitHub organization:** type an org (or user) name and press **List repos**. The server lists its repositories with the GitHub CLI (`gh`) signed in on this machine and shows a checklist (last push, size, private, fork, archived). Active repos start ticked; repos already in the collection are marked. **Add N repos** creates one story per ticked repo, using its ssh link, and builds them one at a time. It's a one-time import, and only available on this machine.
 - **Update** (per story, or **Update all** per collection) fetches and rebuilds only when there are new commits. Opening a story that hasn't been fetched for a day checks in the background and offers the newer version.
 - **Rename**, **Move** and **Delete** change the folders. Folders changed by hand show up on the next refresh.
 - Progress streams to the page live while a story clones and builds.
+- **Play collection** plays all of a collection's stories as one movie, built from their saved histories (no fetching), with each commit's repo shown in the feed, duel banners and captions. It's rebuilt whenever a story in the collection changes.
+- **Show developers** lists everyone across the collection's repos with their commits, fixes and features per repo. Click a name to watch only their work across those repos (`#/c/collection/dev/name`); collections never mix. The same person is recognized across repos by email, GitHub noreply login or exact full name; **Same person as…** merges two entries and **Separate** undoes a merge or stops joining people who only share a name. Those choices are saved in `collection.json`.
 
 ## How a repository becomes a fight
 

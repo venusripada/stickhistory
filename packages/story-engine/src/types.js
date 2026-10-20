@@ -9,13 +9,14 @@
  * @typedef {object} History
  * @property {1} historyVersion
  * @property {{ owner: string|null, name: string, url: string|null, defaultBranch: string|null }} repo
- * @property {'github-graphql'|'github-rest'|'git-log'} source
+ * @property {'github-graphql'|'github-rest'|'git-log'|'collection'} source
  * @property {boolean} truncated     True when only the newest `commitLimit` commits were fetched.
  * @property {number|null} commitLimit
  * @property {number|null} totalCommits  Total commits on the branch when the source knows it.
  * @property {string} fetchedAt      ISO timestamp.
  * @property {HistoryCommit[]} commits  Any order; the engine sorts by date.
  * @property {{ name: string, sha: string }[]} [tags]  Tags pointing at commits (also allowed inline on commits).
+ * @property {{ name: string, url: string|null }[]} [repos]  Collections only: the combined repositories (see combineHistories).
  */
 
 /**
@@ -30,6 +31,7 @@
  * @property {HistoryIssue[]} [issues] Issues the commit message closes ("Fixes #12"), used when there is no PR data.
  * @property {string[]} [tags]        Tag names pointing at this commit.
  * @property {number} [parents]       Parent count; 2+ means a merge commit.
+ * @property {number} [repo]          Collections only: index into History.repos.
  */
 
 /**
@@ -73,6 +75,7 @@
  * @property {{ name: string, login: string|null, avatarUrl: string|null, bot: boolean, commits: number }[]} people  Busiest first.
  * @property {TimelineCommit[]} commits  Sorted by day.
  * @property {{ tag: string, day: number, weight: number }[]} releases
+ * @property {{ name: string, url: string|null }[]} [repos]  Collection episodes only.
  */
 
 /**

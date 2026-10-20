@@ -65,6 +65,7 @@ export function createMovieUI({ player, movie, screen, onFollow }) {
       const li = document.createElement('li'); li.className = `k-${fx.kind}${c[TL.day] === d ? ' today' : ''}`;
       const t = document.createElement('time'); t.dateTime = fx.d; t.textContent = fmtShort(fx.d);
       const w = document.createElement('span'); w.className = 'who'; w.style.color = player.colorVarOf(fx.who); w.textContent = fx.who;
+      if (fx.repo) { const r = document.createElement('span'); r.className = 'repo'; r.textContent = fx.repo; w.append(' ', r); }
       const s = document.createElement('span'); s.className = 's';
       const k = document.createElement('span'); k.className = 'k'; k.textContent = fx.kind === 'other' ? '' : fx.kind;
       s.append(k, fx.s);

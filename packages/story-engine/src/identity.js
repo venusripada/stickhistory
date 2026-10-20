@@ -13,7 +13,7 @@ export function loginFromEmail(email) {
 
 export function isBot(author, repoName) {
   const name = author.name || '', email = author.email || '', login = author.login || '';
-  if (BOT_NAME_RE.test(name) || BOT_NAME_RE.test(login) || BOT_EMAIL_RE.test(email)) return true;
+  if (author.bot === true || BOT_NAME_RE.test(name) || BOT_NAME_RE.test(login) || BOT_EMAIL_RE.test(email)) return true;
   // Release automation often commits as the project itself ("opencode <opencode@…>").
   if (repoName && name.toLowerCase() === repoName.toLowerCase()) return true;
   return false;
@@ -34,11 +34,15 @@ class UnionFind {
  * `{ "Dax": ["Dax Raad", "mail@thdxr.com", "thdxr"] }`.
  *
  * @param {{author:{name:string|null,email:string|null,login:string|null,avatarUrl?:string|null}}[]} commits
- * @param {{ aliases?: Record<string,string[]>, repoName?: string, preferLogin?: boolean }} [opts]
- * @returns {{ personOf: (commit:any)=>{ key:string, name:string, login:string|null, avatarUrl:string|null, bot:boolean } }}
+ * `separate` lists full names that must not be merged just because they match
+ * (people who share a name); they still merge by email or login.
+ *
+ * @param {{ aliases?: Record<string,string[]>, separate?: string[], repoName?: string, preferLogin?: boolean }} [opts]
+ * @returns {{ personOf: (commit:any)=>{ key:string, name:string, login:string|null, avatarUrl:string|null, bot:boolean, names:string[], emails:string[] } }}
  */
 export function resolveIdentities(commits, opts = {}) {
   const { aliases = {}, repoName = '', preferLogin = true } = opts;
+  const separate = new Set((opts.separate || []).map((n) => String(n).toLowerCase().trim()));
   const uf = new UnionFind();
   const aliasOf = new Map();
   for (const [canon, list] of Object.entries(aliases)) {
@@ -49,7 +53,8 @@ export function resolveIdentities(commits, opts = {}) {
     const login = (a.login || loginFromEmail(a.email) || '').toLowerCase();
     if (login) ks.push('l:' + login);
     if (a.email && !BOT_EMAIL_RE.test(a.email)) ks.push('e:' + a.email.toLowerCase());
-    if (a.name) ks.push('n:' + a.name.toLowerCase().trim());
+    if (a.name && !separate.has(a.name.toLowerCase().trim())) ks.push('n:' + a.name.toLowerCase().trim());
+    if (!ks.length && a.name) ks.push('s:' + a.name.toLowerCase().trim() + '|' + String(a.email || '').toLowerCase());
     for (const v of [a.name, a.email, a.login, login]) {
       const c = v && aliasOf.get(String(v).toLowerCase());
       if (c) ks.push('a:' + c.toLowerCase());
@@ -66,7 +71,8 @@ export function resolveIdentities(commits, opts = {}) {
     const a = c.author;
     const root = uf.find(keysOf(a)[0]);
     let r = info.get(root);
-    if (!r) { r = { names: new Map(), logins: new Map(), avatar: null, alias: null, bot: 0, total: 0 }; info.set(root, r); }
+    if (!r) { r = { names: new Map(), logins: new Map(), emails: new Set(), avatar: null, alias: null, bot: 0, total: 0 }; info.set(root, r); }
+    if (a.email) r.emails.add(a.email);
     r.total++;
     if (a.name) r.names.set(a.name, (r.names.get(a.name) || 0) + 1);
     const login = a.login || loginFromEmail(a.email);
@@ -80,7 +86,7 @@ export function resolveIdentities(commits, opts = {}) {
   for (const [root, r] of info) {
     const login = top(r.logins);
     const fullName = top(r.names) || login || 'unknown';
-    people.set(root, { key: root, fullName, login, avatarUrl: r.avatar, alias: r.alias, bot: r.bot > r.total / 2, name: '' });
+    people.set(root, { key: root, fullName, login, avatarUrl: r.avatar, alias: r.alias, bot: r.bot > r.total / 2, name: '', names: [...r.names.keys()].sort(), emails: [...r.emails].sort() });
   }
   // Display names: an alias wins; then the GitHub login when we have real logins
   // (API mode); otherwise the first name, unless two humans share it.

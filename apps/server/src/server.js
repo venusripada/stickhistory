@@ -16,6 +16,7 @@ import { networkInterfaces } from 'node:os';
 import { createLibrary } from './library.js';
 import { createJobs } from './jobs.js';
 import { createApi } from './api.js';
+import { createGitHub } from './github.js';
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2' };
 
@@ -48,7 +49,7 @@ function serveStatic(dir, req, res) {
 }
 
 /**
- * @param {{ port?: number, library?: string, staticDir?: string|null, quiet?: boolean, lan?: boolean }} [o]
+ * @param {{ port?: number, library?: string, staticDir?: string|null, quiet?: boolean, lan?: boolean, github?: any }} [o]  `github` replaces the gh-based org lister (tests).
  * @returns {Promise<{ url: string, port: number, close: () => Promise<void> }>}
  */
 export async function startServer(o = {}) {
@@ -56,7 +57,7 @@ export async function startServer(o = {}) {
   const library = createLibrary(root);
   const events = createEvents();
   const jobs = createJobs({ library, emit: (type, data) => events.send(type, data) });
-  const api = createApi({ library, jobs, events, lan: !!o.lan });
+  const api = createApi({ library, jobs, events, lan: !!o.lan, github: o.github || createGitHub() });
   const server = createServer(async (req, res) => {
     if (await api(req, res)) return;
     if (o.staticDir) serveStatic(o.staticDir, req, res);
