@@ -128,3 +128,26 @@ export function commitUrl(repoUrl, fx) {
   if (fx.issues && fx.issues.length) return `${repoUrl}/issues/${fx.issues[0].number}`;
   return fx.pr ? `${repoUrl}/pull/${fx.pr}` : `${repoUrl}/commit/${fx.sha}`;
 }
+
+/**
+ * Everyone in a timeline who isn't a bot, busiest first: commits, fixes and
+ * features, first and last commit dates, and (in a collection) commits per repo.
+ * Names and emails are included when the episode recorded them.
+ */
+export function peopleSummary(tl) {
+  const rows = tl.people.map((p) => ({ who: 0, name: p.name, bot: p.bot, commits: 0, fixes: 0, feats: 0, first: null, last: null, perRepo: new Map(), names: p.names || [], emails: p.emails || [] }));
+  rows.forEach((r, i) => { r.who = i; });
+  for (const c of tl.commits) {
+    const r = rows[c[C.who]];
+    r.commits++;
+    if (c[C.kind] === 'fix') r.fixes++; else if (c[C.kind] === 'feat') r.feats++;
+    const d = isoOfDay(tl, c[C.day]);
+    if (!r.first || d < r.first) r.first = d;
+    if (!r.last || d > r.last) r.last = d;
+    if (tl.repos && c[C.repo] != null) r.perRepo.set(c[C.repo], (r.perRepo.get(c[C.repo]) || 0) + 1);
+  }
+  return rows.filter((r) => !r.bot && r.commits).map(({ perRepo, ...r }) => ({
+    ...r,
+    repos: [...perRepo.entries()].map(([k, n]) => ({ name: tl.repos[k].name, commits: n })).sort((a, b) => b.commits - a.commits || (a.name < b.name ? -1 : 1)),
+  })).sort((a, b) => b.commits - a.commits || (a.name < b.name ? -1 : 1));
+}

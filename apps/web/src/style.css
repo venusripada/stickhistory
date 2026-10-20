@@ -110,6 +110,7 @@ a { color: inherit; }
 .ov-feed .k-refactor .k { color: var(--c3); }
 .ov-feed a { color: var(--ink); text-underline-offset: 2px; }
 .ov-feed .meta { color: var(--muted); margin-left: 4px; }
+.ov-feed .repo { color: var(--ink); background: var(--paper-2); border: 1px solid var(--rule); border-radius: 4px; padding: 0 4px; font-weight: 400; }
 
 /* timeline + controls */
 .bar { display: grid; gap: 6px; padding: 6px 10px 8px; border-top: 2px solid var(--ink); background: var(--paper-2); }
@@ -285,6 +286,17 @@ a.btn { text-decoration: none; }
 .crumbs { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; font-family: var(--f-mono); font-size: 0.8rem; color: var(--muted); }
 .crumbs strong { color: var(--ink); }
 .notice { padding: 8px 12px; border-left: 4px solid var(--orb); background: var(--paper-2); border-radius: 0 8px 8px 0; font-size: 0.9rem; }
+
+/* a collection's combined movie and its developers */
+.col-movie { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.devs { border: 1.5px solid var(--rule); border-radius: 8px; padding: 8px 12px; background: var(--paper); }
+.dev-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 420px; overflow-y: auto; }
+.dev { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 12px; align-items: baseline; padding: 6px 0; border-bottom: 1px dashed var(--rule); }
+.dev-name { font-family: var(--f-display); font-weight: 700; font-size: 1.2rem; }
+.dev .actions { grid-column: 2; grid-row: 1 / span 3; margin: 0; align-self: center; }
+.dev .actions .move { max-width: 15em; }
+.dev-stats, .dev-repos, .dev-ids { grid-column: 1; font-family: var(--f-mono); font-size: 0.7rem; color: var(--muted); overflow-wrap: anywhere; }
+.dev-repos { color: var(--ink); }
 
 /* watch-only (another machine on the network): no way to change the library */
 .watch-note { display: none; }

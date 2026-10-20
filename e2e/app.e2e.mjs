@@ -211,6 +211,67 @@ try {
     check('no page errors in the library', errors.length === 0, errors.join(' | '));
     await ctx.close();
   }
+  // 2a. A collection plays all its stories as one movie, and can follow one developer across them.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
+    const post = (p, body) => fetch(`${app.url}/api${p}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json());
+    const one = makeRepo({ n: 20 }), two = makeRepo({ n: 16, start: '2024-02-01' }); repos.push(one, two);
+    await post('/collections', { name: 'Team' });
+    await post('/collections/team/stories', { url: one, name: 'Alpha' });
+    await post('/collections/team/stories', { url: two, name: 'Beta' });
+    const teamReady = async () => {
+      for (let k = 0; k < 300; k++) {
+        const lib = await (await fetch(`${app.url}/api/library`)).json();
+        const t = lib.collections.find((c) => c.slug === 'team');
+        if (t && t.episode && t.episode.status === 'ready' && t.stories.every((s) => s.status === 'ready')) return t;
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      return null;
+    };
+    const team = await teamReady();
+    check('a collection combines its stories into one movie', team && team.episode.repos === 2 && team.episode.commits === 36, team ? JSON.stringify(team.episode) : 'not built');
+
+    await page.goto(BASE);
+    await page.click('[data-collection="team"] a:has-text("Play collection")');
+    await page.waitForFunction(() => document.querySelector('#ovDate').textContent.trim().length > 4);
+    const ep = await page.evaluate(() => fetch('/api/collections/team/episode').then((r) => r.json()));
+    await pauseAndScrub(page, ep.timeline.days - 1);
+    const repoBadges = await page.$$eval('#feedList .repo', (els) => [...new Set(els.map((e) => e.textContent))].sort());
+    check('the collection movie shows which repo each commit is from', (await page.textContent('#crumbStory')) === 'All stories' && repoBadges.join(',') === 'Alpha,Beta', repoBadges.join(', '));
+    await page.locator('#movie').screenshot({ path: join(OUT, '13-collection.png') });
+
+    await page.click('#crumbHome');
+    await page.waitForSelector('#libraryView:not([hidden]) [data-collection="team"]');
+    if (await page.locator('[data-collection="team"] button:has-text("Show developers")').count()) await page.click('[data-collection="team"] button:has-text("Show developers")');
+    await page.waitForSelector('[data-collection="team"] .dev');
+    const devCount = await page.locator('[data-collection="team"] .dev').count();
+    const dev = await page.textContent('[data-collection="team"] .dev .dev-name');
+    await page.screenshot({ path: join(OUT, '14-developers.png'), fullPage: true });
+    await page.click(`[data-collection="team"] .dev-name:has-text("${dev}")`);
+    await page.waitForFunction((d) => document.querySelector('#crumbStory').textContent.startsWith(d) && !document.querySelector('#stageWrap').hidden, dev);
+    await page.waitForTimeout(300);
+    await pauseAndScrub(page, ep.timeline.days - 1);
+    const who = await page.$$eval('#feedList li .who', (els) => [...new Set(els.map((e) => e.firstChild.textContent))]);
+    const devRepos = await page.$$eval('#feedList .repo', (els) => [...new Set(els.map((e) => e.textContent))].sort());
+    check('following a developer shows only their work, across the collection\'s repos', who.length === 1 && who[0] === dev && devRepos.length === 2 && (await page.textContent('#crumbStory')).startsWith(dev), `${who.join(', ')} in ${devRepos.join(', ')}`);
+
+    await page.click('#crumbHome');
+    await page.waitForSelector('#libraryView:not([hidden]) [data-collection="team"]');
+    if (await page.locator('[data-collection="team"] button:has-text("Show developers")').count()) await page.click('[data-collection="team"] button:has-text("Show developers")');
+    await page.waitForSelector('[data-collection="team"] .dev');
+    const second = (await page.$$eval('[data-collection="team"] .dev .dev-name', (els) => els.map((e) => e.textContent)))[1];
+    await page.selectOption(`[data-collection="team"] .dev:has(.dev-name:text-is("${second}")) select`, dev);
+    let after = devCount;
+    for (let k = 0; k < 100 && after === devCount; k++) {
+      await page.waitForTimeout(150);
+      after = await page.locator('[data-collection="team"] .dev').count();
+    }
+    check('merging two developers makes them one', after === devCount - 1, `${devCount} → ${after}`);
+    check('no page errors in collections', errors.length === 0, errors.join(' | '));
+    await ctx.close();
+  }
   // 2b. LAN mode: another machine can watch the library and play stories, but not change anything.
   {
     const lanIp = Object.values(networkInterfaces()).flat().find((a) => a && a.family === 'IPv4' && !a.internal)?.address;

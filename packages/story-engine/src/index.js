@@ -13,7 +13,7 @@ export { validateEpisode } from './validate.js';
 export { kindOf, scopeOf, areaOf, enemyTypeOf, cleanTitle, fixScore, isCleanup, ENEMY_TYPES } from './classify.js';
 export { resolveIdentities, isBot } from './identity.js';
 export { splitChapters, chapterCount, releaseWeight } from './chapters.js';
-export { C as TL, secondsPerDay, isoOfDay, dayOfIso, commitRange, weekBuckets, totalsAt, activeAt, chapterAt, fixOf, commitUrl } from './timeline.js';
+export { C as TL, secondsPerDay, isoOfDay, dayOfIso, commitRange, weekBuckets, totalsAt, activeAt, chapterAt, fixOf, commitUrl, peopleSummary } from './timeline.js';
 
 export const SCHEMA_VERSION = 2;
 export const ENGINE_VERSION = '0.3.0';

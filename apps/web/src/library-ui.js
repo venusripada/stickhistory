@@ -3,6 +3,7 @@
 // what the server says and shows job progress as it streams in.
 
 import { api } from './api.js';
+import { peopleSummary } from '@commit-wars/story-engine';
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const fmtMonth = (d) => { if (!d) return ''; const [y, m] = d.split('-'); return `${MON[+m - 1]} ${y}`; };
@@ -33,6 +34,7 @@ export function createLibraryUI({ root, select, onError, onServer }) {
   let collections = [];
   let canManage = true; // false when watching from another machine on the network
   const jobs = new Map(); // storyId -> latest job
+  const devs = new Map(); // collection slug -> { builtAt, list } once its developers are loaded
   const open = new Map(); // panel open per card/collection key: 'rename' | 'delete'
   const fail = (e) => onError(e && e.message ? e.message : String(e));
   const act = async (fn) => { try { onError(''); await fn(); await refresh(); } catch (e) { fail(e); } };
@@ -107,6 +109,9 @@ export function createLibraryUI({ root, select, onError, onServer }) {
     }
     const sec = el('section', { class: 'collection', 'data-collection': col.slug, 'aria-label': col.name }, head);
     if (col.description) sec.append(el('p', { class: 'col-desc', text: col.description }));
+    const movie = collectionMovie(col);
+    if (movie) sec.append(movie);
+    if (open.get(`d:${col.slug}`) && col.episode && col.episode.status === 'ready') sec.append(developersPanel(col));
     if (panel === 'delete') {
       sec.append(el('div', { class: 'confirm', role: 'group', 'aria-label': 'Confirm delete' },
         el('p', { text: col.stories.length ? `Delete "${col.name}" and its ${col.stories.length} ${col.stories.length === 1 ? 'story' : 'stories'}? Their clones and built stories are removed from the library folder.` : `Delete the empty collection "${col.name}"?` }),
@@ -115,6 +120,54 @@ export function createLibraryUI({ root, select, onError, onServer }) {
     }
     sec.append(col.stories.length ? el('div', { class: 'stories' }, col.stories.map((st) => storyCard(col, st))) : el('p', { class: 'col-empty', text: 'No stories yet. Paste a repository link above and pick this collection.' }));
     return sec;
+  }
+
+  /** The collection's combined movie: play it, see its developers, or why it isn't ready. */
+  function collectionMovie(col) {
+    const ep = col.episode;
+    if (!col.stories.length || !ep) return null;
+    const row = el('div', { class: 'col-movie' });
+    if (ep.status === 'ready') {
+      const key = `d:${col.slug}`;
+      row.append(
+        el('a', { class: 'btn small primary', href: `#/c/${encodeURIComponent(col.slug)}`, text: 'Play collection' }),
+        el('button', { class: 'btn small', type: 'button', 'aria-expanded': String(!!open.get(key)), text: `${open.get(key) ? 'Hide' : 'Show'} developers (${fmtN(ep.people)})`, onclick: () => { if (open.get(key)) open.delete(key); else open.set(key, 'open'); render(); } }),
+        el('span', { class: 'st-status', text: `All ${ep.repos} ${ep.repos === 1 ? 'story' : 'stories'} as one movie · ${fmtN(ep.commits)} commits · combined ${ago(ep.builtAt)}` }));
+    } else if (ep.status === 'building') row.append(el('span', { class: 'st-status busy', text: 'Combining the stories into one movie…' }));
+    else if (ep.status === 'error') row.append(el('span', { class: 'st-status err', text: `The combined movie didn't build: ${ep.error}` }));
+    else return null;
+    return row;
+  }
+
+  function developersPanel(col) {
+    const box = el('div', { class: 'devs', role: 'region', 'aria-label': `Developers in ${col.name}` });
+    const have = devs.get(col.slug);
+    if (!have || have.builtAt !== col.episode.builtAt) {
+      box.append(el('p', { class: 'st-status', text: 'Loading developers…' }));
+      api.collectionEpisode(col.slug).then((ep) => { devs.set(col.slug, { builtAt: col.episode.builtAt, list: peopleSummary(ep.timeline) }); render(); }).catch(fail);
+      return box;
+    }
+    const merged = new Set((col.people.merge || []).map((m) => m.name));
+    const list = el('ol', { class: 'dev-list' });
+    for (const d of have.list) {
+      const href = `#/c/${encodeURIComponent(col.slug)}/dev/${encodeURIComponent(d.name)}`;
+      const li = el('li', { class: 'dev' },
+        el('a', { class: 'dev-name', href, text: d.name, title: `Watch ${d.name} across ${col.name}` }),
+        el('span', { class: 'dev-stats', text: `${fmtN(d.commits)} commits · ${fmtN(d.fixes)} fixes · ${fmtN(d.feats)} features · ${fmtMonth(d.first)} – ${fmtMonth(d.last)}` }),
+        d.repos.length ? el('span', { class: 'dev-repos', text: d.repos.map((r) => `${r.name} ${fmtN(r.commits)}`).join(' · ') }) : null,
+        el('span', { class: 'dev-ids', text: [...d.names, ...d.emails].join(' · ') }));
+      if (canManage) {
+        const others = have.list.filter((x) => x.name !== d.name);
+        const acts = el('span', { class: 'actions' },
+          el('select', { class: 'move', 'aria-label': `Merge ${d.name} into another developer`, onchange: (e) => { const into = e.target.value; if (into) act(() => api.people(col.slug, { action: 'merge', names: [into, d.name] })); } },
+            el('option', { value: '', text: 'Same person as…' }), others.map((x) => el('option', { value: x.name, text: x.name }))));
+        if (merged.has(d.name) || d.names.length > 1 || d.emails.length > 1) acts.append(el('button', { class: 'btn small', type: 'button', text: 'Separate', title: merged.has(d.name) ? 'Undo the merge you made' : 'Stop joining these just because the full name matches', onclick: () => act(() => api.people(col.slug, { action: 'separate', name: d.name })) }));
+        li.append(acts);
+      }
+      list.append(li);
+    }
+    box.append(list);
+    return box;
   }
 
   function render() {
@@ -139,6 +192,7 @@ export function createLibraryUI({ root, select, onError, onServer }) {
     /** Coalesce bursts of "library changed" events. */
     refreshSoon() { clearTimeout(pending); pending = setTimeout(refresh, 120); },
     onJob(job) {
+      if (job.kind === 'collection') { if (job.state === 'done' || job.state === 'error') this.refreshSoon(); return; }
       jobs.set(job.storyId, job);
       const card = root.querySelector(`[data-story="${CSS.escape(job.storyId)}"]`);
       const col = card && collections.find((c) => c.slug === card.closest('[data-collection]').dataset.collection);

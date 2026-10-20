@@ -2,7 +2,7 @@
 // Made-up people and messages only.
 
 import { describe, it, expect } from 'vitest';
-import { combineHistories, buildEpisode, validateEpisode, releaseWeight, resolveIdentities, fixOf, commitUrl, TL } from '../src/index.js';
+import { combineHistories, buildEpisode, validateEpisode, releaseWeight, resolveIdentities, fixOf, commitUrl, peopleSummary, TL } from '../src/index.js';
 
 const day = (n) => new Date(Date.UTC(2024, 0, 1) + n * 86400000).toISOString().slice(0, 10);
 function history(name, people, n, { offset = 0, tagAt = {} } = {}) {
@@ -95,5 +95,23 @@ describe('merging and separating people by hand', () => {
     expect(adas).toHaveLength(2);
     const ep = buildEpisode(combined, { identities: true, separate: ['Ada Test'] });
     expect(ep.timeline.people.filter((p) => p.names.includes('Ada Test'))).toHaveLength(2);
+  });
+});
+
+describe('peopleSummary', () => {
+  const ep = buildEpisode(combined, { identities: true });
+  const tl = ep.timeline;
+  it('lists developers busiest first, with their work per repo, and leaves bots out', () => {
+    const list = peopleSummary(tl);
+    expect(list.every((p) => !p.bot)).toBe(true);
+    for (let i = 1; i < list.length; i++) expect(list[i - 1].commits).toBeGreaterThanOrEqual(list[i].commits);
+    const ada = list.find((p) => p.name.startsWith('Ada'));
+    const mine = tl.commits.filter((c) => tl.people[c[TL.who]].name === ada.name);
+    expect(ada.commits).toBe(mine.length);
+    expect(ada.fixes).toBe(mine.filter((c) => c[TL.kind] === 'fix').length);
+    expect(ada.feats).toBe(mine.filter((c) => c[TL.kind] === 'feat').length);
+    expect(ada.repos).toEqual([{ name: 'Alpha', commits: mine.filter((c) => c[TL.repo] === 0).length }, { name: 'Beta', commits: mine.filter((c) => c[TL.repo] === 1).length }].sort((a, b) => b.commits - a.commits));
+    expect(ada.emails).toEqual(['ada@home.test', 'ada@work.test']);
+    expect(ada.first <= ada.last).toBe(true);
   });
 });
