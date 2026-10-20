@@ -213,3 +213,77 @@ describe('LAN mode: other machines can watch, only this machine can change', asy
     if (lanIp) await expect(fetch(`http://${lanIp}:${srv.port}/api/library`)).rejects.toThrow();
   });
 });
+
+describe('collection movies', async () => {
+  let col, colRoot;
+  const dirs2 = [];
+  const api2 = async (method, path, body) => {
+    const res = await fetch(col.url + path, { method, headers: body !== undefined ? { 'content-type': 'application/json' } : {}, body: body !== undefined ? JSON.stringify(body) : undefined });
+    const text = await res.text(); let json = null; try { json = JSON.parse(text); } catch { /* not json */ }
+    return { status: res.status, json };
+  };
+  const collectionReady = async (c, timeout = 30000) => {
+    const t0 = Date.now();
+    for (;;) {
+      const lib = (await api2('GET', '/api/library')).json;
+      const info = lib.collections.find((x) => x.slug === c);
+      if (info && info.episode && ['ready', 'error'].includes(info.episode.status) && !info.stories.some((s) => ['queued', 'cloning', 'building'].includes(s.status))) return info;
+      if (Date.now() - t0 > timeout) throw new Error(`collection ${c} not built: ${JSON.stringify(info && info.episode)}`);
+      await new Promise((r) => setTimeout(r, 80));
+    }
+  };
+  beforeAll(async () => {
+    colRoot = tempDir('cw-col-'); dirs2.push(colRoot);
+    col = await startServer({ port: 0, library: colRoot, quiet: true });
+    const a = makeRepo({ n: 14 }); const b = makeRepo({ n: 12, start: '2024-02-01' }); dirs2.push(a, b);
+    await api2('POST', '/api/collections', { name: 'Team' });
+    await api2('POST', '/api/collections/team/stories', { url: a, name: 'Alpha' });
+    await api2('POST', '/api/collections/team/stories', { url: b, name: 'Beta' });
+  });
+  afterAll(async () => { await col.close(); dirs2.forEach(removeDir); });
+
+  it('builds one movie from all the stories in the collection', async () => {
+    const info = await collectionReady('team');
+    expect(info.episode).toMatchObject({ status: 'ready', commits: 26, repos: 2 });
+    expect(existsSync(join(colRoot, 'team', 'collection-episode.json'))).toBe(true);
+    const ep = (await api2('GET', '/api/collections/team/episode')).json;
+    expect(ep.timeline.repos.map((r) => r.name)).toEqual(['Alpha', 'Beta']);
+    const ada = ep.timeline.people.find((p) => p.names.includes('Ada Test'));
+    const repos = new Set(ep.timeline.commits.filter((c) => ep.timeline.people[c[1]] === ada).map((c) => c[9]));
+    expect([...repos].sort()).toEqual([0, 1]);
+    expect(ep.timeline.people.filter((p) => p.names.includes('Ada Test'))).toHaveLength(1);
+  });
+  it('rebuilds when a story in it changes', async () => {
+    const before = (await collectionReady('team')).episode.builtAt;
+    await api2('PATCH', '/api/collections/team/stories/beta', { name: 'Beta Two' });
+    await new Promise((r) => setTimeout(r, 150));
+    const info = await collectionReady('team');
+    expect(info.episode.builtAt).not.toBe(before);
+    const ep = (await api2('GET', '/api/collections/team/episode')).json;
+    expect(ep.timeline.repos.map((r) => r.name)).toEqual(['Alpha', 'Beta Two']);
+  });
+  it('merges two developers the owner says are the same, and separates them again', async () => {
+    let ep = (await api2('GET', '/api/collections/team/episode')).json;
+    const [a, b] = ep.timeline.people.filter((p) => !p.bot).map((p) => p.name);
+    const r = await api2('POST', '/api/collections/team/people', { action: 'merge', names: [a, b] });
+    expect(r.status).toBe(202);
+    await new Promise((res) => setTimeout(res, 150));
+    await collectionReady('team');
+    ep = (await api2('GET', '/api/collections/team/episode')).json;
+    const merged = ep.timeline.people.find((p) => p.name === a);
+    expect(merged.emails.length).toBeGreaterThanOrEqual(2);
+    expect(ep.timeline.people.some((p) => p.name === b)).toBe(false);
+    const saved = JSON.parse(readFileSync(join(colRoot, 'team', 'collection.json'), 'utf8'));
+    expect(saved.people.merge[0].name).toBe(a);
+    await api2('POST', '/api/collections/team/people', { action: 'separate', name: a });
+    await new Promise((res) => setTimeout(res, 150));
+    await collectionReady('team');
+    ep = (await api2('GET', '/api/collections/team/episode')).json;
+    expect(ep.timeline.people.some((p) => p.name === b)).toBe(true);
+  });
+  it('explains an unknown developer', async () => {
+    const r = await api2('POST', '/api/collections/team/people', { action: 'merge', names: ['Nobody', 'Ada'] });
+    expect(r.status).toBe(400);
+    expect(r.json.error).toMatch(/Nobody/);
+  });
+});

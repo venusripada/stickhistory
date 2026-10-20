@@ -4,11 +4,12 @@
 //   build   clone if needed, read the history, build the episode
 //   update  fetch; rebuild only if the branch head moved
 //   reread  read the history again and rebuild (branch, aliases or titles changed)
+//   collection  combine a collection's built stories into one movie (runs after its stories change)
 
 import { existsSync, rmSync, renameSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { cloneRepo, fetchRepo, headOf, readHistory, repoMeta, sshAlternative } from '@commit-wars/git-source';
-import { buildEpisode, validateEpisode, ENGINE_VERSION } from '@commit-wars/story-engine';
+import { buildEpisode, validateEpisode, combineHistories, ENGINE_VERSION } from '@commit-wars/story-engine';
 
 const now = () => new Date().toISOString();
 
@@ -19,7 +20,7 @@ export function createJobs({ library, emit }) {
   const queue = [];
   let running = null, seq = 0;
 
-  const view = (j) => ({ id: j.id, kind: j.kind, storyId: j.storyId, story: j.story, state: j.state, phase: j.phase, message: j.message, frac: j.frac, changed: j.changed ?? null });
+  const view = (j) => ({ id: j.id, kind: j.kind, storyId: j.storyId, story: j.story, collectionId: j.collectionId || null, collection: j.collection || null, state: j.state, phase: j.phase, message: j.message, frac: j.frac, changed: j.changed ?? null });
   const publish = (j) => emit('job', view(j));
 
   function enqueue(kind, storyId) {
@@ -33,17 +34,41 @@ export function createJobs({ library, emit }) {
     return view(job);
   }
 
+  function enqueueCollection(collectionId) {
+    if (!collectionId) return null;
+    const same = queue.find((j) => j.kind === 'collection' && j.collectionId === collectionId);
+    if (same) return view(same);
+    const loc = library.findCollectionById(collectionId);
+    const job = { id: String(++seq), kind: 'collection', storyId: null, collectionId, collection: loc ? { slug: loc.c, name: loc.json.name } : null, story: null, state: 'queued', phase: 'queued', message: 'Waiting to combine the stories.', frac: null };
+    queue.push(job);
+    publish(job);
+    setImmediate(pump);
+    return view(job);
+  }
+  /** After a story changes, its collection's movie is rebuilt. */
+  function collectionOfStory(storyId) {
+    const loc = storyId && library.findById(storyId);
+    const cj = loc && library.readCollectionJson(loc.c);
+    return cj && cj.id ? cj.id : null;
+  }
+
   async function pump() {
     if (running || !queue.length) return;
     const job = running = queue.shift();
     job.state = 'running'; publish(job);
     try {
-      await run(job);
+      await (job.kind === 'collection' ? runCollection(job) : run(job));
       job.state = 'done'; job.frac = 1;
+      if (job.kind !== 'collection' && job.changed) enqueueCollection(collectionOfStory(job.storyId));
     } catch (e) {
       job.state = 'error'; job.message = e && e.message ? e.message : 'The job stopped without saying why.';
-      const loc = library.findById(job.storyId);
-      if (loc) { library.writeStoryJson(loc.c, loc.s, { ...loc.story, status: 'error', error: job.message }); emit('library', {}); }
+      if (job.kind === 'collection') {
+        const loc = library.findCollectionById(job.collectionId);
+        if (loc) { library.writeCollectionJson(loc.c, { ...loc.json, episode: { ...(loc.json.episode || {}), status: 'error', error: job.message } }); emit('library', {}); }
+      } else {
+        const loc = library.findById(job.storyId);
+        if (loc) { library.writeStoryJson(loc.c, loc.s, { ...loc.story, status: 'error', error: job.message }); emit('library', {}); }
+      }
     } finally {
       publish(job);
       running = null;
@@ -128,13 +153,45 @@ export function createJobs({ library, emit }) {
     }
   }
 
+  async function runCollection(job) {
+    const where = () => { const loc = library.findCollectionById(job.collectionId); if (!loc) throw new Error('This collection was deleted before its movie was built.'); job.collection = { slug: loc.c, name: loc.json.name }; return loc; };
+    const setEpisode = (fields) => { const loc = where(); const j = library.readCollectionJson(loc.c); library.writeCollectionJson(loc.c, { ...j, episode: { ...(j.episode || {}), ...fields } }); emit('library', {}); };
+    const step = (phase, message, frac = null) => { job.phase = phase; job.message = message; job.frac = frac; publish(job); };
+    const loc = where();
+    setEpisode({ status: 'building', error: null });
+    step('building', 'Combining the stories…', 0.3);
+    const info = library.collection(loc.c);
+    const parts = info.stories
+      .filter((s) => s.setUp && existsSync(join(loc.dir, s.slug, 'history.json')))
+      .map((s) => ({ history: JSON.parse(readFileSync(join(loc.dir, s.slug, 'history.json'), 'utf8')), name: s.name, url: s.webUrl }));
+    const file = join(loc.dir, 'collection-episode.json');
+    if (!parts.length) {
+      if (existsSync(file)) rmSync(file, { force: true });
+      setEpisode({ status: 'empty', error: null, builtAt: now(), commits: 0, people: 0, repos: 0 });
+      step('done', 'No built stories to combine yet.', 1);
+      return;
+    }
+    const aliases = Object.fromEntries((info.people.merge || []).map((m) => [m.name, m.ids]));
+    const episode = buildEpisode(combineHistories(parts, { name: info.name }), { identities: true, aliases, separate: info.people.separate || [] });
+    const errs = validateEpisode(episode);
+    if (errs.length) throw new Error(`The combined movie is not playable: ${errs[0]}`);
+    library.writeCollectionFile(loc.c, 'collection-episode.json', episode);
+    setEpisode({ status: 'ready', error: null, builtAt: now(), engine: ENGINE_VERSION, commits: episode.summary.commits, people: episode.timeline.people.filter((p) => !p.bot).length, repos: parts.length });
+    job.changed = true;
+    step('done', `Combined ${parts.length} ${parts.length === 1 ? 'story' : 'stories'}, ${episode.summary.commits.toLocaleString('en-US')} commits.`, 1);
+  }
+
   return {
     enqueue,
+    enqueueCollection,
     list: () => [running, ...queue].filter(Boolean).map(view),
     /** Stories left half-done by a stopped server get built again. */
     recover() {
-      for (const col of library.list()) for (const s of col.stories) {
-        if (s.setUp && ['queued', 'cloning', 'building'].includes(s.status)) enqueue('build', s.id);
+      for (const col of library.list()) {
+        for (const s of col.stories) if (s.setUp && ['queued', 'cloning', 'building'].includes(s.status)) enqueue('build', s.id);
+        // collection movies that are missing, half-built or made by an older engine are combined again
+        const ep = col.episode;
+        if (col.id && col.stories.some((s) => s.hasEpisode) && (!ep || ep.status === 'building' || (ep.status === 'ready' && ep.engine !== ENGINE_VERSION))) enqueueCollection(col.id);
       }
     },
   };

@@ -47,11 +47,42 @@ function readBody(req) {
  * @returns {(req: any, res: any) => Promise<boolean>}  true when the request was an API request
  */
 export function createApi({ library, jobs, events, lan = false }) {
+  const rebuildCollection = (c) => { const cj = library.readCollectionJson(c); if (cj && cj.id) jobs.enqueueCollection(cj.id); };
+
+  /** Merge two developers ("the same person") or separate one again; saved in collection.json, applied by a rebuild. */
+  function peopleAction(c, body) {
+    const cj = library.readCollectionJson(c);
+    if (!cj) throw new HttpError(404, 'That collection doesn\'t exist.');
+    const file = join(library.collectionDir(c), 'collection-episode.json');
+    if (!existsSync(file)) throw new HttpError(409, 'This collection\'s movie hasn\'t been built yet. Wait for it to finish, then try again.');
+    const people = JSON.parse(readFileSync(file, 'utf8')).timeline.people;
+    const find = (name) => { const p = people.find((x) => x.name === name); if (!p) throw new HttpError(400, `There's no developer named "${name}" in this collection. Reload the list and try again.`); return p; };
+    const settings = { merge: [...((cj.people && cj.people.merge) || [])], separate: [...((cj.people && cj.people.separate) || [])] };
+    if (body.action === 'merge') {
+      if (!Array.isArray(body.names) || body.names.length < 2) throw new HttpError(400, 'Pick two developers to merge.');
+      const ps = body.names.map(String).map(find);
+      const names = ps.map((p) => p.name);
+      const ids = [...new Set(ps.flatMap((p) => [...(p.names || []), ...(p.emails || [])]))];
+      const old = settings.merge.filter((m) => names.includes(m.name));
+      settings.merge = [...settings.merge.filter((m) => !names.includes(m.name)), { name: names[0], ids: [...new Set([...old.flatMap((m) => m.ids), ...ids])] }];
+      const lower = new Set(ids.map((x) => String(x).toLowerCase()));
+      settings.separate = settings.separate.filter((n) => !lower.has(String(n).toLowerCase()));
+    } else if (body.action === 'separate') {
+      const p = find(String(body.name || ''));
+      if (settings.merge.some((m) => m.name === p.name)) settings.merge = settings.merge.filter((m) => m.name !== p.name);
+      else settings.separate = [...new Set([...settings.separate, ...(p.names || [])])];
+    } else throw new HttpError(400, 'Choose "merge" or "separate".');
+    library.writeCollectionJson(c, { ...cj, people: settings });
+    events.changed();
+    return [202, { people: settings, job: jobs.enqueueCollection(cj.id) }];
+  }
+
   const routes = [
     ['GET', /^\/api\/library$/, (m, body, q, req) => ({ collections: library.list(), canManage: isLocalClient(req) })],
     ['GET', /^\/api\/jobs$/, () => ({ jobs: jobs.list() })],
     ['POST', /^\/api\/collections$/, (m, body) => { events.changed(); return [201, { collection: library.createCollection(body) }]; }],
-    ['PATCH', /^\/api\/collections\/([^/]+)$/, ([c], body) => { const collection = library.updateCollection(c, body); events.changed(); return { collection }; }],
+    ['PATCH', /^\/api\/collections\/([^/]+)$/, ([c], body) => { const collection = library.updateCollection(c, body); events.changed(); if (body.name != null) rebuildCollection(collection.slug); return { collection }; }],
+    ['POST', /^\/api\/collections\/([^/]+)\/people$/, ([c], body) => peopleAction(c, body)],
     ['DELETE', /^\/api\/collections\/([^/]+)$/, ([c], body, q) => { library.deleteCollection(c, { confirm: q.get('confirm') }); events.changed(); return { ok: true }; }],
     ['POST', /^\/api\/collections\/([^/]+)\/update$/, ([c]) => {
       const col = library.collection(c);
@@ -67,7 +98,11 @@ export function createApi({ library, jobs, events, lan = false }) {
     }],
     ['PATCH', /^\/api\/collections\/([^/]+)\/stories\/([^/]+)$/, ([c, s], body) => {
       let at = { c, s };
-      if (body.name != null || body.collection != null) at = library.relocateStory(c, s, { name: body.name, collection: body.collection });
+      if (body.name != null || body.collection != null) {
+        at = library.relocateStory(c, s, { name: body.name, collection: body.collection });
+        rebuildCollection(c);
+        if (at.c !== c) rebuildCollection(at.c);
+      }
       const st = library.readStoryJson(at.c, at.s);
       let job = null;
       if (st && (body.branch !== undefined || body.aliases !== undefined || body.titles !== undefined)) {
@@ -83,7 +118,7 @@ export function createApi({ library, jobs, events, lan = false }) {
       events.changed();
       return { story: library.story(at.c, at.s), job };
     }],
-    ['DELETE', /^\/api\/collections\/([^/]+)\/stories\/([^/]+)$/, ([c, s], body, q) => { library.deleteStory(c, s, { confirm: q.get('confirm') }); events.changed(); return { ok: true }; }],
+    ['DELETE', /^\/api\/collections\/([^/]+)\/stories\/([^/]+)$/, ([c, s], body, q) => { library.deleteStory(c, s, { confirm: q.get('confirm') }); events.changed(); rebuildCollection(c); return { ok: true }; }],
     ['POST', /^\/api\/collections\/([^/]+)\/stories\/([^/]+)\/update$/, ([c, s]) => {
       const st = library.story(c, s);
       if (!st.setUp) throw new HttpError(409, 'This folder was added by hand and has no story.json. Add the story again from the library.');
@@ -105,6 +140,22 @@ export function createApi({ library, jobs, events, lan = false }) {
       const route = url.pathname;
 
       if (req.method === 'GET' && route === '/api/events') { events.add(res); return true; }
+      const cep = route.match(/^\/api\/collections\/([^/]+)\/episode$/);
+      if (req.method === 'GET' && cep) {
+        const c = path[3];
+        const cj = library.readCollectionJson(c);
+        const file = join(library.collectionDir(c), 'collection-episode.json');
+        if (!existsSync(file)) {
+          const built = library.collection(c).stories.some((s) => s.hasEpisode);
+          if (built && cj && cj.id) jobs.enqueueCollection(cj.id);
+          throw new HttpError(404, built ? 'This collection\'s movie is being put together. It will start as soon as it is ready.' : 'This collection has no built stories yet. Add a story and wait for it to build.');
+        }
+        const etag = `"${(cj && cj.episode && cj.episode.builtAt) || 'built'}"`;
+        if (req.headers['if-none-match'] === etag) { res.writeHead(304, { etag, 'cache-control': 'no-cache' }); res.end(); return true; }
+        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', etag, 'cache-control': 'no-cache' });
+        res.end(readFileSync(file));
+        return true;
+      }
       const ep = route.match(/^\/api\/collections\/([^/]+)\/stories\/([^/]+)\/episode$/);
       if (req.method === 'GET' && ep) {
         const [c, s] = [path[3], path[5]];

@@ -1,6 +1,6 @@
 // The library on disk. The folders are the database:
 //
-//   <root>/<collection>/collection.json
+//   <root>/<collection>/collection.json, collection-episode.json (all its stories as one movie)
 //   <root>/<collection>/<story>/story.json, repo.git/, history.json, episode.json
 //
 // Every read walks the tree, so folders copied, renamed or removed by hand
@@ -61,12 +61,14 @@ export function createLibrary(root) {
   }
   function collectionInfo(c) {
     const dir = join(root, c);
-    const j = readJson(join(dir, 'collection.json')) || {};
+    let j = readJson(join(dir, 'collection.json')) || {};
+    if (j.name && !j.id) { j = { ...j, id: randomUUID() }; writeJson(join(dir, 'collection.json'), j); } // collections made before ids
     const present = subdirs(dir);
     const order = (j.order || []).filter((s) => present.includes(s));
     const rest = present.filter((s) => !order.includes(s));
     return {
-      slug: c, name: j.name || c, description: j.description || '', createdAt: j.createdAt || null, setUp: !!j.name,
+      slug: c, id: j.id || null, name: j.name || c, description: j.description || '', createdAt: j.createdAt || null, setUp: !!j.name,
+      episode: j.episode || null, people: { merge: (j.people && j.people.merge) || [], separate: (j.people && j.people.separate) || [] },
       stories: [...order, ...rest].map((s) => storySummary(c, s)),
     };
   }
@@ -81,7 +83,7 @@ export function createLibrary(root) {
       const n = checkName(name, 'collection');
       const slug = uniqueSlug(root, slugify(n, 'collection'));
       mkdirSync(join(root, slug));
-      writeJson(join(root, slug, 'collection.json'), { name: n, description: String(description).slice(0, 500), order: [], createdAt: new Date().toISOString() });
+      writeJson(join(root, slug, 'collection.json'), { id: randomUUID(), name: n, description: String(description).slice(0, 500), order: [], createdAt: new Date().toISOString(), people: { merge: [], separate: [] } });
       return collectionInfo(slug);
     },
     updateCollection(c, patch = {}) {
@@ -103,6 +105,15 @@ export function createLibrary(root) {
       rmSync(dir, { recursive: true, force: true });
     },
 
+    collectionDir(c) { return needCollection(c); },
+    readCollectionJson(c) { return readJson(join(needCollection(c), 'collection.json')); },
+    writeCollectionJson(c, value) { writeJson(join(needCollection(c), 'collection.json'), value); },
+    /** A collection by id wherever it is now (it may have been renamed since a job was queued). */
+    findCollectionById(id) {
+      for (const c of subdirs(root)) { const j = readJson(join(root, c, 'collection.json')); if (j && j.id === id) return { c, dir: join(root, c), json: j }; }
+      return null;
+    },
+    writeCollectionFile(c, file, value) { writeJson(join(needCollection(c), file), value); },
     story(c, s) { needStory(c, s); return storySummary(c, s); },
     storyDir(c, s) { return needStory(c, s); },
     /** Find a story by id wherever it is now (it may have been renamed or moved since a job was queued). */
