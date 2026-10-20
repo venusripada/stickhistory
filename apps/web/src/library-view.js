@@ -8,6 +8,7 @@ export const STATUSES = [
   { key: 'ready', label: 'Ready' },
   { key: 'building', label: 'Building or waiting' },
   { key: 'failed', label: 'Failed' },
+  { key: 'small', label: 'Too small to play' },
   { key: 'unbuilt', label: 'Not built yet' },
 ];
 
@@ -18,8 +19,9 @@ export const SORTS = [
   { key: 'active', label: 'Most recent activity' },
 ];
 
-/** ready | building | failed | unbuilt */
+/** ready | building | failed | small | unbuilt */
 export function statusOf(st) {
+  if (st.status === 'small') return 'small';
   if (['queued', 'cloning', 'building', 'fetching'].includes(st.status)) return 'building';
   if (st.status === 'error' || st.status === 'not-set-up') return 'failed';
   return st.hasEpisode ? 'ready' : 'unbuilt';

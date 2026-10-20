@@ -40,6 +40,9 @@ const checkName = (name, what) => {
 };
 
 /** Story fields the API returns (story.json minus nothing secret; it holds no secrets). */
+/** The story engine's message for a history too short to play (still included in its collection's movie). */
+export const SMALL_RE = /A replay needs at least \d+/;
+
 const STORY_FIELDS = ['id', 'name', 'url', 'webUrl', 'branch', 'aliases', 'titles', 'createdAt', 'fetchedAt', 'builtAt', 'engine', 'head', 'commits', 'first', 'last', 'issuesLinked', 'status', 'error'];
 
 export function createLibrary(root) {
@@ -57,6 +60,9 @@ export function createLibrary(root) {
     const out = { slug: s, collection: c, setUp: true };
     for (const k of STORY_FIELDS) out[k] = j[k] ?? null;
     out.hasEpisode = existsSync(join(dir, 'episode.json'));
+    out.hasHistory = existsSync(join(dir, 'history.json'));
+    // stories recorded as failed for having too few commits (before 'small' existed)
+    if (out.status === 'error' && SMALL_RE.test(out.error || '')) out.status = 'small';
     return out;
   }
   function collectionInfo(c) {

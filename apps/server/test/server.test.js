@@ -20,7 +20,7 @@ async function settle(c, s, timeout = 20000) {
   const t0 = Date.now();
   for (;;) {
     const st = await storyOf(c, s);
-    if (st && ['ready', 'error'].includes(st.status)) return st;
+    if (st && ['ready', 'error', 'small'].includes(st.status)) return st;
     if (Date.now() - t0 > timeout) throw new Error(`story ${c}/${s} stuck in ${st && st.status}`);
     await new Promise((r) => setTimeout(r, 60));
   }
@@ -134,8 +134,11 @@ describe('library server', () => {
     const tiny = makeRepo({ n: 3 }); dirs.push(tiny);
     await call('POST', '/api/collections/open-source-ai/stories', { url: tiny, name: 'Tiny' });
     const st = await settle('open-source-ai', 'tiny');
-    expect(st.status).toBe('error');
+    // too few commits is not a failure: the repo is still read and counts in its collection's movie
+    expect(st.status).toBe('small');
     expect(st.error).toMatch(/at least 10/);
+    expect(st.hasHistory).toBe(true);
+    expect(st.hasEpisode).toBe(false);
     const gone = await call('POST', '/api/collections/open-source-ai/stories', { url: 'file:///no/such/repo/here', name: 'Gone' });
     expect(gone.status).toBe(400);
     expect(gone.json.error).toMatch(/doesn't exist/);

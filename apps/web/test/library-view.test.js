@@ -9,12 +9,13 @@ const stories = [
   st({ name: 'queued-one', status: 'queued', hasEpisode: false }),
   st({ name: 'broken', status: 'error', hasEpisode: false, error: 'git could not find it' }),
   st({ name: 'empty', status: 'ready', hasEpisode: false }),
+  st({ name: 'tiny', status: 'small', hasEpisode: false, error: 'Only 3 commits found. A replay needs at least 10.' }),
 ];
 
 describe('statusOf', () => {
   it('sorts stories into ready, building, failed and not built', () => {
-    expect(stories.map(statusOf)).toEqual(['ready', 'ready', 'building', 'building', 'failed', 'unbuilt']);
-    expect(STATUSES.map((s) => s.key)).toEqual(['all', 'ready', 'building', 'failed', 'unbuilt']);
+    expect(stories.map(statusOf)).toEqual(['ready', 'ready', 'building', 'building', 'failed', 'unbuilt', 'small']);
+    expect(STATUSES.map((s) => s.key)).toEqual(['all', 'ready', 'building', 'failed', 'small', 'unbuilt']);
   });
 });
 
@@ -22,7 +23,7 @@ describe('filterStories', () => {
   it('matches the name and the repo link, ignoring case', () => {
     expect(filterStories(stories, { q: 'API' }).map((s) => s.name)).toEqual(['api']);
     expect(filterStories(stories, { q: 'acme/web' }).map((s) => s.name)).toEqual(['web']);
-    expect(filterStories(stories, { q: '  ' })).toHaveLength(6);
+    expect(filterStories(stories, { q: '  ' })).toHaveLength(7);
   });
   it('filters by status', () => {
     expect(filterStories(stories, { status: 'building' }).map((s) => s.name)).toEqual(['queued-one', 'worker']);

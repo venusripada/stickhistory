@@ -9,6 +9,7 @@
 import { existsSync, rmSync, renameSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { cloneRepo, fetchRepo, headOf, readHistory, repoMeta, sshAlternative } from '@commit-wars/git-source';
+import { SMALL_RE } from './library.js';
 import { buildEpisode, validateEpisode, combineHistories, ENGINE_VERSION } from '@commit-wars/story-engine';
 
 const now = () => new Date().toISOString();
@@ -92,7 +93,10 @@ export function createJobs({ library, emit }) {
         if (loc) { library.writeCollectionJson(loc.c, { ...loc.json, episode: { ...(loc.json.episode || {}), status: 'error', error: job.message } }); emit('library', {}); }
       } else {
         const loc = library.findById(job.storyId);
-        if (loc) { library.writeStoryJson(loc.c, loc.s, { ...loc.story, status: 'error', error: job.message }); emit('library', {}); }
+        // a repo with too few commits isn't broken: its history is saved and counts in the collection's movie
+        const small = SMALL_RE.test(job.message);
+        if (loc) { library.writeStoryJson(loc.c, loc.s, { ...loc.story, status: small ? 'small' : 'error', error: job.message }); emit('library', {}); }
+        if (small) { job.state = 'done'; job.changed = true; const cid = collectionOfStory(job.storyId); noteChange(cid); enqueueCollection(cid); }
       }
     } finally {
       publish(job);

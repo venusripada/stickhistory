@@ -61,6 +61,7 @@ export function createLibraryUI({ root, select, onError, onServer, tools, onView
       return el('p', { class: 'st-status busy', role: 'status' }, el('span', { text: job.state === 'queued' ? 'Waiting for the job ahead' : job.message || STATUS[job.phase] || 'Working…' }), bar);
     }
     if (!st.setUp) return el('p', { class: 'st-status err', text: st.error });
+    if (st.status === 'small') return el('p', { class: 'st-status', text: `${(st.error || '').replace(/\.? ?A replay needs.*$/, '')}: too few for its own movie, but included in the collection's.` });
     if (st.status === 'error') return el('p', { class: 'st-status err', role: 'alert', text: st.error || 'The last build failed.' });
     if (STATUS[st.status]) return el('p', { class: 'st-status busy', text: `${STATUS[st.status]}…` });
     const note = job && job.state === 'done' && job.changed === false ? 'Already up to date · ' : '';
@@ -156,8 +157,8 @@ export function createLibraryUI({ root, select, onError, onServer, tools, onView
         el('button', { class: 'btn small', type: 'button', 'aria-expanded': String(!!open.get(key)), text: `${open.get(key) ? 'Hide' : 'Show'} developers (${fmtN(ep.people)})`, onclick: () => { if (open.get(key)) open.delete(key); else open.set(key, 'open'); render(); } }),
         el('span', { class: 'st-status', text: (() => {
           // while stories are still being built, say how much of the collection the movie covers
-          const built = col.stories.filter((s) => s.hasEpisode).length;
-          const covers = ep.repos < built ? `Includes ${fmtN(ep.repos)} of ${fmtN(built)} built stories, updating as more finish` : `All ${fmtN(ep.repos)} ${ep.repos === 1 ? 'story' : 'stories'} as one movie`;
+          const read = col.stories.filter((s) => s.hasHistory).length;
+          const covers = ep.repos < read ? `Includes ${fmtN(ep.repos)} of ${fmtN(read)} stories read so far, updating as more finish` : `All ${fmtN(ep.repos)} ${ep.repos === 1 ? 'story' : 'stories'} as one movie`;
           return `${covers} · ${fmtN(ep.commits)} commits · combined ${ago(ep.builtAt)}`;
         })() }));
     } else if (ep.status === 'building') row.append(el('span', { class: 'st-status busy', text: 'Combining the stories into one movie…' }));
