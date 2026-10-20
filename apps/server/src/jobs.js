@@ -6,11 +6,22 @@
 //   reread  read the history again and rebuild (branch, aliases or titles changed)
 //   collection  combine a collection's built stories into one movie (runs after its stories change)
 
-import { existsSync, rmSync, renameSync, readFileSync } from 'node:fs';
+import { existsSync, rmSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { cloneRepo, fetchRepo, headOf, readHistory, repoMeta, sshAlternative } from '@commit-wars/git-source';
 import { SMALL_RE } from './library.js';
-import { buildEpisode, validateEpisode, combineHistories, ENGINE_VERSION } from '@commit-wars/story-engine';
+import { Worker } from 'node:worker_threads';
+
+/** Build on a worker thread (build-worker.js), so the server keeps answering meanwhile. */
+function buildInWorker(task) {
+  return new Promise((resolve, reject) => {
+    const w = new Worker(new URL('./build-worker.js', import.meta.url), { workerData: task, resourceLimits: { maxOldGenerationSizeMb: 4096 } });
+    w.once('message', (m) => (m.ok ? resolve(m.summary) : reject(new Error(m.error))));
+    w.once('error', (e) => reject(new Error(/heap|memory/i.test(e.message) ? 'This build ran out of memory. Split the collection, or build it on a machine with more memory.' : e.message)));
+    w.once('exit', (code) => { if (code !== 0) reject(new Error(`The build stopped unexpectedly (code ${code}).`)); });
+  });
+}
+import { ENGINE_VERSION } from '@commit-wars/story-engine';
 
 const now = () => new Date().toISOString();
 
@@ -160,25 +171,18 @@ export function createJobs({ library, emit }) {
 
     async function rebuild(fromGit) {
       let st = save({ status: 'building', error: null }).story;
-      let history;
       if (fromGit || !existsSync(join(where().dir, 'history.json'))) {
         step('building', 'Reading the history…', 0.85);
         const meta = repoMeta(st.url);
-        history = await readHistory(repoDir(), { branch: st.branch || null, owner: meta.owner, name: meta.owner ? meta.name : st.name, url: st.webUrl });
+        const history = await readHistory(repoDir(), { branch: st.branch || null, owner: meta.owner, name: meta.owner ? meta.name : st.name, url: st.webUrl });
         library.writeJsonFile(where().c, where().s, 'history.json', history);
-      } else {
-        history = JSON.parse(readFileSync(join(where().dir, 'history.json'), 'utf8'));
       }
       step('building', 'Writing the story…', 0.92);
-      const episode = buildEpisode(history, { aliases: st.aliases || {}, titles: st.titles && st.titles.length ? st.titles : undefined });
-      const errs = validateEpisode(episode);
-      if (errs.length) throw new Error(`The built episode is not playable: ${errs[0]}`);
-      library.writeJsonFile(where().c, where().s, 'episode.json', episode);
-      const tl = episode.timeline;
+      const sum = await buildInWorker({ kind: 'story', historyPath: join(where().dir, 'history.json'), aliases: st.aliases || {}, titles: st.titles || [], out: join(where().dir, 'episode.json') });
       const head = await headOf(repoDir(), st.branch || undefined).catch(() => null);
-      st = save({ status: 'ready', error: null, builtAt: now(), engine: ENGINE_VERSION, head, commits: episode.summary.commits, first: tl.start, last: tl.end, issuesLinked: episode.summary.issuesLinked }).story;
+      st = save({ status: 'ready', error: null, builtAt: now(), engine: ENGINE_VERSION, head, commits: sum.commits, first: sum.start, last: sum.end, issuesLinked: sum.issuesLinked }).story;
       job.changed = true;
-      step('done', `Built from ${episode.summary.commits.toLocaleString('en-US')} commits.`, 1);
+      step('done', `Built from ${sum.commits.toLocaleString('en-US')} commits.`, 1);
     }
   }
 
@@ -192,7 +196,7 @@ export function createJobs({ library, emit }) {
     const info = library.collection(loc.c);
     const parts = info.stories
       .filter((s) => s.setUp && existsSync(join(loc.dir, s.slug, 'history.json')))
-      .map((s) => ({ history: JSON.parse(readFileSync(join(loc.dir, s.slug, 'history.json'), 'utf8')), name: s.name, url: s.webUrl }));
+      .map((s) => ({ path: join(loc.dir, s.slug, 'history.json'), name: s.name, url: s.webUrl }));
     const file = join(loc.dir, 'collection-episode.json');
     if (!parts.length) {
       if (existsSync(file)) rmSync(file, { force: true });
@@ -201,13 +205,10 @@ export function createJobs({ library, emit }) {
       return;
     }
     const aliases = Object.fromEntries((info.people.merge || []).map((m) => [m.name, m.ids]));
-    const episode = buildEpisode(combineHistories(parts, { name: info.name }), { identities: true, aliases, separate: info.people.separate || [] });
-    const errs = validateEpisode(episode);
-    if (errs.length) throw new Error(`The combined movie is not playable: ${errs[0]}`);
-    library.writeCollectionFile(loc.c, 'collection-episode.json', episode);
-    setEpisode({ status: 'ready', error: null, builtAt: now(), engine: ENGINE_VERSION, commits: episode.summary.commits, people: episode.timeline.people.filter((p) => !p.bot).length, repos: parts.length });
+    const sum = await buildInWorker({ kind: 'collection', name: info.name, parts, aliases, separate: info.people.separate || [], out: join(where().dir, 'collection-episode.json') });
+    setEpisode({ status: 'ready', error: null, builtAt: now(), engine: ENGINE_VERSION, commits: sum.commits, people: sum.people, repos: parts.length });
     job.changed = true;
-    step('done', `Combined ${parts.length} ${parts.length === 1 ? 'story' : 'stories'}, ${episode.summary.commits.toLocaleString('en-US')} commits.`, 1);
+    step('done', `Combined ${parts.length} ${parts.length === 1 ? 'story' : 'stories'}, ${sum.commits.toLocaleString('en-US')} commits.`, 1);
   }
 
   return {
