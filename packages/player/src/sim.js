@@ -157,11 +157,16 @@ export function makeSim(E) {
   function nearestTarget(h) {
     if (G.duel && G.duel.hero === h) return G.duel.enemy && alive(G.duel.enemy) ? G.duel.enemy : null;
     if (G.boss && (G.boss.state === 'fight' || G.boss.state === 'wind')) return G.boss;
-    let best = null, bd = 1e9;
+    // your own bugs and features first; help with others' only when you have none
+    let best = null, bd = 1e9, mine = false;
     for (const e of G.enemies) {
       if (!alive(e) || e.duel || e.x < -10 || e.x > E.W + 10) continue;
-      const d = Math.abs(e.x - h.x) - (e.owner === h ? 90 : 0);
-      if (d < bd) { bd = d; best = e; }
+      const own = e.owner === h;
+      // someone else's enemy: only once its owner has struck first (or isn't here to)
+      if (!own && e.owner && !e.owner.leaving && G.heroes.includes(e.owner) && !e.ownerHit) continue;
+      if (mine && !own) continue;
+      const d = Math.abs(e.x - h.x);
+      if ((own && !mine) || d < bd) { bd = d; best = e; mine = own; }
     }
     return best;
   }
@@ -206,6 +211,8 @@ export function makeSim(E) {
     const power = h.aura > 0 ? 1.4 : 1;
     if (t.kind === 'enemy') {
       if (!alive(t) || Math.abs(t.x - h.x) > enemyReach(t) + M.reach - 4) { if (t.duel) floater(h.x + h.f * 30, GY - 90, 'whiff', C.muted, 14); return; }
+      h.fought = true;
+      if (t.owner === h) t.ownerHit = true;
       t.hp -= M.dmg * power; t.flash = .1; t.sqv += M.squash ? 9 : 5;
       t.kx = h.f * M.kb;
       const ix = (sp.x + t.x) / 2, iy = Math.min(sp.y, GY - t.z - t.T.hover - 20 * t.s);
@@ -225,6 +232,7 @@ export function makeSim(E) {
       if (t.z > 20 && !M.spike) t.vz = Math.max(t.vz, 180);
     } else if (t.kind === 'boss') {
       if (Math.abs(t.x - h.x) > enemyReach(t) + 30 || (t.state !== 'fight' && t.state !== 'wind')) return;
+      h.fought = true;
       t.hp = Math.max(19, t.hp - M.dmg * power * rand(2.2, 3.4)); t.flash = .1; t.kx = h.f * 30;
       impact(t.x - Math.sign(t.x - h.x) * t.r * .8, GY - rand(30, 80), col(h.name), 16, 'hit');
       G.hitstop = Math.max(G.hitstop, .04);
@@ -249,6 +257,12 @@ export function makeSim(E) {
       G.hitstop = Math.max(G.hitstop, .05);
       if (Math.random() < .5) floater(e.x, GY - 80, pick(feature ? ['shipped!', 'built!', 'done!', 'landed!'] : ['fixed!', 'squashed!', 'patched!', 'merged!']), feature ? C.gold : C.bug, 20);
     }
+  }
+  /** Too much work for the stage at once: the hero finishes one in passing with a quick strike. */
+  function finishInPassing(h, feature) {
+    if (h.state === 'idle' || h.state === 'stance' || h.state === 'victory') { h.state = 'attack'; h.atk = { m: 'jab', M: MOVES.jab, t: 0, hit: true, target: null, jumped: false }; }
+    impact(h.x + h.f * 28, GY - 60 - h.z, feature ? C.orb : C.bug, 14, 'spark');
+    floater(h.x, GY - 110, feature ? pick(['shipped!', 'done!']) : pick(['squashed!', 'fixed!']), feature ? C.gold : C.bug, 16);
   }
   function heroThink(h, dt) {
     if (h.threat && h.threat.state === 'tele' && h.threat.timer < .2 && h.state !== 'attack') {
@@ -387,6 +401,7 @@ export function makeSim(E) {
     const hero = G.heroes.find((h) => h.name === B.info.who && !h.leaving) || G.heroes.find((h) => !h.leaving);
     if (!hero) { B.state = 'dying'; B.timer = .7; G.finisher = { hero: { name: B.info.who }, phase: 'cast', t: 0 }; return; }
     G.finisher = { hero, phase: 'approach', t: 0 };
+    hero.fought = true; // the finishing move is their fight
     B.state = 'stagger';
     G.enemies.forEach((e) => { if (alive(e) && !e.duel) { e.state = 'dead'; e.timer = .5; } });
   }
@@ -471,6 +486,6 @@ export function makeSim(E) {
 
   return {
     camTarget, camReset, step, makeEnemy, makeHero, makeBoss, homeX, alive, finishEnemy, startFinisher,
-    fireRevert, burst, dust, ring, floater, impact,
+    fireRevert, finishInPassing, burst, dust, ring, floater, impact,
   };
 }

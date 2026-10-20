@@ -111,13 +111,13 @@ export function createPlayer(opts) {
    * the next day and a half); see chooseLineup in director.js for the rules.
    */
   function lineup(placed) {
-    const busy = new Map();
-    const add = (name) => { if (name) busy.set(name, (busy.get(name) || 0) + 1); };
-    for (const e of G.enemies) if (sim.alive(e)) add(e.author);
-    for (const ev of G.pending) add(TLN.people[ev.who].name);
+    const busy = new Map(), why = new Map();
+    const add = (name, reason) => { if (!name) return; busy.set(name, (busy.get(name) || 0) + 1); if (!why.has(name)) why.set(name, reason); };
+    for (const e of G.enemies) if (sim.alive(e)) add(e.author, e.duel ? 'duel' : 'enemy');
+    for (const ev of G.pending) add(TLN.people[ev.who].name, 'waiting');
     for (let k = cursor; k < events.length && events[k].t < G.day + 1.5; k++) {
       const ev = events[k];
-      if (ev.who != null && ['fix', 'duel', 'feat', 'featduel'].includes(ev.type)) add(TLN.people[ev.who].name);
+      if (ev.who != null && ['fix', 'duel', 'feat', 'featduel'].includes(ev.type)) add(TLN.people[ev.who].name, `due ${ev.type}`);
     }
     const forced = [G.duel && G.duel.hero.name, G.finisher && G.finisher.hero && G.finisher.hero.name, G.boss && G.boss.info.who].filter(Boolean);
     const here = G.heroes.filter((h) => !h.leaving);
@@ -128,7 +128,8 @@ export function createPlayer(opts) {
     });
     for (const h of here) if (r.leave.includes(h.name)) { if (placed) h.gone = true; else { h.leaving = true; h.atk = null; h.state = 'idle'; } }
     G.heroes = G.heroes.filter((h) => !h.gone);
-    for (const name of r.add) addHero(name, placed);
+    // fill-ins top up a near-empty stage; they may leave without a fight of their own
+    for (const name of r.add) { const h = addHero(name, placed); h.filler = !busy.has(name); h.reason = why.get(name) || (forced.includes(name) ? 'forced' : 'filler'); }
   }
 
   // ---------- story beats ----------
@@ -204,11 +205,26 @@ export function createPlayer(opts) {
 
     // fixes queue up and enter a few at a time; ones left waiting three days are counted as squashed
     const stale = G.pending.findIndex((ev) => ev.t >= G.day - 3);
-    if (stale !== 0) { const n = stale < 0 ? G.pending.length : stale; G.kills += n; G.pending.splice(0, n); }
+    if (stale !== 0) {
+      const n = stale < 0 ? G.pending.length : stale;
+      G.kills += n;
+      // work whose author is on stage is finished in passing, so nobody walks on just to stand around
+      let shown = 0;
+      for (const ev of G.pending.splice(0, n)) {
+        const h = onStage(TLN.people[ev.who].name);
+        if (!h) continue;
+        h.fought = true;
+        if (shown++ < 2) sim.finishInPassing(h, ev.type === 'feat' || ev.type === 'featduel');
+      }
+    }
     G.spawnT -= dt;
     const living = G.enemies.filter((e) => sim.alive(e) && !e.duel).length;
     if (!G.boss && !G.finisher && G.pending.length && living < (E.W < 600 ? 6 : 10) && G.spawnT <= 0) {
-      const fx = fixOf(TLN, G.pending.shift().i);
+      // a hero standing idle on stage gets their own waiting work first
+      const idle = new Set(G.heroes.filter((h) => !h.leaving && !G.enemies.some((e) => e.owner === h && sim.alive(e))).map((h) => h.name));
+      let k = G.pending.findIndex((ev) => idle.has(TLN.people[ev.who].name));
+      if (k < 0) k = 0;
+      const fx = fixOf(TLN, G.pending.splice(k, 1)[0].i);
       const side = Math.random() < .8 ? 1 : -1;
       const e = sim.makeEnemy(fx, onStage(fx.who), side, false);
       // walk well into the stage before engaging, so fights spread out instead of piling up at the edges
@@ -375,7 +391,7 @@ export function createPlayer(opts) {
     stageSnapshot() {
       return {
         width: E.W, zoom: CAM.z, zoomTarget: CAM.tz,
-        heroes: G.heroes.map((h) => ({ name: h.name, x: h.x, leaving: h.leaving, entered: !!h.entered })),
+        heroes: G.heroes.map((h) => ({ name: h.name, x: h.x, leaving: h.leaving, entered: !!h.entered, fought: !!h.fought, filler: !!h.filler, reason: h.reason || null })),
         enemies: G.enemies.map((e) => ({ x: e.x, r: e.r, state: e.state, duel: !!e.duel, entered: !!e.entered, type: e.type, author: e.author })),
       };
     },
