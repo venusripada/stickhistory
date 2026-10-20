@@ -345,6 +345,16 @@ describe('adding a GitHub organization', async () => {
     const r = await call3('POST', '/api/collections/acme/stories/batch', { repos: [{ url: listing[1].sshUrl, name: 'web', webUrl: listing[1].url }] });
     expect(r.json).toMatchObject({ added: [], skipped: ['web'] });
   });
+  it('accepts a large org selection, and answers (not drops) a request that is too large', async () => {
+    // 600 entries (about 100 KB): the same repo under many names, so all but one are skipped as duplicates
+    const many = Array.from({ length: 450 }, (_, k) => ({ url: listing[0].sshUrl, name: `copy-${k}-${'x'.repeat(120)}`, webUrl: listing[0].url }));
+    const big = await call3('POST', '/api/collections/acme/stories/batch', { repos: many });
+    expect(big.status).toBe(202);
+    expect(big.json.skipped).toHaveLength(450);
+    const huge = await fetch(org.url + '/api/collections', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'x', pad: 'y'.repeat(2 * 1024 * 1024) }) });
+    expect(huge.status).toBe(413);
+    expect((await huge.json()).error).toMatch(/too large/);
+  });
   it('explains an unknown org and a missing gh in plain words', async () => {
     const r = await call3('GET', '/api/orgs/nobody/repos');
     expect(r.status).toBe(404);

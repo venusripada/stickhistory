@@ -13,6 +13,7 @@ import { GitHubListError } from './github.js';
 
 const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
 const MAX_BODY = 64 * 1024;
+const MAX_BATCH_BODY = 1024 * 1024; // adding a whole organization's repos at once
 const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 const isLocalClient = (req) => LOOPBACK.has(req.socket.remoteAddress);
 /** LAN mode answers IP addresses and this machine's own name, never other names (that would let any website read the library). */
@@ -30,11 +31,18 @@ function send(res, status, body, headers = {}) {
   res.end(text);
 }
 
-function readBody(req) {
+function readBody(req, max = MAX_BODY) {
   return new Promise((resolve, reject) => {
-    let size = 0; const parts = [];
-    req.on('data', (d) => { size += d.length; if (size > MAX_BODY) { reject(new HttpError(413, 'That request is too large.')); req.destroy(); } else parts.push(d); });
+    let size = 0, tooBig = false; const parts = [];
+    // past the limit, keep reading but discard, so the client gets a 413 answer instead of a dropped connection
+    req.on('data', (d) => {
+      size += d.length;
+      if (tooBig) return;
+      if (size > max) { tooBig = true; parts.length = 0; reject(new HttpError(413, `That request is too large (over ${Math.round(max / 1024)} KB). Add fewer repositories at a time.`)); }
+      else parts.push(d);
+    });
     req.on('end', () => {
+      if (tooBig) return;
       const text = Buffer.concat(parts).toString('utf8');
       if (!text) { resolve({}); return; }
       try { const v = JSON.parse(text); resolve(v && typeof v === 'object' ? v : {}); } catch { reject(new HttpError(400, 'The request body is not valid JSON.')); }
@@ -206,7 +214,7 @@ export function createApi({ library, jobs, events, lan = false, github = null })
       for (const [method, re, fn] of routes) {
         if (method !== req.method || !re.test(route)) continue;
         const params = re.exec(route).slice(1).map((p) => decodeURIComponent(p));
-        const body = req.method === 'GET' || req.method === 'DELETE' ? {} : await readBody(req);
+        const body = req.method === 'GET' || req.method === 'DELETE' ? {} : await readBody(req, /\/stories\/batch$/.test(route) ? MAX_BATCH_BODY : MAX_BODY);
         const out = await fn(params, body, url.searchParams, req);
         if (Array.isArray(out)) send(res, out[0], out[1]); else send(res, 200, out);
         return true;
@@ -214,7 +222,7 @@ export function createApi({ library, jobs, events, lan = false, github = null })
       throw new HttpError(404, `There's no ${req.method} ${route} in this API.`);
     } catch (e) {
       const status = e instanceof HttpError || e instanceof LibraryError || e instanceof GitHubListError ? e.status : e instanceof GitSourceError ? 400 : 500;
-      send(res, status, { error: e && e.message ? e.message : 'Something went wrong on the server.' });
+      send(res, status, { error: e && e.message ? e.message : 'Something went wrong on the server.' }, status === 413 ? { connection: 'close' } : {});
       if (status === 500) console.error(e);
       return true;
     }
