@@ -2,6 +2,7 @@
 //
 //   <root>/<collection>/collection.json, collection-episode.json (all its stories as one movie)
 //   <root>/<collection>/<story>/story.json, repo.git/, history.json, episode.json
+//   <root>/<collection>/_periods/<from>_<to>/period.json, episode.json, report.json (a quarter or any dates)
 //
 // Every read walks the tree, so folders copied, renamed or removed by hand
 // show up on the next request. JSON writes go to a temp file and are renamed
@@ -31,7 +32,9 @@ function writeJson(file, value) {
   renameSync(tmp, file);
 }
 const isDir = (p) => { try { return statSync(p).isDirectory(); } catch { return false; } };
-const subdirs = (p) => (isDir(p) ? readdirSync(p).filter((n) => !n.startsWith('.') && isDir(join(p, n))).sort() : []);
+// names starting with _ are the library's own folders (_periods); slugs never start with one
+const subdirs = (p) => (isDir(p) ? readdirSync(p).filter((n) => !n.startsWith('.') && !n.startsWith('_') && isDir(join(p, n))).sort() : []);
+const PERIOD_ID = /^\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$/;
 const checkName = (name, what) => {
   const n = String(name ?? '').trim();
   if (!n) throw new LibraryError(400, `Give the ${what} a name.`);
@@ -40,6 +43,9 @@ const checkName = (name, what) => {
 };
 
 /** Story fields the API returns (story.json minus nothing secret; it holds no secrets). */
+/** The story engine's message for a history too short to play (still included in its collection's movie). */
+export const SMALL_RE = /A replay needs at least \d+/;
+
 const STORY_FIELDS = ['id', 'name', 'url', 'webUrl', 'branch', 'aliases', 'titles', 'createdAt', 'fetchedAt', 'builtAt', 'engine', 'head', 'commits', 'first', 'last', 'issuesLinked', 'status', 'error'];
 
 export function createLibrary(root) {
@@ -57,6 +63,9 @@ export function createLibrary(root) {
     const out = { slug: s, collection: c, setUp: true };
     for (const k of STORY_FIELDS) out[k] = j[k] ?? null;
     out.hasEpisode = existsSync(join(dir, 'episode.json'));
+    out.hasHistory = existsSync(join(dir, 'history.json'));
+    // stories recorded as failed for having too few commits (before 'small' existed)
+    if (out.status === 'error' && SMALL_RE.test(out.error || '')) out.status = 'small';
     return out;
   }
   function collectionInfo(c) {
@@ -70,8 +79,19 @@ export function createLibrary(root) {
       slug: c, id: j.id || null, name: j.name || c, description: j.description || '', createdAt: j.createdAt || null, setUp: !!j.name,
       episode: j.episode || null, people: { merge: (j.people && j.people.merge) || [], separate: (j.people && j.people.separate) || [] },
       stories: [...order, ...rest].map((s) => storySummary(c, s)),
+      periods: periodsOf(c),
     };
   }
+  /** A collection's periods, newest start first. */
+  function periodsOf(c) {
+    const dir = join(root, c, '_periods');
+    if (!isDir(dir)) return [];
+    return readdirSync(dir).filter((n) => PERIOD_ID.test(n) && isDir(join(dir, n)))
+      .map((id) => ({ ...(readJson(join(dir, id, 'period.json')) || { id, status: 'error', error: 'This period\'s period.json is missing. Delete it and make it again.' }), id,
+        hasEpisode: existsSync(join(dir, id, 'episode.json')), hasReport: existsSync(join(dir, id, 'report.json')) }))
+      .sort((a, b) => (a.id < b.id ? 1 : -1));
+  }
+  const periodPath = (c, id) => { if (!PERIOD_ID.test(String(id))) throw new LibraryError(404, 'That period doesn\'t exist.'); return join(needCollection(c), '_periods', id); };
 
   const lib = {
     root,
@@ -164,6 +184,18 @@ export function createLibrary(root) {
       if (cj) { cj.order = (cj.order || []).filter((x) => x !== s); writeJson(p, cj); }
     },
     writeJsonFile(c, s, file, value) { writeJson(join(needStory(c, s), file), value); },
+
+    periods(c) { needCollection(c); return periodsOf(c); },
+    /** A period's folder (made when missing). */
+    periodDir(c, id, { create = false } = {}) {
+      const d = periodPath(c, id);
+      if (create) mkdirSync(d, { recursive: true });
+      else if (!isDir(d)) throw new LibraryError(404, `There's no period ${id} in "${c}". It may have been deleted; reload the library.`);
+      return d;
+    },
+    readPeriodJson(c, id) { return readJson(join(periodPath(c, id), 'period.json')); },
+    writePeriodJson(c, id, value) { writeJson(join(lib.periodDir(c, id, { create: true }), 'period.json'), value); },
+    deletePeriod(c, id) { rmSync(lib.periodDir(c, id), { recursive: true, force: true }); },
   };
   return lib;
 }

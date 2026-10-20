@@ -4,6 +4,7 @@
 
 import { api } from './api.js';
 import { peopleSummary } from '@commit-wars/story-engine';
+import { filterStories, paginate, statusOf, STATUSES, SORTS, PAGE_SIZE } from './library-view.js';
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const fmtMonth = (d) => { if (!d) return ''; const [y, m] = d.split('-'); return `${MON[+m - 1]} ${y}`; };
@@ -28,12 +29,27 @@ const el = (tag, props = {}, ...kids) => {
 const STATUS = { queued: 'Waiting to build', cloning: 'Cloning', building: 'Building', fetching: 'Fetching' };
 
 /**
- * @param {{ root: HTMLElement, select: HTMLSelectElement, onError: (msg: string) => void, onServer?: (up: boolean) => void }} o
+ * @param {{ root: HTMLElement, select: HTMLSelectElement, onError: (msg: string) => void, onServer?: (up: boolean) => void,
+ *           tools?: { search: HTMLInputElement, status: HTMLElement, sort: HTMLSelectElement, count: HTMLElement }, onView?: (view: any) => void }} o
  */
-export function createLibraryUI({ root, select, onError, onServer }) {
+export function createLibraryUI({ root, select, onError, onServer, tools, onView }) {
   let collections = [];
   let canManage = true; // false when watching from another machine on the network
+  let view = { q: '', status: 'all', sort: 'name', pages: {} }; // search, status filter, sort and page per collection
+  const setView = (patch, keepPages) => {
+    view = { ...view, ...patch, pages: keepPages ? { ...view.pages, ...(patch.pages || {}) } : (patch.pages || {}) };
+    onView && onView(view);
+    render();
+  };
+  if (tools) {
+    let t = null;
+    tools.search.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => setView({ q: tools.search.value }), 120); });
+    tools.search.addEventListener('keydown', (e) => { if (e.key === 'Escape') { tools.search.value = ''; setView({ q: '' }); } });
+    for (const s of SORTS) tools.sort.append(el('option', { value: s.key, text: s.label }));
+    tools.sort.addEventListener('change', () => setView({ sort: tools.sort.value }));
+  }
   const jobs = new Map(); // storyId -> latest job
+  const periodJobs = new Map(); // 'collectionId/periodId' -> latest job
   const devs = new Map(); // collection slug -> { builtAt, list } once its developers are loaded
   const open = new Map(); // panel open per card/collection key: 'rename' | 'delete'
   const fail = (e) => onError(e && e.message ? e.message : String(e));
@@ -46,6 +62,7 @@ export function createLibraryUI({ root, select, onError, onServer }) {
       return el('p', { class: 'st-status busy', role: 'status' }, el('span', { text: job.state === 'queued' ? 'Waiting for the job ahead' : job.message || STATUS[job.phase] || 'Working…' }), bar);
     }
     if (!st.setUp) return el('p', { class: 'st-status err', text: st.error });
+    if (st.status === 'small') return el('p', { class: 'st-status', text: `${(st.error || '').replace(/\.? ?A replay needs.*$/, '')}: too few for its own movie, but included in the collection's.` });
     if (st.status === 'error') return el('p', { class: 'st-status err', role: 'alert', text: st.error || 'The last build failed.' });
     if (STATUS[st.status]) return el('p', { class: 'st-status busy', text: `${STATUS[st.status]}…` });
     const note = job && job.state === 'done' && job.changed === false ? 'Already up to date · ' : '';
@@ -111,6 +128,8 @@ export function createLibraryUI({ root, select, onError, onServer }) {
     if (col.description) sec.append(el('p', { class: 'col-desc', text: col.description }));
     const movie = collectionMovie(col);
     if (movie) sec.append(movie);
+    const per = periodsPanel(col);
+    if (per) sec.append(per);
     if (open.get(`d:${col.slug}`) && col.episode && col.episode.status === 'ready') sec.append(developersPanel(col));
     if (panel === 'delete') {
       sec.append(el('div', { class: 'confirm', role: 'group', 'aria-label': 'Confirm delete' },
@@ -118,7 +137,14 @@ export function createLibraryUI({ root, select, onError, onServer }) {
         el('button', { class: 'btn small danger', type: 'button', text: 'Delete', onclick: () => act(() => api.deleteCollection(col.slug, col.slug).then(() => open.delete(key))) }),
         el('button', { class: 'btn small', type: 'button', text: 'Cancel', onclick: () => { open.delete(key); render(); } })));
     }
-    sec.append(col.stories.length ? el('div', { class: 'stories' }, col.stories.map((st) => storyCard(col, st))) : el('p', { class: 'col-empty', text: 'No stories yet. Paste a repository link above and pick this collection.' }));
+    if (!col.stories.length) { sec.append(el('p', { class: 'col-empty', text: 'No stories yet. Paste a repository link above and pick this collection.' })); return sec; }
+    const shown = filterStories(col.stories, view);
+    const filtering = view.q.trim() || view.status !== 'all';
+    if (!shown.length) { sec.append(el('p', { class: 'col-empty', text: `None of its ${col.stories.length} stories match.` })); return sec; }
+    const pg = paginate(shown, view.pages[col.slug] || 1, PAGE_SIZE);
+    if (filtering) sec.append(el('p', { class: 'st-status', text: `${fmtN(shown.length)} of ${fmtN(col.stories.length)} stories match` }));
+    sec.append(el('div', { class: 'stories' }, pg.items.map((st) => storyCard(col, st))));
+    if (pg.pages > 1) sec.append(pager(col, pg, shown.length));
     return sec;
   }
 
@@ -132,11 +158,63 @@ export function createLibraryUI({ root, select, onError, onServer }) {
       row.append(
         el('a', { class: 'btn small primary', href: `#/c/${encodeURIComponent(col.slug)}`, text: 'Play collection' }),
         el('button', { class: 'btn small', type: 'button', 'aria-expanded': String(!!open.get(key)), text: `${open.get(key) ? 'Hide' : 'Show'} developers (${fmtN(ep.people)})`, onclick: () => { if (open.get(key)) open.delete(key); else open.set(key, 'open'); render(); } }),
-        el('span', { class: 'st-status', text: `All ${ep.repos} ${ep.repos === 1 ? 'story' : 'stories'} as one movie · ${fmtN(ep.commits)} commits · combined ${ago(ep.builtAt)}` }));
+        el('span', { class: 'st-status', text: (() => {
+          // while stories are still being built, say how much of the collection the movie covers
+          const read = col.stories.filter((s) => s.hasHistory).length;
+          const covers = ep.repos < read ? `Includes ${fmtN(ep.repos)} of ${fmtN(read)} stories read so far, updating as more finish` : `All ${fmtN(ep.repos)} ${ep.repos === 1 ? 'story' : 'stories'} as one movie`;
+          return `${covers} · ${fmtN(ep.commits)} commits · combined ${ago(ep.builtAt)}`;
+        })() }));
     } else if (ep.status === 'building') row.append(el('span', { class: 'st-status busy', text: 'Combining the stories into one movie…' }));
     else if (ep.status === 'error') row.append(el('span', { class: 'st-status err', text: `The combined movie didn't build: ${ep.error}` }));
     else return null;
     return row;
+  }
+
+  /** Periods: pick a quarter (or dates) to get its own movie and report; each one listed with its links. */
+  function periodsPanel(col) {
+    const list = col.periods || [];
+    const canMake = canManage && col.stories.some((s) => s.hasHistory);
+    if (!list.length && !canMake) return null;
+    const enc = encodeURIComponent;
+    const box = el('div', { class: 'periods', role: 'region', 'aria-label': `Periods of ${col.name}` }, el('h4', { text: 'Quarters and periods' }));
+    if (canMake) {
+      const quarters = (col.episode && col.episode.quarters) || [];
+      const pick = el('select', { 'aria-label': 'Period' },
+        quarters.map((q) => el('option', { value: `${q.from}_${q.to}`, text: `${q.label} · ${fmtN(q.commits)} commits` })),
+        el('option', { value: 'custom', text: 'Custom dates…' }));
+      const from = el('input', { type: 'date', 'aria-label': 'From', required: true });
+      const to = el('input', { type: 'date', 'aria-label': 'To', required: true });
+      const dates = el('span', { class: 'inline', hidden: quarters.length ? true : null }, from, el('span', { text: 'to' }), to);
+      pick.addEventListener('change', () => { dates.hidden = pick.value !== 'custom'; });
+      const make = () => {
+        const [f, t] = pick.value === 'custom' ? [from.value, to.value] : pick.value.split('_');
+        if (!f || !t) { onError('Pick both dates for the period.'); return; }
+        act(() => api.createPeriod(col.slug, f, t));
+      };
+      box.append(el('div', { class: 'period-form' }, pick, dates,
+        el('button', { class: 'btn small', type: 'button', text: 'Make movie and report', onclick: make }),
+        quarters.length ? null : el('span', { class: 'st-status', text: col.episode && col.episode.status === 'ready' ? 'Quarters show here once the collection movie is combined again.' : 'Pick the dates; quarters show here once the collection movie is built.' })));
+    }
+    if (list.length) {
+      box.append(el('ul', { class: 'period-list' }, list.map((p) => {
+        const base = `#/c/${enc(col.slug)}/p/${enc(p.id)}`;
+        const job = periodJobs.get(`${col.id}/${p.id}`);
+        const busy = (job && (job.state === 'queued' || job.state === 'running')) || ['queued', 'building'].includes(p.status);
+        let status;
+        if (busy) status = el('span', { class: 'st-status busy', role: 'status', text: (job && job.state === 'running' && job.message) || 'Waiting to build…' });
+        else if (p.status === 'error') status = el('span', { class: 'st-status err', text: p.error || 'This period didn\'t build.' });
+        else status = el('span', { class: 'st-status', text: `${fmtN(p.commits || 0)} commits · ${fmtN(p.people || 0)} developers${p.status === 'small' ? ' · too few for a movie' : ''} · built ${ago(p.builtAt)}` });
+        return el('li', { 'data-period': p.id },
+          el('span', { class: 'label', text: p.label || p.id }), status,
+          el('span', { class: 'actions' },
+            !busy && p.hasEpisode ? el('a', { class: 'btn small primary', href: base, text: 'Play' }) : null,
+            !busy && p.hasReport ? el('a', { class: 'btn small', href: `${base}/report`, text: 'Report' }) : null,
+            !busy && p.hasReport ? el('a', { class: 'btn small', href: api.periodShareUrl(col.slug, p.id), download: '', title: 'One .html file with the movie and the report. Anyone can open it in a browser.', text: 'Download' }) : null,
+            canManage && !busy ? el('button', { class: 'btn small', type: 'button', text: 'Rebuild', onclick: () => act(() => api.rebuildPeriod(col.slug, p.id)) }) : null,
+            canManage && !busy ? el('button', { class: 'btn small', type: 'button', text: 'Delete', 'aria-label': `Delete ${p.label || p.id}`, onclick: () => act(() => api.deletePeriod(col.slug, p.id)) }) : null));
+      })));
+    }
+    return box;
   }
 
   function developersPanel(col) {
@@ -170,7 +248,39 @@ export function createLibraryUI({ root, select, onError, onServer }) {
     return box;
   }
 
+  /** Previous / page numbers / next for one collection; pages around the current one, plus first and last. */
+  function pager(col, pg, total) {
+    const go = (p) => { setView({ pages: { [col.slug]: p } }, true); const top = root.querySelector(`[data-collection="${CSS.escape(col.slug)}"]`); if (top) top.scrollIntoView({ block: 'start' }); };
+    const nums = [...new Set([1, pg.page - 2, pg.page - 1, pg.page, pg.page + 1, pg.page + 2, pg.pages])].filter((n) => n >= 1 && n <= pg.pages).sort((a, b) => a - b);
+    const nav = el('nav', { class: 'pager', 'aria-label': `Pages of ${col.name}` },
+      el('button', { class: 'btn small', type: 'button', text: '‹ Previous', disabled: pg.page === 1, onclick: () => go(pg.page - 1) }));
+    nums.forEach((n, i) => {
+      if (i && n - nums[i - 1] > 1) nav.append(el('span', { class: 'gap', text: '…' }));
+      nav.append(el('button', { class: `btn small${n === pg.page ? ' primary' : ''}`, type: 'button', text: String(n), 'aria-current': n === pg.page ? 'page' : null, onclick: () => go(n) }));
+    });
+    nav.append(el('button', { class: 'btn small', type: 'button', text: 'Next ›', disabled: pg.page === pg.pages, onclick: () => go(pg.page + 1) }),
+      el('span', { class: 'st-status', text: `${fmtN(pg.from + 1)}–${fmtN(pg.to)} of ${fmtN(total)}` }));
+    return nav;
+  }
+
+  function renderTools() {
+    if (!tools) return;
+    const all = collections.flatMap((c) => c.stories);
+    tools.search.closest('.lib-tools').hidden = !all.length;
+    if (document.activeElement !== tools.search) tools.search.value = view.q;
+    tools.sort.value = view.sort;
+    tools.status.textContent = '';
+    for (const s of STATUSES) {
+      const n = s.key === 'all' ? all.length : all.filter((x) => statusOf(x) === s.key).length;
+      if (!n && s.key !== 'all' && view.status !== s.key) continue;
+      tools.status.append(el('button', { class: 'chip', type: 'button', 'aria-pressed': String(view.status === s.key), text: `${s.label} ${fmtN(n)}`, onclick: () => setView({ status: s.key }) }));
+    }
+    const matches = filterStories(all, view).length;
+    tools.count.textContent = view.q.trim() || view.status !== 'all' ? `${fmtN(matches)} of ${fmtN(all.length)} stories` : '';
+  }
+
   function render() {
+    renderTools();
     root.textContent = '';
     if (!collections.length) root.append(el('p', { class: 'col-empty', text: 'Your library is empty. Create a collection, then paste a repository link to add its first story.' }));
     for (const col of collections) root.append(collectionSection(col));
@@ -193,6 +303,7 @@ export function createLibraryUI({ root, select, onError, onServer }) {
     refreshSoon() { clearTimeout(pending); pending = setTimeout(refresh, 120); },
     onJob(job) {
       if (job.kind === 'collection') { if (job.state === 'done' || job.state === 'error') this.refreshSoon(); return; }
+      if (job.kind === 'period') { periodJobs.set(`${job.collectionId}/${job.periodId}`, job); this.refreshSoon(); return; }
       jobs.set(job.storyId, job);
       const card = root.querySelector(`[data-story="${CSS.escape(job.storyId)}"]`);
       const col = card && collections.find((c) => c.slug === card.closest('[data-collection]').dataset.collection);
@@ -202,6 +313,9 @@ export function createLibraryUI({ root, select, onError, onServer }) {
     },
     get collections() { return collections; },
     get canManage() { return canManage; },
+    /** Restore search, filter, sort and pages (from the address). */
+    setView(v) { view = { ...view, ...v }; render(); },
+    focusSearch() { if (tools) tools.search.focus(); },
     find(c, s) { const col = collections.find((x) => x.slug === c); return col ? { col, story: col.stories.find((x) => x.slug === s) || null } : null; },
   };
 }

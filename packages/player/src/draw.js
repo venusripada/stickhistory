@@ -5,6 +5,7 @@
 import { L, hash, figurePoints } from './poses.js';
 import { clamp, lerp, rand, fmtN, fmtDate, trunc, fixLabel, fixKind, ETYPES, H, GY } from './util.js';
 import { FD, FM } from './theme.js';
+import { FLOOR, footY, scaleAt, depthTransform } from './floor.js';
 
 export function makeDraw(E) {
   const { ctx, C, G, CAM } = E;
@@ -38,7 +39,22 @@ export function makeDraw(E) {
     for (let y = 12 - 200; y < H + 100; y += 20) { ctx.moveTo(x0, y); ctx.lineTo(x1, y); }
     ctx.stroke();
   }
+  /** The floor in perspective, with the branch's commit track along its back edge. */
+  function drawFloor() {
+    const vx = E.W / 2, back = FLOOR.back, front = FLOOR.front;
+    ctx.save();
+    ctx.fillStyle = C.paper2; ctx.globalAlpha = .55; ctx.fillRect(-200, back, E.W + 400, front - back + 40); ctx.globalAlpha = 1;
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = -8; i <= 16; i++) { const xf = i * E.W / 8; ctx.moveTo(vx + (xf - vx) * 0.7, back); ctx.lineTo(xf, front + 30); }
+    for (const d of [0.25, 0.5, 0.75, 1]) { ctx.moveTo(-200, footY(d)); ctx.lineTo(E.W + 200, footY(d)); }
+    ctx.stroke();
+    ctx.restore();
+  }
   function drawGround() {
+    drawFloor();
+    // the commit track runs along the back edge of the floor
+    ctx.save(); ctx.translate(0, FLOOR.back - GY);
     const x0 = E.W * .2, x1 = E.W * .64, by = GY + 26;
     ctx.strokeStyle = C.muted; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(x0, GY);
@@ -51,7 +67,8 @@ export function makeDraw(E) {
     ctx.lineWidth = 2;
     for (let x = 24; x < E.W; x += 48) { ctx.beginPath(); ctx.arc(x, GY, 4.5, 0, 7); ctx.fillStyle = C.paper; ctx.fill(); ctx.stroke(); }
     ctx.font = `11px ${FM}`; ctx.fillStyle = C.muted; ctx.textAlign = 'left';
-    ctx.fillText(E.EP.summary.branch || 'main', 8, GY + 20);
+    ctx.fillText(E.EP.summary.branch || 'main', 8, GY - 10);
+    ctx.restore();
   }
   function strokeFigure(p, col, lw, alphaBack) {
     const seg = (...pts) => { ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke(); };
@@ -179,7 +196,8 @@ export function makeDraw(E) {
         // in a crowd, only labels with room are drawn, so the ones you see stay readable
         const tag = fixLabel(e.fx, 22);
         ctx.font = `10px ${FM}`;
-        const w = ctx.measureText(tag).width, box = [e.x - w / 2 - 10, top - 10, e.x + w / 2 + 2, top + 3];
+        const w = ctx.measureText(tag).width, sc = scaleAt(e.d ?? 0.5), ty = footY(e.d ?? 0.5) + (top - GY) * sc;
+        const box = [e.x - (w / 2 + 10) * sc, ty - 10 * sc, e.x + (w / 2 + 2) * sc, ty + 3 * sc];
         const taken = labelBoxes.some((b) => box[0] < b[2] && box[2] > b[0] && box[1] < b[3] && box[3] > b[1]);
         if (!taken) {
           labelBoxes.push(box);
@@ -216,8 +234,9 @@ export function makeDraw(E) {
   function drawBeam() {
     const F = G.finisher; if (!F || F.phase !== 'cast' || !G.boss) return;
     const h = F.hero, p = figurePoints(E, h.pose, h.x, h.z, h.f, h.seed);
-    const sx = (p.hA.x + p.hB.x) / 2, sy = (p.hA.y + p.hB.y) / 2;
-    const tx = G.boss.x - G.boss.r * .4, ty = GY - 52;
+    const at = (x, y, ax, d) => [ax + (x - ax) * scaleAt(d), footY(d) + (y - GY) * scaleAt(d)];
+    const [sx, sy] = at((p.hA.x + p.hB.x) / 2, (p.hA.y + p.hB.y) / 2, h.x, h.d ?? 0.5);
+    const [tx, ty] = at(G.boss.x - G.boss.r * .4, GY - 52, G.boss.x, G.boss.d ?? 0.5);
     const prog = clamp(F.t / .4, 0, 1);
     const ex = lerp(sx, tx, prog), ey = lerp(sy, ty, prog);
     ctx.save(); ctx.lineCap = 'round';
@@ -270,6 +289,7 @@ export function makeDraw(E) {
   function drawFx() {
     for (const f of G.fx) {
       const k = clamp(f.life / f.max, 0, 1);
+      ctx.save(); if (f.d != null) depthTransform(ctx, f.x, f.d);
       if (f.t === 'star') {
         const r = f.r * (0.6 + (1 - k) * .7);
         ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.rot);
@@ -288,11 +308,13 @@ export function makeDraw(E) {
         for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2 + .2, r0 = 30 + (1 - k) * 30, r1 = r0 + 22; ctx.moveTo(f.x + Math.cos(a) * r0, f.y + Math.sin(a) * r0); ctx.lineTo(f.x + Math.cos(a) * r1, f.y + Math.sin(a) * r1); }
         ctx.stroke();
       }
+      ctx.restore();
     }
     ctx.globalAlpha = 1;
   }
   function drawParts() {
     for (const p of G.parts) {
+      ctx.save(); if (p.d != null) depthTransform(ctx, p.x, p.d);
       ctx.globalAlpha = clamp(p.life / p.max * 1.4, 0, 1) * (p.puff ? .35 : 1);
       if (p.paper) {
         ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
@@ -301,9 +323,10 @@ export function makeDraw(E) {
         ctx.beginPath(); ctx.moveTo(-p.r * .6, -p.r * .5); ctx.lineTo(p.r * .6, -p.r * .5); ctx.moveTo(-p.r * .6, p.r * .2); ctx.lineTo(p.r * .3, p.r * .2); ctx.stroke();
         ctx.restore();
       } else { ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill(); }
+      ctx.restore();
     }
     ctx.globalAlpha = 1;
-    for (const f of G.floaters) { ctx.globalAlpha = clamp(f.life * 1.6, 0, 1); haloText(f.text, f.x, f.y, f.color, `700 ${f.size}px ${FD}`, 'center', 5); }
+    for (const f of G.floaters) { ctx.save(); if (f.d != null) depthTransform(ctx, f.x, f.d); ctx.globalAlpha = clamp(f.life * 1.6, 0, 1); haloText(f.text, f.x, f.y, f.color, `700 ${f.size}px ${FD}`, 'center', 5); ctx.restore(); }
     ctx.globalAlpha = 1;
   }
   function highlight(text, x, y, size) {
@@ -398,9 +421,17 @@ export function makeDraw(E) {
   function drawBossBar() {
     const B = G.boss; if (!B) return;
     const w = Math.min(span() * .55, 240), x = mid() - w / 2, y = 40;
-    haloText('Tech Debt', mid(), y - 8, C.bug, `700 18px ${FD}`, 'center', 4);
+    const feature = B.info.kind === 'feature', main = feature ? C.gold : C.bug;
+    haloText(feature ? `Feature: ${trunc(B.info.s, 30)}` : 'Tech Debt', mid(), y - 8, main, `700 18px ${FD}`, 'center', 4);
     ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.fillStyle = C.paper; ctx.fillRect(x, y, w, 14); ctx.strokeRect(x, y, w, 14);
-    ctx.fillStyle = C.bug; ctx.fillRect(x + 2, y + 2, (w - 4) * clamp(B.hp / 100, 0, 1), 10);
+    if (B.shield) {
+      // while shielded the bar counts its commits still to beat
+      const left = B.minions.length + G.enemies.filter((e) => e.fromBoss && alive(e)).length;
+      ctx.fillStyle = C.orb; ctx.fillRect(x + 2, y + 2, (w - 4) * clamp(left / Math.max(1, B.minionTotal), 0, 1), 10);
+      haloText(`shielded: beat its ${fmtN(left)} ${left === 1 ? 'commit' : 'commits'} first`, mid(), y + 30, C.muted, `11px ${FM}`, 'center', 3);
+      return;
+    }
+    ctx.fillStyle = main; ctx.fillRect(x + 2, y + 2, (w - 4) * clamp(B.hp / 100, 0, 1), 10);
     if (G.finisher && G.finisher.phase === 'cast') {
       haloText(trunc(B.info.s, Math.floor(span() / 8.5)), mid(), 84, C.ink, `600 12px ${FM}`, 'center', 5);
       if (B.info.files != null) haloText(`${fmtN(B.info.files)} files changed`, mid(), 112, E.heroColor(G.finisher.hero.name), `700 26px ${FD}`, 'center', 5);

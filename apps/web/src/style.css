@@ -147,6 +147,7 @@ a { color: inherit; }
 }
 .btn svg { width: 18px; height: 18px; flex: none; }
 .btn:hover { background: var(--paper-2); }
+.btn:disabled { opacity: 0.45; cursor: default; }
 .btn.primary { background: var(--ink); color: var(--paper); min-width: 96px; }
 .btn.primary:hover { opacity: 0.9; }
 .btn.small { min-height: 32px; padding: 0 10px; font-size: 0.82rem; border-width: 1.5px; }
@@ -287,6 +288,16 @@ a.btn { text-decoration: none; }
 .crumbs strong { color: var(--ink); }
 .notice { padding: 8px 12px; border-left: 4px solid var(--orb); background: var(--paper-2); border-radius: 0 8px 8px 0; font-size: 0.9rem; }
 
+/* library search, status filter, sort and pages */
+.lib-tools { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; position: sticky; top: 0; z-index: 2; padding: 8px 0; background: var(--paper); border-bottom: 1px solid var(--rule); }
+.lib-tools input[type=search] { flex: 1 1 260px; min-width: 0; min-height: 40px; padding: 0 12px; border: 2px solid var(--ink); border-radius: 8px; background: var(--paper); color: var(--ink); font: 600 0.95rem/1 var(--f-mono); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: inherit; font-size: 0.8rem; padding: 4px 10px; border-radius: 999px; border: 1.5px solid var(--rule); background: var(--paper); color: var(--ink); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.chip:focus-visible { outline: 3px solid var(--c1); outline-offset: 2px; }
+.pager { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pager .gap { color: var(--muted); padding: 0 2px; }
+
 /* adding a GitHub organization */
 .org summary { cursor: pointer; font-size: 0.9rem; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
 .org[open] { display: grid; gap: 8px; padding: 10px 12px; border: 1.5px dashed var(--rule); border-radius: 8px; }
@@ -319,3 +330,52 @@ body.embed .wrap > :not(.stage-wrap) { display: none !important; }
 body.embed .stage-wrap > :not(.movie) { display: none !important; }
 body.embed .movie { height: 100vh; border: 0; border-radius: 0; box-shadow: none; }
 body.embed .screen { aspect-ratio: auto; flex: 1 1 auto; }
+
+/* periods (a quarter or any dates) in the library */
+.periods { display: grid; gap: 8px; padding: 8px 10px; border: 1.5px dashed var(--rule); border-radius: 8px; }
+.periods h4 { margin: 0; font-family: var(--f-mono); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.period-form { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.period-form select, .period-form input { font: inherit; font-size: 0.85rem; padding: 4px 8px; border: 2px solid var(--ink); border-radius: 6px; background: var(--paper); color: var(--ink); min-width: 0; }
+.period-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.period-list li { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.period-list .label { font-weight: 700; }
+.period-list .actions { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* a period's report */
+.report { display: grid; gap: 14px; min-width: 0; }
+.rep-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.rep-totals { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin: 0; }
+.rep-totals div { padding: 8px 10px; border: 1.5px solid var(--rule); border-radius: 8px; background: var(--paper); }
+.rep-totals dt { font-family: var(--f-mono); font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.rep-totals dd { margin: 0; font-family: var(--f-display); font-size: 1.8rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.rep-sec { display: grid; gap: 8px; min-width: 0; }
+.rep-sec h3 { margin: 0; font-family: var(--f-display); font-size: 1.5rem; }
+.rep-scroll { overflow-x: auto; max-width: 100%; }
+.rep-table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+.rep-table th, .rep-table td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; white-space: nowrap; }
+.rep-table tbody th { font-weight: 700; }
+.rep-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rep-table thead th { white-space: nowrap; }
+.rep-table thead button { font: inherit; font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); background: none; border: 0; padding: 0; cursor: pointer; }
+.rep-table thead th[aria-sort] button { color: var(--ink); }
+.rep-table thead th[aria-sort="descending"] button::after { content: ' ↓'; }
+.rep-table thead th[aria-sort="ascending"] button::after { content: ' ↑'; }
+.rep-list { margin: 0; padding-left: 1.4em; display: grid; gap: 4px; font-size: 0.9rem; }
+.rep-list li { overflow-wrap: anywhere; }
+.rep-list .meta { display: block; color: var(--muted); font-size: 0.82rem; }
+.rep-list .tag { display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 999px; background: var(--orb); color: #1c2433; font-family: var(--f-mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.rep-more summary { cursor: pointer; font-weight: 700; margin-bottom: 6px; }
+
+/* a downloaded period file: no library to go back to */
+body.shared #crumbHome, body.shared #crumbHome + span, body.shared #bEmbed, body.shared .file-btn { display: none; }
+/* the report stands alone: no library intro, no movie footnote */
+body[data-view="report"] #lede, body[data-view="report"] #footer, body.shared #lede { display: none; }
+#bSound[aria-pressed="false"] { color: var(--muted); }
+
+/* a period's Movie and Report tabs */
+.tabs { display: flex; gap: 0; border-bottom: 2px solid var(--ink); }
+.tabs .tab { padding: 6px 18px; font-weight: 700; text-decoration: none; color: var(--muted); border: 2px solid transparent; border-bottom: 0; border-radius: 8px 8px 0 0; margin-bottom: -2px; }
+.tabs .tab:hover { color: var(--ink); }
+.tabs .tab[aria-current] { color: var(--ink); background: var(--paper); border-color: var(--ink); }
+.tabs .tab[aria-disabled] { opacity: 0.45; cursor: default; }
+.tabs .tab:focus-visible { outline: 3px solid var(--c1); outline-offset: 2px; }

@@ -44,3 +44,25 @@ export function makeRepo(opts = {}) {
   addCommits(dir, opts);
   return dir;
 }
+
+/**
+ * Adds a pull request merged with a merge commit: `n` feature commits by `author` on a
+ * branch from the current head, then "Merge pull request #<pr> from <author>/<name>" with
+ * `title` as its body. Dates continue from `day` (a YYYY-MM-DD).
+ */
+export function mergePullRequest(dir, { name = 'feature', n = 6, pr = 7, title = 'Add a feature', day = '2024-01-10', author = PEOPLE[0] } = {}) {
+  const t0 = Date.parse(day + 'T12:00:00Z');
+  const main = git(dir, ['rev-parse', '--abbrev-ref', 'HEAD']).trim();
+  git(dir, ['checkout', '-q', '-b', name]);
+  for (let k = 0; k < n; k++) {
+    const file = join(dir, `src/${name}${k}.txt`);
+    writeFileSync(file, `${name} ${k}\n`);
+    git(dir, ['add', '-A']);
+    const date = new Date(t0 + k * 3600000).toISOString();
+    git(dir, ['-c', `user.name=${author[0]}`, '-c', `user.email=${author[1]}`, 'commit', '-q', '-m', `feat: ${name} part ${k}`], { GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date });
+  }
+  git(dir, ['checkout', '-q', main]);
+  const date = new Date(t0 + 86400000).toISOString();
+  git(dir, ['-c', `user.name=${author[0]}`, '-c', `user.email=${author[1]}`, 'merge', '-q', '--no-ff', name, '-m', `Merge pull request #${pr} from ${author[0].split(' ')[0].toLowerCase()}/${name}`, '-m', title], { GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date });
+  return git(dir, ['rev-parse', 'HEAD']).trim();
+}

@@ -7,6 +7,9 @@ import { resolveIdentities } from './identity.js';
 import { splitChapters, releaseWeight } from './chapters.js';
 import { dayOfIso } from './timeline.js';
 export { combineHistories } from './collection.js';
+export { findPullRequests } from './groups.js';
+export { cutHistory, quarterOf, quartersOf, periodLabel, checkPeriod, periodReport } from './period.js';
+import { buildGroups } from './groups.js';
 
 export { parseGitLog, closingIssues, GIT_LOG_COMMAND, GIT_LOG_FORMAT } from './git-log.js';
 export { validateEpisode } from './validate.js';
@@ -16,7 +19,7 @@ export { splitChapters, chapterCount, releaseWeight } from './chapters.js';
 export { C as TL, secondsPerDay, isoOfDay, dayOfIso, commitRange, weekBuckets, totalsAt, activeAt, chapterAt, fixOf, commitUrl, peopleSummary } from './timeline.js';
 
 export const SCHEMA_VERSION = 2;
-export const ENGINE_VERSION = '0.3.0';
+export const ENGINE_VERSION = '0.4.0';
 const ROSTER_SIZE = 24;
 
 const CREATURE = { gremlin: 'Gremlins', beetle: 'Beetles', crawler: 'Crawlers', wraith: 'Wraiths', moth: 'Moths', bomb: 'Bombs' };
@@ -50,6 +53,7 @@ const scopeLabel = (sc) => (ACRONYMS.has(sc) ? sc.toUpperCase() : sc.split(/[-_/
  * @param {number} [opts.maxFixFiles=120] Fixes touching more files than this are treated as mass edits and never fought.
  * @param {number} [opts.heroesPerChapter=4]
  * @param {string} [opts.generatedAt]
+ * @param {number} [opts.minCommits=10]  Fewer commits than this is too short to play (a period's report can ask for less).
  * @returns {object} Episode (see episode.schema.json)
  */
 export function buildEpisode(history, opts = {}) {
@@ -80,7 +84,8 @@ export function buildEpisode(history, opts = {}) {
       order: newestFirst ? -idx : idx,
     };
   }).filter((c) => /^\d{4}-\d{2}-\d{2}$/.test(c.d));
-  if (commits.length < 10) throw new Error(`Only ${commits.length} commits found. A replay needs at least 10.`);
+  const minCommits = opts.minCommits ?? 10;
+  if (commits.length < Math.max(1, minCommits)) throw new Error(`Only ${commits.length} commits found. A replay needs at least ${Math.max(1, minCommits)}.`);
   commits.sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : a.order - b.order));
 
   const ids = resolveIdentities(commits, { aliases, separate: opts.separate, repoName, preferLogin: !['git-log', 'collection'].includes(history.source) });
@@ -222,6 +227,8 @@ export function buildEpisode(history, opts = {}) {
     releases,
   };
   if (multi) timeline.repos = history.repos.map((r) => ({ name: r.name, url: r.url ?? null }));
+  // bosses that spawn their work: big feature pull requests, Tech Debt, releases
+  timeline.groups = buildGroups({ raw, commits, parts, chapters, tl: timeline, releases });
 
   // ---- summary ----
   const count = (f) => commits.filter(f).length;

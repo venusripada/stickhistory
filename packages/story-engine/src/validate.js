@@ -56,6 +56,13 @@ export function validateEpisode(ep) {
     need(DATE.test(tl.start) && DATE.test(tl.end), 'timeline needs start and end dates.');
     need(Number.isInteger(tl.days) && tl.days > 0, 'timeline.days must be a positive integer.');
     need(Array.isArray(tl.releases), 'timeline.releases must be an array.');
+    if (tl.groups != null && need(Array.isArray(tl.groups), 'timeline.groups must be an array.')) {
+      const n = Array.isArray(tl.commits) ? tl.commits.length : 0;
+      tl.groups.forEach((g, i) => {
+        need(['feature', 'debt', 'release'].includes(g.kind), `timeline.groups[${i}].kind must be feature, debt or release.`);
+        need(Array.isArray(g.members) && g.members.every((m) => Number.isInteger(m) && m >= 0 && m < n), `timeline.groups[${i}].members must index timeline.commits.`);
+      });
+    }
     if (need(Array.isArray(tl.people) && tl.people.length > 0, 'timeline.people must be a non-empty array.')
       && need(Array.isArray(tl.commits), 'timeline.commits must be an array.')) {
       let prev = 0;

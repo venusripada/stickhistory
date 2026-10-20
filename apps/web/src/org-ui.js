@@ -36,12 +36,22 @@ export function createOrgUI({ form, input, list, collection, onError, onAdded })
     add.addEventListener('click', async () => {
       const pick = repos.filter((r) => checks.get(r.name) && checks.get(r.name).checked).map((r) => ({ url: r.url, name: r.name, webUrl: r.webUrl }));
       add.disabled = true;
+      // big organizations go up in batches, so no single request gets too large
+      const r = { added: [], skipped: [] };
       try {
-        const r = await api.addStories(target.slug, pick);
+        for (let k = 0; k < pick.length; k += 200) {
+          add.textContent = `Adding ${fmtN(Math.min(k + 200, pick.length))} of ${fmtN(pick.length)}…`;
+          const part = await api.addStories(target.slug, pick.slice(k, k + 200));
+          r.added.push(...part.added); r.skipped.push(...part.skipped);
+        }
         repos = []; render(); input.value = '';
         onError('');
         onAdded(r);
-      } catch (e) { onError(e.message); add.disabled = false; }
+      } catch (e) {
+        onError(r.added.length ? `Added ${r.added.length} before this error: ${e.message}` : e.message);
+        if (r.added.length) onAdded(r);
+        add.disabled = false; update();
+      }
     });
     head.append(count, all, none, add);
     const ul = document.createElement('ul'); ul.className = 'org-list';

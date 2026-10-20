@@ -46,6 +46,7 @@ library/                         ($COMMIT_WARS_LIBRARY overrides; git-ignored)
   open-source-ai/                a collection
     collection.json              name, description, story order, merge/separate choices
     collection-episode.json      all of the collection's stories as one movie
+    _periods/2026-07-01_2026-09-30/  a quarter (or any dates): period.json, episode.json, report.json
     opencode/                    a story
       story.json                 repo URL, branch, aliases, titles, status, last fetch and build
       repo.git/                  bare, blobless clone
@@ -58,7 +59,10 @@ library/                         ($COMMIT_WARS_LIBRARY overrides; git-ignored)
 - **Update** (per story, or **Update all** per collection) fetches and rebuilds only when there are new commits. Opening a story that hasn't been fetched for a day checks in the background and offers the newer version.
 - **Rename**, **Move** and **Delete** change the folders. Folders changed by hand show up on the next refresh.
 - Progress streams to the page live while a story clones and builds.
+- **Finding stories:** the search box (press `/`) filters by name or repo as you type; status chips show Ready, Building or waiting, Failed and Not built yet with counts; sort by name, commits, last update or last activity. Each collection shows 60 stories per page. Search, filter, sort and page are kept in the address.
 - **Play collection** plays all of a collection's stories as one movie, built from their saved histories (no fetching), with each commit's repo shown in the feed, duel banners and captions. It's rebuilt whenever a story in the collection changes.
+- **Quarters and periods:** under a collection, pick a quarter (the list shows the quarters that have commits) or **Custom dates…** and press **Make movie and report**. The server builds the period from the saved histories: a movie of just those dates (its own chapters, cast and bosses) and a report with every developer (commits, fixes and features per story, first and last day), the stories, features (feature pull requests first), releases and fixes, with links into each repo. Periods are kept in the collection folder; **Play**, **Report** (`#/c/collection/p/from_to/report`), **Rebuild** and **Delete** are next to each one. A period too short for a movie still gets its report.
+- **Share a period:** **Download** saves one `.html` file with the movie and the report inside. Anyone can open it in a browser with no server or install (fonts come from Google Fonts when online). On the LAN, period links work for watchers too.
 - **Show developers** lists everyone across the collection's repos with their commits, fixes and features per repo. Click a name to watch only their work across those repos (`#/c/collection/dev/name`); collections never mix. The same person is recognized across repos by email, GitHub noreply login or exact full name; **Same person as…** merges two entries and **Separate** undoes a merge or stops joining people who only share a name. Those choices are saved in `collection.json`.
 
 ## How a repository becomes a fight
@@ -73,7 +77,9 @@ library/                         ($COMMIT_WARS_LIBRARY overrides; git-ignored)
 3. **Play** (`createPlayer`). The episode plays as a movie, and every calendar day gets the same screen time: the whole history takes about ten minutes at 1×, with speeds from 0.5× to 8×.
    - **Fights:** every fix enters as a bug, and every feature as a gold, half-built Feature to finish, on the day it landed. Each is fought by its author: bugs end FIXED, features end SHIPPED. Fights that don't fit wait at the edge as a "+N" swarm.
    - **Who's on stage:** only people with something to fight (up to six), arriving just before their work does and leaving once it's done. A near-empty stage is topped up with recent committers.
-   - **Story beats:** each chapter's biggest fixes and features are spotlight duels, Tech Debt arrives on the date of the chapter's biggest real cleanup (a refactor, removal, migration or consolidation of 10+ files; see `isCleanup`), and minor and major releases plant a flag and set off fireworks.
+   - **The floor:** fighters move across and into the screen; each hero has their own patch of floor, further back is drawn smaller, and hits land only at about the same depth.
+   - **Bosses that spawn their work:** a big feature pull request (merged with a merge commit, 5+ commits) arrives on its merge date shielded and spawns its commits; once they're beaten it can be hit, and it ends SHIPPED. Each minor or major release stands as a hive from the previous release, the period's work comes out of it, and on release day the heroes break it open before the flag goes up. Squash-merged repos have no pull request commits in git, so they get no feature bosses.
+   - **Story beats:** each chapter's biggest fixes and features are spotlight duels, Tech Debt arrives on the date of the chapter's biggest real cleanup (a refactor, removal, migration or consolidation of 10+ files; see `isCleanup`; if it came in through a pull request, it spawns that pull request's commits first), and minor and major releases plant a flag and set off fireworks.
    - **Seeking:** `seek(day)` jumps anywhere.
    - **Events:** the player emits `time`, `state` and `spotlight`.
 
@@ -83,7 +89,8 @@ library/                         ($COMMIT_WARS_LIBRARY overrides; git-ignored)
   - **Overlays:** the date and running totals; **People** (who was active in the last 14 days, with commit and fix counts; click a name to follow them); **Feed** (every commit up to the playhead, newest first, linked to its issue or pull request).
   - **Timeline:** under the frame, with commits per week (fixes red, features gold), chapter spans and release marks. Drag it to scrub.
   - **Full screen:** the ⛶ button, or press F.
-  - **Keys:** Space plays or pauses, ←/→ move a week, Shift+←/→ jump chapters, P and L toggle the panels.
+  - **Keys:** Space plays or pauses, ←/→ move a week, Shift+←/→ jump chapters, P and L toggle the panels, M mutes.
+  - **Sound:** quiet hits, knockouts, boss arrivals, shipped features and releases, made in the browser (no sound files) and limited so busy fights stay calm. The speaker button (or M) mutes; the choice is remembered. Embeds start muted.
 - **Follow a hero** (the cards under the movie, or a name in the People panel) plays only that person's fixes and features.
 - `#/s/collection/story` links open a story; `?embed=1` shows only the movie, autoplays and loops. **Copy embed code** gives an `<iframe>`.
 - **Download episode** / **Open episode file** move episodes between machines.

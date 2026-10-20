@@ -5,6 +5,9 @@
 //   #/s/collection/story      play a story from the library
 //   #/c/collection            play all of a collection's stories as one movie
 //   #/c/collection/dev/name   the same, following one developer
+//   #/c/collection/p/id       a period's movie (a quarter or any dates); /dev/name follows one developer
+//   #/c/collection/p/id/report   that period's report
+//   a downloaded period file (window.__CW_SHARE__) plays its own movie; #/report, #/dev/name
 //   #/sample/opencode         the bundled sample (works without the server)
 //   ?embed=1                  movie only, autoplay, loops (for iframes)
 
@@ -14,7 +17,10 @@ import { storage, dropLegacyCache } from './store.js';
 import { createMovieUI } from './movie-ui.js';
 import { api, subscribe, OFFLINE_MESSAGE } from './api.js';
 import { createLibraryUI, ago } from './library-ui.js';
+import { parseLibraryState, libraryStateHash } from './library-view.js';
 import { createOrgUI } from './org-ui.js';
+import { renderReport } from './report-ui.js';
+import { createSound, cueFor } from './sound.js';
 
 const $ = (s) => document.querySelector(s);
 const fmtN = (n) => Number(n).toLocaleString('en-US');
@@ -27,6 +33,9 @@ const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const params = new URLSearchParams(location.search);
 const EMBED = params.has('embed');
 if (EMBED) document.body.classList.add('embed');
+// a period downloaded as one .html file: its movie and report are inside the page, there is no server
+const SHARE = window.__CW_SHARE__ || null;
+if (SHARE) document.body.classList.add('shared');
 
 // ================= player =================
 const player = createPlayer({ canvas: $('#stage'), autoplay: true, loop: EMBED || params.has('loop') });
@@ -51,6 +60,7 @@ player.on('state', (s) => {
   else { b.textContent = 'everyone'; ml.append('Showing ', b); }
   $('#bAll').hidden = !s.following;
   if (current && current.collection) setCrumbs({ collection: current.collection.name, story: s.following ? `${s.following} · all stories` : 'All stories' });
+  if (current && current.period) setCrumbs({ collection: current.crumbs.collection, story: s.following ? `${s.following} · ${current.period.label}` : current.period.label });
 });
 // story beats become a one-line caption (and a polite announcement for screen readers)
 player.on('spotlight', (e) => {
@@ -59,12 +69,33 @@ player.on('spotlight', (e) => {
   const built = (fx) => fx.kind === 'feat';
   if (e.kind === 'duel') text = built(e.fx) ? `Feature duel: ${e.hero} builds "${player.fixLabel(e.fx, 90)}"${files(e.fx)}` : `Duel: ${e.hero} vs "${player.fixLabel(e.fx, 90)}" · ${e.typeName}${files(e.fx)}`;
   else if (e.kind === 'duel-won') text = `${e.hero} ${built(e.fx) ? 'shipped' : 'fixed'} "${player.fixLabel(e.fx, 90)}"${e.combo > 1 ? ` with a ${e.combo}-hit combo` : ''}${files(e.fx)} · ${fmtDate(e.fx.d)}`;
+  else if (e.kind === 'boss' && e.bossKind === 'feature') text = `Feature boss: ${e.who}'s "${e.s}". Beat its ${fmtN(e.commits)} commits, then ship it.`;
+  else if (e.kind === 'boss' && e.commits) text = `Tech Debt: the chapter's biggest cleanup, ${e.who}'s "${e.s}". Beat its ${fmtN(e.commits)} commits, then finish it.`;
   else if (e.kind === 'boss') text = `Tech Debt: the chapter's biggest cleanup. ${e.who}'s "${e.s}"${e.files != null ? ` (${fmtN(e.files)} files)` : ''} will finish it.`;
+  else if (e.kind === 'boss-open') text = `Shield down: ${e.title} can be hit now.`;
+  else if (e.kind === 'hive') text = `${e.tag} is being built: this period's fixes and features come out of it.`;
+  else if (e.kind === 'release-day') text = `Release day for ${e.tag}: break it open.`;
+  else if (e.kind === 'boss-down' && e.info.kind === 'feature') text = `${e.hero} shipped "${e.info.s}"${e.info.files != null ? `: ${fmtN(e.info.files)} files` : ''}.`;
   else if (e.kind === 'boss-down') text = `${e.hero} refactored Tech Debt away${e.info.files != null ? `: ${fmtN(e.info.files)} files changed` : ''}.`;
   else if (e.kind === 'release') text = `Release ${e.tag} shipped on ${fmtDate(e.d)}.`;
   else if (e.kind === 'chapter') text = `Chapter ${e.k + 1}: ${e.title}`;
   if (text) $('#caption').textContent = text;
 });
+// quiet fight sounds; muted in embeds unless turned on there, and the choice is remembered
+const sound = createSound({ muted: (storage.get('cw:sound') ?? (EMBED ? '0' : '1')) === '0' });
+if (navigator.webdriver) window.__cwSound = sound; // tests count what would play
+player.on('sfx', (e) => sound.play(e.kind));
+player.on('spotlight', (e) => { const cue = cueFor(e); if (cue && player.playing) sound.play(cue); });
+// audio can start only after the viewer touches the page
+for (const t of ['pointerdown', 'keydown']) document.addEventListener(t, () => sound.unlock(), { capture: true, passive: true });
+function setSound(on) {
+  sound.setMuted(!on);
+  storage.set('cw:sound', on ? '1' : '0');
+  const b = $('#bSound');
+  b.setAttribute('aria-pressed', String(on));
+  b.title = `Sound ${on ? 'on' : 'off'} (M)`;
+  $('#soundIcon').innerHTML = on ? '<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/>' : '<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9l5 6M21 9l-5 6"/>';
+}
 function follow(name) {
   if (!player.follow(name)) return false;
   ui.setFollow(name);
@@ -185,6 +216,11 @@ function showEpisode(ep, meta) {
     b.addEventListener('click', () => api.updateStory(meta.c, meta.s).then(() => showNotice('Checking for new commits…')).catch((e) => showError(e.message)));
     note.append(b);
     note.hidden = false;
+  } else if (meta && meta.period && meta.downloadHref) {
+    // a period's movie offers the file for sharing (the report is the other tab)
+    const d = document.createElement('a'); d.href = meta.downloadHref; d.download = ''; d.textContent = 'Download for sharing';
+    note.append(d);
+    note.hidden = false;
   } else note.hidden = true;
   setCrumbs(meta && meta.crumbs);
   showView('story');
@@ -194,6 +230,16 @@ function showEpisode(ep, meta) {
 function showView(v) {
   document.body.dataset.view = v;
   document.querySelectorAll('[data-view-only]').forEach((el) => { el.hidden = el.dataset.viewOnly !== v; });
+  if (v === 'library' || !current || !current.period) $('#periodTabs').hidden = true;
+}
+/** A period's Movie and Report tabs. movieHref is null when the period has too few commits for a movie. */
+function setTabs({ movieHref, reportHref, active }) {
+  const nav = $('#periodTabs'), mv = $('#tabMovie'), rp = $('#tabReport');
+  if (movieHref) { mv.href = movieHref; mv.removeAttribute('aria-disabled'); } else { mv.removeAttribute('href'); mv.setAttribute('aria-disabled', 'true'); mv.title = 'Too few commits in this period for a movie'; }
+  rp.href = reportHref;
+  mv.toggleAttribute('aria-current', active === 'movie'); if (active === 'movie') mv.setAttribute('aria-current', 'page');
+  rp.toggleAttribute('aria-current', active === 'report'); if (active === 'report') rp.setAttribute('aria-current', 'page');
+  nav.hidden = false;
 }
 function setCrumbs(c) {
   $('#crumbCol').textContent = c ? c.collection : '';
@@ -212,7 +258,12 @@ function showNotice(msg, action) {
 }
 
 let serverUp = null;
-const lib = createLibraryUI({ root: $('#collections'), select: $('#addCollection'), onError: (m) => showError(m), onServer: (up, canManage) => setServer(up, canManage) });
+const lib = createLibraryUI({
+  root: $('#collections'), select: $('#addCollection'), onError: (m) => showError(m), onServer: (up, canManage) => setServer(up, canManage),
+  tools: { search: $('#libSearch'), status: $('#libStatus'), sort: $('#libSort'), count: $('#libCount') },
+  // keep search, filter, sort and pages in the address, so reloading or sharing keeps the place
+  onView: (v) => { if (document.body.dataset.view === 'library') history.replaceState(null, '', location.pathname + location.search + libraryStateHash(v)); },
+});
 function setServer(up, canManage = true) {
   serverUp = up;
   // watching from another machine: the page shows the library but no way to change it
@@ -222,12 +273,18 @@ function setServer(up, canManage = true) {
   document.querySelectorAll('#addForm input, #addForm button, #colForm input, #colForm button').forEach((el) => { el.disabled = !up; });
 }
 let waiting = null; // { c, s, id } story opened before its build finished
-subscribe({
+if (!SHARE) subscribe({
   onOpen: () => { if (serverUp === false) { setServer(true); lib.refresh(); } },
   onDown: () => { if (serverUp) setServer(false); },
   onLibrary: () => lib.refreshSoon(),
   onJob: (job) => {
     lib.onJob(job);
+    if (job.kind === 'period' && current && current.period && current.period.id === job.periodId && current.c === (job.collection && job.collection.slug)) {
+      if (job.state !== 'done') return;
+      if (waiting) { waiting = null; route(); return; }
+      if (job.changed && document.body.dataset.view === 'story') showNotice(`${current.period.label} was built again.`, { label: 'Reload it', run: () => route() });
+      return;
+    }
     if (job.kind === 'collection' && current && current.collection && job.collectionId === current.collection.id) {
       if (job.state !== 'done') return;
       if (waiting) { waiting = null; openCollection(current.c, player.following); return; }
@@ -245,6 +302,7 @@ subscribe({
 
 async function openLibrary() {
   showView('library');
+  lib.setView(parseLibraryState(location.hash));
   setCrumbs(null);
   document.title = 'Library · Commit Wars';
   $('#repoTitle').textContent = 'Commit Wars';
@@ -290,6 +348,82 @@ async function openCollection(c, dev) {
   if (dev && !follow(dev)) showNotice(`There's no developer named "${dev}" in ${col.name} now; showing everyone.`);
 }
 
+/** A period's place in the library, or a message saying why it can't open. */
+async function findPeriod(c, id) {
+  await lib.refresh();
+  const col = lib.collections.find((x) => x.slug === c);
+  if (!col) return { error: serverUp === false ? '' : `There's no collection "${c}". It may have been renamed.` };
+  const p = (col.periods || []).find((x) => x.id === id);
+  if (!p) return { error: `There's no period ${id} in ${col.name}. It may have been deleted.` };
+  const enc = encodeURIComponent, base = `#/c/${enc(c)}/p/${enc(id)}`;
+  return { col, p, base, downloadHref: api.periodShareUrl(c, id) };
+}
+const isBusy = (p) => ['queued', 'building'].includes(p.status);
+
+async function openPeriod(c, id, dev) {
+  showError(''); showNotice('');
+  const f = await findPeriod(c, id);
+  if (f.error != null) { showView('library'); showError(f.error); return; }
+  const { col, p, base } = f;
+  const meta = { link: `${base}${dev ? `/dev/${encodeURIComponent(dev)}` : ''}`, c, period: p, reportHref: `${base}/report`, downloadHref: f.downloadHref, crumbs: { collection: col.name, story: p.label } };
+  current = meta;
+  const tabs = { movieHref: p.hasEpisode || isBusy(p) ? base : null, reportHref: meta.reportHref, active: 'movie' };
+  if (isBusy(p) || p.status === 'error' || !p.hasEpisode) {
+    setCrumbs(meta.crumbs); showView('story'); setTabs(tabs);
+    if (isBusy(p)) { waiting = { c, id }; showNotice(`${p.label} is being built. It will start as soon as it is ready.`); }
+    else if (p.status === 'error') showNotice(`${p.label} didn't build: ${p.error}`);
+    else showNotice(`${p.label} has too few commits for a movie.`, { label: 'Open its report', run: () => { location.hash = meta.reportHref; } });
+    return;
+  }
+  try { showEpisode(await api.periodEpisode(c, id), meta); }
+  catch (e) { showError(e.message); return; }
+  setTabs(tabs);
+  if (dev && !follow(dev)) showNotice(`There's no developer named "${dev}" in ${p.label}; showing everyone.`);
+}
+
+function showReport(rep, o) {
+  player.pause(); // the movie waits on its own tab, quietly
+  renderReport($('#reportView'), rep, o);
+  setCrumbs(null);
+  document.title = `${rep.collection} · ${rep.label} report · Commit Wars`;
+  $('#repoTitle').textContent = `${rep.collection} · ${rep.label}`;
+  showView('report');
+  window.scrollTo(0, 0);
+}
+
+async function openPeriodReport(c, id) {
+  showError(''); showNotice('');
+  const f = await findPeriod(c, id);
+  if (f.error != null) { showView('library'); showError(f.error); return; }
+  const { p, base } = f;
+  current = { link: `${base}/report`, c, period: p, crumbs: { collection: f.col.name, story: p.label } };
+  if (isBusy(p) || !p.hasReport) {
+    showView('library');
+    showError(isBusy(p) ? `${p.label} is still being built. Its report opens from the library when it is ready.` : `${p.label} didn't build: ${p.error}`);
+    return;
+  }
+  let rep;
+  try { rep = await api.periodReport(c, id); } catch (e) { showError(e.message); return; }
+  showReport(rep, { movieHref: p.hasEpisode ? base : null, devHref: p.hasEpisode ? (name) => `${base}/dev/${encodeURIComponent(name)}` : null, downloadHref: f.downloadHref, homeHref: '#/' });
+  setTabs({ movieHref: p.hasEpisode ? base : null, reportHref: `${base}/report`, active: 'report' });
+}
+
+/** A downloaded period file: the movie, or #/report, or #/dev/name following one developer. */
+function routeShare() {
+  const h = location.hash || '';
+  const rep = SHARE.report;
+  const reportOpts = { movieHref: SHARE.episode ? '#/' : null, devHref: SHARE.episode ? (name) => `#/dev/${encodeURIComponent(name)}` : null,
+    note: `Made with Commit Wars on ${new Date(SHARE.madeAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}, from git history only.` };
+  current = { link: null, shared: true, period: { id: `${rep.from}_${rep.to}`, label: rep.label }, crumbs: { collection: rep.collection, story: rep.label } };
+  const tabs = { movieHref: SHARE.episode ? '#/' : null, reportHref: '#/report' };
+  if (h === '#/report' || !SHARE.episode) { showReport(rep, reportOpts); setTabs({ ...tabs, active: 'report' }); return; }
+  const m = h.match(/^#\/dev\/(.+)$/);
+  const meta = { link: null, shared: true, period: { id: `${rep.from}_${rep.to}`, label: rep.label }, reportHref: '#/report', downloadHref: null, crumbs: { collection: rep.collection, story: rep.label } };
+  if (!player.episode) showEpisode(SHARE.episode, meta); else { current = meta; showView('story'); setCrumbs(meta.crumbs); }
+  setTabs({ ...tabs, active: 'movie' });
+  follow(m ? decodeURIComponent(m[1]) : null);
+}
+
 async function openSample(name) {
   showError(''); showNotice('');
   try {
@@ -300,8 +434,13 @@ async function openSample(name) {
 }
 
 function route() {
+  if (SHARE) { routeShare(); return; }
   const h = location.hash || '';
-  let m = h.match(/^#\/s\/([^/]+)\/([^/]+)$/);
+  let m = h.match(/^#\/c\/([^/]+)\/p\/([^/]+)\/report$/);
+  if (m) { openPeriodReport(decodeURIComponent(m[1]), decodeURIComponent(m[2])); return; }
+  m = h.match(/^#\/c\/([^/]+)\/p\/([^/]+)(?:\/dev\/(.+))?$/);
+  if (m) { openPeriod(decodeURIComponent(m[1]), decodeURIComponent(m[2]), m[3] ? decodeURIComponent(m[3]) : null); return; }
+  m = h.match(/^#\/s\/([^/]+)\/([^/]+)$/);
   if (m) { openStory(decodeURIComponent(m[1]), decodeURIComponent(m[2])); return; }
   m = h.match(/^#\/c\/([^/]+)(?:\/dev\/(.+))?$/);
   if (m) { openCollection(decodeURIComponent(m[1]), m[2] ? decodeURIComponent(m[2]) : null); return; }
@@ -396,6 +535,8 @@ $('#bSpeed').addEventListener('click', () => player.setSpeed(SPEEDS[(SPEEDS.inde
 $('#bPeople').addEventListener('click', () => setPanel('people', movie.classList.contains('no-people')));
 $('#bFeed').addEventListener('click', () => setPanel('feed', movie.classList.contains('no-feed')));
 $('#bFull').addEventListener('click', toggleFullscreen);
+$('#bSound').addEventListener('click', () => setSound(sound.muted));
+setSound(!sound.muted);
 document.addEventListener('keydown', (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   // typing fields keep their keys; the timeline slider keeps its arrows; buttons and links keep Space and Enter
@@ -404,10 +545,12 @@ document.addEventListener('keydown', (e) => {
   if (t.closest('input[type=range]') && e.key.startsWith('Arrow')) return;
   if (t.closest('button, a, summary') && (e.key === ' ' || e.key === 'Enter')) return;
   const k = e.key.toLowerCase();
+  if (document.body.dataset.view === 'library') { if (e.key === '/') { e.preventDefault(); lib.focusSearch(); } return; }
   if (e.key === ' ') { e.preventDefault(); player.toggle(); }
   else if (e.key === 'ArrowRight') { e.preventDefault(); e.shiftKey ? jumpChapter(1) : player.seekBy(7); }
   else if (e.key === 'ArrowLeft') { e.preventDefault(); e.shiftKey ? jumpChapter(-1) : player.seekBy(-7); }
   else if (k === 'f') toggleFullscreen();
+  else if (k === 'm') setSound(sound.muted);
   else if (k === 'p') setPanel('people', movie.classList.contains('no-people'));
   else if (k === 'l') setPanel('feed', movie.classList.contains('no-feed'));
 });
@@ -420,6 +563,7 @@ async function copy(text, label) {
 }
 const baseUrl = () => location.href.split('#')[0].split('?')[0];
 $('#bShare').addEventListener('click', () => {
+  if (current && current.shared) { flash('This movie is a file. To share it, send the file itself.'); return; }
   if (!current || !current.link) { flash('Episodes opened from a file have no link. Use Download episode to share it.'); return; }
   copy(baseUrl() + current.link, 'Link');
 });

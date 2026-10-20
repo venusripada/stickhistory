@@ -31,6 +31,8 @@
  * @property {HistoryIssue[]} [issues] Issues the commit message closes ("Fixes #12"), used when there is no PR data.
  * @property {string[]} [tags]        Tag names pointing at this commit.
  * @property {number} [parents]       Parent count; 2+ means a merge commit.
+ * @property {string[]} [parentShas]  Parent commits, first parent first (git log mode).
+ * @property {string} [mergeTitle]     A merge commit's pull request title, from its body (git log mode).
  * @property {number} [repo]          Collections only: index into History.repos.
  */
 
@@ -76,6 +78,8 @@
  * @property {TimelineCommit[]} commits  Sorted by day.
  * @property {{ tag: string, day: number, weight: number }[]} releases
  * @property {{ name: string, url: string|null }[]} [repos]  Collection episodes only.
+ * @property {{ kind: 'feature'|'debt'|'release', title: string, who: string|null, at: number|null, day: number, start?: number, tag?: string, files: number|null, k?: number, members: number[] }[]} [groups]
+ *   Bosses that spawn their work (groups.js).
  */
 
 /**

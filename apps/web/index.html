@@ -19,6 +19,10 @@
     <p class="lede" id="lede">Keep a library of repositories and watch each one's history as a stick-figure fight: <b>every hero is someone who wrote the commits, and every enemy is a bug or issue they actually fixed.</b></p>
   </header>
   <p class="error" id="errorBox" role="alert" hidden></p>
+  <nav class="tabs" id="periodTabs" aria-label="Movie or report" hidden>
+    <a class="tab" id="tabMovie" href="#/">Movie</a>
+    <a class="tab" id="tabReport" href="#/report">Report</a>
+  </nav>
 
   <section class="library" id="libraryView" aria-labelledby="libH" data-view-only="library">
     <div class="panel-head"><h2 id="libH">Library</h2><span class="eyebrow">collections of stories, kept in the library folder on this machine</span></div>
@@ -28,7 +32,7 @@
       <button class="btn primary" id="bAdd" type="submit">Add story</button>
     </form>
     <div class="build-opts">
-      <label class="opt" for="addCollection">to <select id="addCollection"></select></label>
+      <label class="opt" for="addCollection">to <select id="addCollection" autocomplete="off"></select></label>
       <label class="opt" for="newColName" id="newColWrap" hidden>new collection <input id="newColName" type="text" placeholder="Collection name"></label>
       <label class="opt" for="addName">named <input id="addName" type="text" placeholder="from the link"></label>
       <label class="opt" for="addBranch">branch <input id="addBranch" type="text" placeholder="default"></label>
@@ -48,6 +52,13 @@
     <div class="offline" id="offline" hidden>
       <p id="offlineMsg"></p>
       <p><button class="btn small" type="button" data-sample="opencode">Play the bundled opencode sample</button></p>
+    </div>
+    <div class="lib-tools" id="libTools" role="search">
+      <label class="sr" for="libSearch">Search stories</label>
+      <input id="libSearch" type="search" autocomplete="off" spellcheck="false" placeholder="Search stories by name or repo   ( / )">
+      <div class="chips" id="libStatus" role="group" aria-label="Show stories that are"></div>
+      <label class="opt" for="libSort">sort <select id="libSort"></select></label>
+      <span class="st-status" id="libCount" role="status"></span>
     </div>
     <div id="collections" class="collections"></div>
     <form id="colForm" class="build-row col-form" novalidate>
@@ -97,6 +108,7 @@
           <p class="caption" id="caption" aria-live="polite"></p>
           <button class="btn toggle" id="bPeople" type="button" aria-pressed="true" title="People (P)">People</button>
           <button class="btn toggle" id="bFeed" type="button" aria-pressed="true" title="Commit feed (L)">Feed</button>
+          <button class="btn" id="bSound" type="button" aria-pressed="true" aria-label="Sound" title="Sound on (M)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" id="soundIcon"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/></svg></button>
           <button class="btn" id="bFull" type="button" aria-label="Full screen" title="Full screen (F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" id="fullIcon"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
         </div>
       </div>
@@ -124,6 +136,8 @@
     <h2 id="legendH">Who's who on the stage</h2>
     <dl class="legend" id="legend"></dl>
   </section>
+
+  <section class="report" id="reportView" aria-labelledby="repH" data-view-only="report"></section>
 
   <section class="own" aria-labelledby="ownH" data-view-only="library">
     <h2 id="ownH">Replay a git log file</h2>

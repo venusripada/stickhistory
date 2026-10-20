@@ -7,15 +7,15 @@
 // sindresorhus/ky `git log` output in GIT_LOG_COMMAND's format (public).
 
 import { createServer } from 'node:http';
-import { readFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, extname, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { networkInterfaces } from 'node:os';
 import { chromium } from 'playwright';
 import { buildEpisode, parseGitLog, activeAt, isoOfDay, commitRange, TL } from '../packages/story-engine/src/index.js';
 import { startServer } from '../apps/server/src/server.js';
 import { createGitHub } from '../apps/server/src/github.js';
-import { makeRepo, addCommits, tempDir, removeDir } from '../packages/git-source/test/make-repo.js';
+import { makeRepo, addCommits, tempDir, removeDir, mergePullRequest } from '../packages/git-source/test/make-repo.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const DIST = join(here, '..', 'apps', 'web', 'dist');
@@ -113,13 +113,16 @@ try {
     for (let k = 0; k < 3; k++) await page.click('#bSpeed');
     const outside = [];
     let features = 0;
-    const fought = new Set(), left = new Set();
+    const fought = new Set(), left = new Set(), whyIdle = new Map();
+    let overlapping = 0;
     for (let k = 0; k < 60; k++) {
       await page.waitForTimeout(150);
       const st = await page.evaluate(() => window.__cwPlayer.stageSnapshot());
       features += st.enemies.filter((e) => e.type === 'feature').length;
-      for (const e of st.enemies) if (e.author) fought.add(e.author);
-      for (const h of st.heroes) if (h.leaving) left.add(h.name);
+      for (const h of st.heroes) if (h.leaving) { left.add(h.name); if (h.fought || h.filler) fought.add(h.name); else whyIdle.set(h.name, h.reason); }
+      // two fighting heroes on the same spot (same place across and in depth) means they draw on top of each other
+      const here = st.heroes.filter((h) => h.entered && !h.leaving);
+      if (here.some((a, i) => here.some((b, j) => j > i && Math.abs(a.x - b.x) < 26 && Math.abs((a.d ?? 0.5) - (b.d ?? 0.5)) < 0.1))) overlapping++;
       for (const e of st.enemies) if (e.entered && e.state !== 'dead' && (e.x - e.r < -2 || e.x + e.r > st.width + 2)) outside.push(`enemy at ${Math.round(e.x)} of ${Math.round(st.width)}`);
       for (const h of st.heroes) if (h.entered && !h.leaving && (h.x < 8 || h.x > st.width - 8)) outside.push(`${h.name} at ${Math.round(h.x)} of ${Math.round(st.width)}`);
       const brawl = st.enemies.some((e) => !e.duel && e.state !== 'dead');
@@ -128,8 +131,10 @@ try {
     }
     check('every fight stays inside the visible frame', outside.length === 0, outside.slice(0, 4).join('; ') || '60 samples at 8x');
     check('features show up as enemies to build', features > 0, `${features} feature sightings`);
+    check('heroes fight in their own space, not on top of each other', overlapping <= 6, `${overlapping} of 60 samples had two heroes on the same spot`);
     const idle = [...left].filter((n) => !fought.has(n));
-    check('people leave only after they had something to fight', idle.length <= Math.max(1, Math.floor(left.size * 0.2)), `${left.size} left, ${idle.length} without a fight seen${idle.length ? ': ' + idle.slice(0, 3).join(', ') : ''}`);
+    // known rare case (about 1 in 70 leavers at 8x): allow one
+    check('people leave only after they had something to fight', left.size > 0 && idle.length <= 1, `${left.size} left, ${idle.length} without fighting${idle.length ? ': ' + idle.slice(0, 3).map((n) => `${n} (came for: ${whyIdle.get(n)})`).join(', ') : ''}`);
     await page.click('#bSpeed'); await page.click('#bSpeed');
     if ((await page.textContent('#playLabel')) === 'Pause') await page.click('#bPlay');
 
@@ -272,7 +277,8 @@ try {
     const second = (await page.$$eval('[data-collection="team"] .dev .dev-name', (els) => els.map((e) => e.textContent)))[1];
     await page.selectOption(`[data-collection="team"] .dev:has(.dev-name:text-is("${second}")) select`, dev);
     let after = devCount;
-    for (let k = 0; k < 100 && after === devCount; k++) {
+    // the list hides while the movie is combined again; wait for it to come back
+    for (let k = 0; k < 100 && (after === devCount || after === 0); k++) {
       await page.waitForTimeout(150);
       after = await page.locator('[data-collection="team"] .dev').count();
     }
@@ -308,6 +314,194 @@ try {
     const already = await page.$$eval('.org-list li', (els) => els.filter((e) => e.textContent.includes('already in Acme')).map((e) => e.querySelector('strong').textContent));
     check('repos already in the collection are marked', already.join(',') === 'api', already.join(','));
     check('no page errors adding an org', errors.length === 0, errors.join(' | '));
+    await ctx.close();
+  }
+  // 2d. Hundreds of stories: quick search, status filter and pages that survive a reload.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
+    await fetch(`${app.url}/api/collections`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Big' }) });
+    // story folders written directly (no cloning): every tenth one failed
+    for (let n = 1; n <= 130; n++) {
+      const slug = `repo-${String(n).padStart(3, '0')}`;
+      mkdirSync(join(libRoot, 'big', slug), { recursive: true });
+      writeFileSync(join(libRoot, 'big', slug, 'story.json'), JSON.stringify({ id: `big-${n}`, name: slug, url: `git@github.com:big/${slug}.git`, webUrl: `https://github.com/big/${slug}`, status: n % 10 === 0 ? 'error' : 'ready', error: n % 10 === 0 ? 'git couldn\'t find it' : null, commits: n, fetchedAt: '2026-01-01T00:00:00Z' }));
+    }
+    await page.goto(BASE);
+    await page.waitForSelector('[data-collection="big"] .story-card');
+    const big = '[data-collection="big"]';
+    check('a big collection shows one page of 60', (await page.locator(`${big} .story-card`).count()) === 60 && (await page.textContent(`${big} .pager`)).includes('1–60 of 130'));
+    await page.click(`${big} .pager button:has-text("Next")`);
+    await page.waitForFunction(() => location.hash.includes('page.big=2'));
+    const first2 = await page.textContent(`${big} .story-card h4`);
+    await page.reload();
+    await page.waitForSelector(`${big} .story-card`);
+    check('pages move and are kept on reload', first2 === 'repo-061' && (await page.textContent(`${big} .story-card h4`)) === 'repo-061', first2);
+    await page.screenshot({ path: join(OUT, '16-pages.png'), fullPage: false });
+    await page.keyboard.press('/');
+    await page.keyboard.type('repo-12');
+    await page.waitForFunction(() => document.querySelectorAll('[data-collection="big"] .story-card').length === 10);
+    check('quick search narrows the stories as you type', (await page.textContent('#libCount')).startsWith('10 of'), await page.textContent('#libCount'));
+    await page.keyboard.press('Escape');
+    await page.click('#libStatus button:has-text("Failed")');
+    await page.waitForFunction(() => document.querySelectorAll('[data-collection="big"] .story-card').length === 13);
+    const filteredHash = await page.evaluate(() => location.hash);
+    check('the status filter shows only failed stories', (await page.textContent(`${big} .story-card`)).includes('couldn\'t find it') && filteredHash.includes('status=failed'), filteredHash);
+    await page.click('#libStatus button:has-text("All")');
+    check('no page errors with many stories', errors.length === 0, errors.join(' | '));
+    await ctx.close();
+  }
+  // 2e. A big feature pull request is a boss: shielded while its commits come out, then shipped.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
+    const post = (p, body) => fetch(`${app.url}/api${p}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json());
+    const repo = makeRepo({ n: 14 });
+    mergePullRequest(repo, { name: 'palette', n: 6, title: 'Add the command palette', day: '2024-01-15' });
+    addCommits(repo, { n: 4, from: 30, start: '2024-01-01' });
+    repos.push(repo);
+    await post('/collections', { name: 'Bosses' });
+    await post('/collections/bosses/stories', { url: repo, name: 'Palette' });
+    for (let k = 0; k < 200; k++) {
+      const lib = await (await fetch(`${app.url}/api/library`)).json();
+      if (lib.collections.find((c) => c.slug === 'bosses')?.stories[0]?.status === 'ready') break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    await page.goto(BASE + '#/s/bosses/palette');
+    await page.waitForFunction(() => document.querySelector('#ovDate').textContent.trim().length > 4);
+    for (let k = 0; k < 3; k++) await page.click('#bSpeed');
+    let sawShield = false, sawSpawned = false, shot = false;
+    const t0 = Date.now();
+    while (Date.now() - t0 < 60000) {
+      const st = await page.evaluate(() => window.__cwPlayer.stageSnapshot());
+      if (st.boss && st.boss.kind === 'feature' && st.boss.shield) sawShield = true;
+      if (st.boss && st.boss.kind === 'feature' && st.enemies.length) sawSpawned = true;
+      if (/shipped "Add the command palette"/.test(await page.textContent('#caption'))) break;
+      if (sawShield && sawSpawned && !shot) { shot = true; await page.locator('#movie').screenshot({ path: join(OUT, '17-feature-boss.png') }); }
+      await page.waitForTimeout(150);
+    }
+    const cap = await page.textContent('#caption');
+    check('a feature pull request is a shielded boss that spawns its commits', sawShield && sawSpawned, `shield ${sawShield}, spawned ${sawSpawned}`);
+    check('beating its commits, then the boss, ships the feature', /shipped "Add the command palette"/.test(cap), cap);
+    check('no page errors with bosses', errors.length === 0, errors.join(' | '));
+    await ctx.close();
+  }
+  // 2f. A quarter (or any dates) of a collection: its own movie and report, and one .html file to share.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true });
+    const page = await ctx.newPage();
+    const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
+    const post = (p, body) => fetch(`${app.url}/api${p}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json());
+    const one = makeRepo({ n: 20, start: '2024-03-20' }), two = makeRepo({ n: 15, start: '2024-04-01' }); repos.push(one, two);
+    await post('/collections', { name: 'Quarters' });
+    await post('/collections/quarters/stories', { url: one, name: 'Alpha' });
+    await post('/collections/quarters/stories', { url: two, name: 'Beta' });
+    for (let k = 0; k < 300; k++) {
+      const q = (await (await fetch(`${app.url}/api/library`)).json()).collections.find((c) => c.slug === 'quarters');
+      if (q && q.episode && q.episode.status === 'ready' && q.episode.repos === 2) break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    await page.goto(BASE + '#/?q=nothing-matches-this');
+    await page.goto(BASE + '#/');
+    const box = '[data-collection="quarters"] .periods';
+    await page.waitForSelector(`${box} select`);
+    const opts = await page.$$eval(`${box} select option`, (els) => els.map((e) => e.textContent));
+    check('the period picker lists the quarters that have commits', opts[0] === 'Q2 2024 · 23 commits' && opts[1] === 'Q1 2024 · 12 commits' && opts.at(-1) === 'Custom dates…', opts.join(' | '));
+    await page.click(`${box} button:has-text("Make movie and report")`);
+    const row = `${box} li[data-period="2024-04-01_2024-06-30"]`;
+    await page.waitForSelector(`${row} a:has-text("Play")`, { timeout: 30000 });
+    await page.locator(box).screenshot({ path: join(OUT, '18-periods.png') });
+
+    await page.click(`${row} a:has-text("Play")`);
+    await page.waitForFunction(() => document.querySelector('#ovDate').textContent.trim().length > 4);
+    const crumb = await page.textContent('#crumbStory');
+    const ep = await page.evaluate(() => window.__cwPlayer.episode);
+    check('a quarter plays as its own movie', crumb === 'Q2 2024' && ep.timeline.start >= '2024-04-01' && ep.summary.commits === 23, `${crumb}, from ${ep.timeline.start}, ${ep.summary.commits} commits`);
+
+    check('a quarter has Movie and Report tabs', await page.isVisible('#periodTabs') && (await page.getAttribute('#tabMovie', 'aria-current')) === 'page');
+    await page.click('#tabReport');
+    await page.waitForSelector('#reportView:not([hidden]) .rep-totals');
+    check('the Report tab shows the report and pauses the movie', (await page.getAttribute('#tabReport', 'aria-current')) === 'page' && !(await page.evaluate(() => window.__cwPlayer.playing)));
+    const head = await page.textContent('#repH');
+    const total = await page.textContent('.rep-totals div:first-child dd');
+    const devRows = await page.locator('#reportView .rep-table').first().locator('tbody tr').count();
+    check('the quarter has a report: totals, every developer, stories and features', head === 'Quarters · Q2 2024' && total === '23' && devRows === 3 && (await page.locator('#reportView [aria-labelledby="repFeats"] li').count()) > 0, `${head}, ${total} commits, ${devRows} developers`);
+    await page.screenshot({ path: join(OUT, '19-report.png'), fullPage: true });
+    // sorting by a column reorders rows only
+    await page.click('#reportView .rep-table thead button:has-text("Developer")');
+    const names = await page.locator('#reportView [aria-labelledby="repDevs"] .rep-table tbody th').allTextContents();
+    check('report tables sort by a column', names.join(',') === [...names].sort((a, b) => b.toLowerCase().localeCompare(a.toLowerCase())).join(',') || names.join(',') === [...names].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())).join(','), names.join(', '));
+    const dev = names[0];
+    await page.click(`#reportView .rep-table tbody a:text-is("${dev}")`);
+    await page.waitForFunction((d) => document.querySelector('#crumbStory').textContent === `${d} · Q2 2024`, dev);
+    check('a developer in the report opens the quarter following them', (await page.evaluate(() => window.__cwPlayer.following)) === dev, dev);
+
+    // too few commits for a movie: the report still comes
+    await page.goto(BASE + '#/');
+    await page.waitForSelector(`${box} select`);
+    await page.selectOption(`${box} select`, 'custom');
+    await page.fill(`${box} input[aria-label="From"]`, '2024-03-20');
+    await page.fill(`${box} input[aria-label="To"]`, '2024-03-22');
+    await page.click(`${box} button:has-text("Make movie and report")`);
+    const small = `${box} li[data-period="2024-03-20_2024-03-22"]`;
+    await page.waitForSelector(`${small} a:has-text("Report")`, { timeout: 30000 });
+    check('a period too short for a movie still gets a report', (await page.locator(`${small} a:has-text("Play")`).count()) === 0 && /too few for a movie/.test(await page.textContent(small)), await page.textContent(small));
+
+    // one .html file with the movie and the report, opened with no server
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click(`${row} a:has-text("Download")`)]);
+    const file = join(OUT, 'period-share.html');
+    await dl.saveAs(file);
+    check('Download saves the quarter as one .html file', dl.suggestedFilename() === 'Quarters-Q2-2024.commit-wars.html', dl.suggestedFilename());
+    const shared = await ctx.newPage();
+    const sharedErrors = []; shared.on('pageerror', (e) => sharedErrors.push(String(e)));
+    const asked = []; shared.on('request', (r) => { if (!/^(file:|data:|https:\/\/fonts\.)/.test(r.url())) asked.push(r.url()); });
+    await shared.goto(pathToFileURL(file).href);
+    await shared.waitForFunction(() => document.querySelector('#ovDate').textContent.trim().length > 4);
+    const sharedCrumb = await shared.textContent('#crumbStory');
+    check('the downloaded file plays the quarter with no server', sharedCrumb === 'Q2 2024' && (await shared.evaluate(() => window.__cwPlayer.episode.summary.commits)) === 23 && !(await shared.isVisible('#crumbHome')) && asked.length === 0, `${sharedCrumb}; asked for ${asked.join(', ') || 'nothing'}`);
+    check('the downloaded file has Movie and Report tabs', await shared.isVisible('#periodTabs') && (await shared.getAttribute('#tabMovie', 'aria-current')) === 'page');
+    await shared.click('#tabReport');
+    await shared.waitForSelector('#reportView:not([hidden]) .rep-totals');
+    check('the downloaded file has the report too', (await shared.textContent('#repH')) === 'Quarters · Q2 2024' && !(await shared.locator('#reportView .crumbs a:has-text("Library")').count()), await shared.textContent('#repH'));
+    await shared.screenshot({ path: join(OUT, '21-shared-report-tab.png') });
+    await shared.click('#tabMovie');
+    await shared.waitForSelector('#stageWrap:not([hidden])');
+    check('the Movie tab goes back to the movie', (await shared.getAttribute('#tabMovie', 'aria-current')) === 'page' && (await shared.textContent('#crumbStory')) === 'Q2 2024');
+    await shared.click('#tabReport');
+    await shared.waitForSelector('#reportView:not([hidden]) .rep-totals');
+    await shared.setViewportSize({ width: 390, height: 844 });
+    await shared.waitForTimeout(200);
+    const sw = await shared.evaluate(() => document.documentElement.scrollWidth);
+    check('the report fits a phone without sideways scrolling', sw <= 390, `scrollWidth ${sw}`);
+    await shared.screenshot({ path: join(OUT, '20-report-phone.png'), fullPage: true });
+    check('no page errors with periods', errors.length === 0 && sharedErrors.length === 0, [...errors, ...sharedErrors].join(' | '));
+    await ctx.close();
+  }
+  // 2g. Quiet fight sounds, and a mute button that is remembered.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
+    await page.goto(BASE + '#/s/bosses/palette');
+    await page.waitForFunction(() => document.querySelector('#ovDate').textContent.trim().length > 4);
+    await page.click('#bSpeed'); // a click also lets the page start audio
+    const asked = () => page.evaluate(() => window.__cwSound.stats.asked);
+    await page.waitForFunction(() => window.__cwSound.stats.asked > 0, null, { timeout: 20000 }).catch(() => {});
+    const before = await asked();
+    check('the fight makes sounds while it plays', before > 0 && (await page.getAttribute('#bSound', 'aria-pressed')) === 'true', `${before} sounds`);
+    await page.click('#bSound');
+    const muted = await asked();
+    await page.waitForTimeout(2500);
+    const after = await asked();
+    check('Mute stops the sounds', after === muted && (await page.getAttribute('#bSound', 'aria-pressed')) === 'false', `${muted} → ${after}`);
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('#ovDate').textContent.trim().length > 4);
+    check('the mute choice is remembered', (await page.getAttribute('#bSound', 'aria-pressed')) === 'false');
+    await page.keyboard.press('m');
+    check('M turns the sound back on', (await page.getAttribute('#bSound', 'aria-pressed')) === 'true');
+    check('no page errors with sound', errors.length === 0, errors.join(' | '));
     await ctx.close();
   }
   // 2b. LAN mode: another machine can watch the library and play stories, but not change anything.

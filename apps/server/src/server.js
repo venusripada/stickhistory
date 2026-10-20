@@ -11,7 +11,7 @@
 import { createServer } from 'node:http';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve, join, extname, normalize, sep } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 import { networkInterfaces } from 'node:os';
 import { createLibrary } from './library.js';
 import { createJobs } from './jobs.js';
@@ -57,7 +57,9 @@ export async function startServer(o = {}) {
   const library = createLibrary(root);
   const events = createEvents();
   const jobs = createJobs({ library, emit: (type, data) => events.send(type, data) });
-  const api = createApi({ library, jobs, events, lan: !!o.lan, github: o.github || createGitHub() });
+  // the shareable period file is made from the built web app, served here or not
+  const webDist = o.staticDir || fileURLToPath(new URL('../../web/dist', import.meta.url));
+  const api = createApi({ library, jobs, events, lan: !!o.lan, github: o.github || createGitHub(), staticDir: webDist });
   const server = createServer(async (req, res) => {
     if (await api(req, res)) return;
     if (o.staticDir) serveStatic(o.staticDir, req, res);

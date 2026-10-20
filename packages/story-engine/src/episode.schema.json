@@ -665,6 +665,69 @@
               }
             }
           }
+        },
+        "groups": {
+          "type": "array",
+          "description": "Bosses that spawn their work (groups.js): big feature pull requests, Tech Debt, releases. members index timeline.commits.",
+          "items": {
+            "type": "object",
+            "required": [
+              "kind",
+              "title",
+              "day",
+              "members"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "feature",
+                  "debt",
+                  "release"
+                ]
+              },
+              "title": {
+                "type": "string"
+              },
+              "who": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "at": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "index of the merge (or Tech Debt) commit; null for releases"
+              },
+              "day": {
+                "type": "integer"
+              },
+              "start": {
+                "type": "integer",
+                "description": "releases: first day of the hive"
+              },
+              "tag": {
+                "type": "string"
+              },
+              "files": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "k": {
+                "type": "integer"
+              },
+              "members": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
         }
       }
     }
