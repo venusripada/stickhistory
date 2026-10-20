@@ -89,7 +89,8 @@ library/                         ($COMMIT_WARS_LIBRARY overrides; git-ignored)
   - **Overlays:** the date and running totals; **People** (who was active in the last 14 days, with commit and fix counts; click a name to follow them); **Feed** (every commit up to the playhead, newest first, linked to its issue or pull request).
   - **Timeline:** under the frame, with commits per week (fixes red, features gold), chapter spans and release marks. Drag it to scrub.
   - **Full screen:** the ⛶ button, or press F.
-  - **Keys:** Space plays or pauses, ←/→ move a week, Shift+←/→ jump chapters, P and L toggle the panels.
+  - **Keys:** Space plays or pauses, ←/→ move a week, Shift+←/→ jump chapters, P and L toggle the panels, M mutes.
+  - **Sound:** quiet hits, knockouts, boss arrivals, shipped features and releases, made in the browser (no sound files) and limited so busy fights stay calm. The speaker button (or M) mutes; the choice is remembered. Embeds start muted.
 - **Follow a hero** (the cards under the movie, or a name in the People panel) plays only that person's fixes and features.
 - `#/s/collection/story` links open a story; `?embed=1` shows only the movie, autoplays and loops. **Copy embed code** gives an `<iframe>`.
 - **Download episode** / **Open episode file** move episodes between machines.

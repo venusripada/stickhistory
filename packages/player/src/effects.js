@@ -21,6 +21,7 @@ export function makeEffects(E) {
     for (let i = 0; i < n; i++) G.parts.push({ d: G.curD ?? null, x, y, vx: rand(-200, 200), vy: rand(-320, -120), life: rand(.9, 1.5), max: 1.5, color: C.paper, r: rand(4, 7), paper: true, rot: rand(0, 6), vr: rand(-10, 10) });
   }
   function impact(x, y, c, r, kind) {
+    E.sfx && E.sfx(kind);
     G.fx.push({ d: G.curD ?? null, t: 'star', x, y, r, col: c, life: kind === 'big' ? .18 : .12, max: kind === 'big' ? .18 : .12, n: kind === 'spark' ? 6 : 9, rot: Math.random() });
     if (kind !== 'spark') burst(x, y, c, kind === 'big' ? 10 : 5, kind === 'big' ? 220 : 120);
     if (kind === 'big') G.fx.push({ d: G.curD ?? null, t: 'lines', x, y, life: .14, max: .14, col: c });
@@ -28,6 +29,7 @@ export function makeEffects(E) {
   function ring(x, y, c, scale = 1) { G.fx.push({ d: G.curD ?? null, t: 'ring', x, y, col: c, life: .35, max: .35, s: scale }); }
   function floater(x, y, text, color, size) { x = clamp(x, text.length * size * .3 + 8, E.W - text.length * size * .3 - 8); G.floaters.push({ d: G.curD ?? null, x, y, text, color, size, life: 1.1 }); if (G.floaters.length > 5) G.floaters.shift(); } // a few words at a time stay readable
   function firework() {
+    E.sfx && E.sfx('pop');
     const x = rand(E.W * .15, E.W * .85), y = rand(50, 150);
     const c = pick([C.orb, ...G.heroes.map((h) => col(h.name))]);
     for (let i = 0; i < 26; i++) { const a = i / 26 * Math.PI * 2, s = rand(70, 130); G.parts.push({ d: null, x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rand(.8, 1.3), max: 1.3, color: c, r: 2.2, spark: true }); }

@@ -20,6 +20,7 @@ import { createLibraryUI, ago } from './library-ui.js';
 import { parseLibraryState, libraryStateHash } from './library-view.js';
 import { createOrgUI } from './org-ui.js';
 import { renderReport } from './report-ui.js';
+import { createSound, cueFor } from './sound.js';
 
 const $ = (s) => document.querySelector(s);
 const fmtN = (n) => Number(n).toLocaleString('en-US');
@@ -80,6 +81,21 @@ player.on('spotlight', (e) => {
   else if (e.kind === 'chapter') text = `Chapter ${e.k + 1}: ${e.title}`;
   if (text) $('#caption').textContent = text;
 });
+// quiet fight sounds; muted in embeds unless turned on there, and the choice is remembered
+const sound = createSound({ muted: (storage.get('cw:sound') ?? (EMBED ? '0' : '1')) === '0' });
+if (navigator.webdriver) window.__cwSound = sound; // tests count what would play
+player.on('sfx', (e) => sound.play(e.kind));
+player.on('spotlight', (e) => { const cue = cueFor(e); if (cue && player.playing) sound.play(cue); });
+// audio can start only after the viewer touches the page
+for (const t of ['pointerdown', 'keydown']) document.addEventListener(t, () => sound.unlock(), { capture: true, passive: true });
+function setSound(on) {
+  sound.setMuted(!on);
+  storage.set('cw:sound', on ? '1' : '0');
+  const b = $('#bSound');
+  b.setAttribute('aria-pressed', String(on));
+  b.title = `Sound ${on ? 'on' : 'off'} (M)`;
+  $('#soundIcon').innerHTML = on ? '<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/>' : '<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9l5 6M21 9l-5 6"/>';
+}
 function follow(name) {
   if (!player.follow(name)) return false;
   ui.setFollow(name);
@@ -503,6 +519,8 @@ $('#bSpeed').addEventListener('click', () => player.setSpeed(SPEEDS[(SPEEDS.inde
 $('#bPeople').addEventListener('click', () => setPanel('people', movie.classList.contains('no-people')));
 $('#bFeed').addEventListener('click', () => setPanel('feed', movie.classList.contains('no-feed')));
 $('#bFull').addEventListener('click', toggleFullscreen);
+$('#bSound').addEventListener('click', () => setSound(sound.muted));
+setSound(!sound.muted);
 document.addEventListener('keydown', (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   // typing fields keep their keys; the timeline slider keeps its arrows; buttons and links keep Space and Enter
@@ -516,6 +534,7 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'ArrowRight') { e.preventDefault(); e.shiftKey ? jumpChapter(1) : player.seekBy(7); }
   else if (e.key === 'ArrowLeft') { e.preventDefault(); e.shiftKey ? jumpChapter(-1) : player.seekBy(-7); }
   else if (k === 'f') toggleFullscreen();
+  else if (k === 'm') setSound(sound.muted);
   else if (k === 'p') setPanel('people', movie.classList.contains('no-people'));
   else if (k === 'l') setPanel('feed', movie.classList.contains('no-feed'));
 });

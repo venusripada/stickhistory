@@ -8,6 +8,7 @@
 //   const player = createPlayer({ canvas, episode });
 //   player.on('time', ({ day, iso }) => …);
 //   player.seek(120);  player.follow('octocat');
+//   player.on('sfx', ({ kind }) => …);  // hit | big | spark | pop while playing, for the page's sounds
 //
 // Colors come from CSS custom properties on the canvas (see theme.js).
 
@@ -62,7 +63,7 @@ export function createPlayer(opts) {
   let EP = null, TLN = null, events = [], cursor = 0, dayRate = 1, followWho = null;
   let colorIdx = new Map();
   const heroColor = (name) => C.hero[(colorIdx.get(name) ?? 0) % HERO_COLORS];
-  const E = { ctx: canvas.getContext('2d'), C, G, CAM, W: 700, S: 1, DPR: 1, EP: null, inset: { l: 0, r: 0 }, reduceMotion, heroColor, say: (kind, p) => emit('spotlight', { kind, ...p }) };
+  const E = { ctx: canvas.getContext('2d'), C, G, CAM, W: 700, S: 1, DPR: 1, EP: null, inset: { l: 0, r: 0 }, reduceMotion, heroColor, say: (kind, p) => emit('spotlight', { kind, ...p }), sfx: (kind) => { if (G.playing) emit('sfx', { kind }); } };
   const sim = makeSim(E);
   const bosses = makeBosses(E, sim);
   const dr = makeDraw(E);
@@ -420,6 +421,7 @@ export function createPlayer(opts) {
     setInsets(left = 0, right = 0) { E.inset.l = Math.max(0, left) / E.S; E.inset.r = Math.max(0, right) / E.S; },
     setSpeed(n) { G.speed = SPEEDS.includes(n) ? n : 1; emit('state', snapshot()); },
     get speed() { return G.speed; },
+    get playing() { return !!G.playing; },
     get day() { return G.day; },
     get following() { return followWho == null ? null : TLN.people[followWho].name; },
     getState: snapshot,

@@ -470,6 +470,31 @@ try {
     check('no page errors with periods', errors.length === 0 && sharedErrors.length === 0, [...errors, ...sharedErrors].join(' | '));
     await ctx.close();
   }
+  // 2g. Quiet fight sounds, and a mute button that is remembered.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
+    await page.goto(BASE + '#/s/bosses/palette');
+    await page.waitForFunction(() => document.querySelector('#ovDate').textContent.trim().length > 4);
+    await page.click('#bSpeed'); // a click also lets the page start audio
+    const asked = () => page.evaluate(() => window.__cwSound.stats.asked);
+    await page.waitForFunction(() => window.__cwSound.stats.asked > 0, null, { timeout: 20000 }).catch(() => {});
+    const before = await asked();
+    check('the fight makes sounds while it plays', before > 0 && (await page.getAttribute('#bSound', 'aria-pressed')) === 'true', `${before} sounds`);
+    await page.click('#bSound');
+    const muted = await asked();
+    await page.waitForTimeout(2500);
+    const after = await asked();
+    check('Mute stops the sounds', after === muted && (await page.getAttribute('#bSound', 'aria-pressed')) === 'false', `${muted} → ${after}`);
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('#ovDate').textContent.trim().length > 4);
+    check('the mute choice is remembered', (await page.getAttribute('#bSound', 'aria-pressed')) === 'false');
+    await page.keyboard.press('m');
+    check('M turns the sound back on', (await page.getAttribute('#bSound', 'aria-pressed')) === 'true');
+    check('no page errors with sound', errors.length === 0, errors.join(' | '));
+    await ctx.close();
+  }
   // 2b. LAN mode: another machine can watch the library and play stories, but not change anything.
   {
     const lanIp = Object.values(networkInterfaces()).flat().find((a) => a && a.family === 'IPv4' && !a.internal)?.address;

@@ -370,3 +370,4 @@ body.embed .screen { aspect-ratio: auto; flex: 1 1 auto; }
 body.shared #crumbHome, body.shared #crumbHome + span, body.shared #bEmbed, body.shared .file-btn { display: none; }
 /* the report stands alone: no library intro, no movie footnote */
 body[data-view="report"] #lede, body[data-view="report"] #footer, body.shared #lede { display: none; }
+#bSound[aria-pressed="false"] { color: var(--muted); }
