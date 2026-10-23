@@ -124,6 +124,20 @@ describe('features of a collection', () => {
     await featureDone('rocketpad', before);
   });
 
+  it('reads older stories from git again on the next update, so commit bodies are searched', async () => {
+    // a story saved before bodies were kept: no format mark, no bodies
+    const sj = join(root, 'team', 'beta', 'story.json'), hj = join(root, 'team', 'beta', 'history.json');
+    const st = JSON.parse(readFileSync(sj, 'utf8')); delete st.historyFormat; writeFileSync(sj, JSON.stringify(st));
+    const h = JSON.parse(readFileSync(hj, 'utf8')); for (const c of h.commits) delete c.body; writeFileSync(hj, JSON.stringify(h));
+    expect((await call('POST', '/api/collections/team/stories/beta/update', {})).status).toBe(202);
+    await until(() => { const now = JSON.parse(readFileSync(sj, 'utf8')); return now.historyFormat === 2 && now.status === 'ready'; }, 'the re-read');
+    expect(JSON.parse(readFileSync(hj, 'utf8')).commits.some((c) => c.body === 'Seen in RocketPad.')).toBe(true);
+    // an up-to-date story isn't read again
+    const r = await call('POST', '/api/collections/team/stories/beta/update', {});
+    await until(async () => (await call('GET', '/api/jobs')).json.jobs.every((j) => j.state !== 'queued' && j.state !== 'running'), 'the update');
+    expect(r.status).toBe(202);
+  });
+
   it('builds features again after a restart when they were made by an older engine', async () => {
     const file = join(root, 'team', '_features', 'rocketpad', 'feature.json');
     writeFileSync(file, JSON.stringify({ ...JSON.parse(readFileSync(file, 'utf8')), engine: '0.0.1' }));

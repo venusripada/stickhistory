@@ -27,6 +27,8 @@ function buildInWorker(task) {
 import { ENGINE_VERSION, checkPeriod } from '@commit-wars/story-engine';
 
 const now = () => new Date().toISOString();
+// what a saved history.json holds; older ones are read from git again on the next update (2: commit bodies, for features)
+export const HISTORY_FORMAT = 2;
 
 /**
  * Which queued job runs next. Jobs run in order, except that a collection's
@@ -208,7 +210,7 @@ export function createJobs({ library, emit }) {
       loc = save({ fetchedAt: now() });
       const head = await headOf(repoDir(), loc.story.branch || undefined);
       // no new commits and built by this version of the story engine: nothing to do
-      if (head === loc.story.head && existsSync(join(loc.dir, 'episode.json')) && loc.story.status !== 'error' && loc.story.engine === ENGINE_VERSION) {
+      if (head === loc.story.head && existsSync(join(loc.dir, 'episode.json')) && loc.story.status !== 'error' && loc.story.engine === ENGINE_VERSION && loc.story.historyFormat === HISTORY_FORMAT) {
         job.changed = false;
         step('done', 'Already up to date.', 1);
         return;
@@ -220,11 +222,12 @@ export function createJobs({ library, emit }) {
 
     async function rebuild(fromGit) {
       let st = save({ status: 'building', error: null }).story;
-      if (fromGit || !existsSync(join(where().dir, 'history.json'))) {
+      if (fromGit || st.historyFormat !== HISTORY_FORMAT || !existsSync(join(where().dir, 'history.json'))) {
         step('building', 'Reading the history…', 0.85);
         const meta = repoMeta(st.url);
         const history = await readHistory(repoDir(), { branch: st.branch || null, owner: meta.owner, name: meta.owner ? meta.name : st.name, url: st.webUrl });
         library.writeJsonFile(where().c, where().s, 'history.json', history);
+        st = save({ historyFormat: HISTORY_FORMAT }).story;
       }
       step('building', 'Writing the story…', 0.92);
       const sum = await buildInWorker({ kind: 'story', historyPath: join(where().dir, 'history.json'), aliases: st.aliases || {}, titles: st.titles || [], out: join(where().dir, 'episode.json') });

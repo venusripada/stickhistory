@@ -48,7 +48,7 @@ const checkName = (name, what) => {
 /** The story engine's message for a history too short to play (still included in its collection's movie). */
 export const SMALL_RE = /A replay needs at least \d+/;
 
-const STORY_FIELDS = ['id', 'name', 'url', 'webUrl', 'branch', 'aliases', 'titles', 'createdAt', 'fetchedAt', 'builtAt', 'engine', 'head', 'commits', 'first', 'last', 'issuesLinked', 'status', 'error'];
+const STORY_FIELDS = ['id', 'name', 'url', 'webUrl', 'branch', 'aliases', 'titles', 'createdAt', 'fetchedAt', 'builtAt', 'engine', 'head', 'commits', 'first', 'last', 'issuesLinked', 'historyFormat', 'status', 'error'];
 
 export function createLibrary(root) {
   mkdirSync(root, { recursive: true });

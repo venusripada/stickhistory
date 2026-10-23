@@ -18,7 +18,7 @@ A commit matches through one or more **signals**:
 | `scope` | a conventional-commit scope, `feat(liveserve): …` |
 | `path` | any changed file path (a folder or file name) |
 | `branch` | a merge commit's branch: "Merge pull request #N from org/liveserve-retries", "Merge branch 'liveserve-x'" |
-| `via-branch` | a commit that a matching merge brought in (`findPullRequests`) |
+| `via-merge` | a commit that a merge matching by branch or pull request title brought in (`findPullRequests`) |
 
 Every result lists its signals, so a passing mention can be told apart from real work.
 
@@ -28,16 +28,17 @@ Every result lists its signals, so a passing mention can be told apart from real
 - New `feature.js` (pure):
   - `checkFeature(name)` → `{ name, id, label }` (id is a slug of the name). Throws a plain-language Error for a bad name.
   - `featureSignals(commit, name)` → the direct signals of one history commit.
-  - `cutFeature(history, name)` → `{ history, signals }`: the history with only the matching commits (and their tags), and `signals` mapping sha → signal list. Members of a matching branch get `via-branch` added.
+  - `cutFeature(history, name)` → `{ history, signals }`: the history with only the matching commits (and their tags), and `signals` mapping sha → signal list. Members of a matching merge get `via-merge` added.
   - `featureReport(ep, { name, collection, signals })` → the period report's sections (totals, stories, developers, features, fixes, releases), with `kind: 'feature'`, `name`, `label` "liveserve", `from`/`to` set to the first and last matching day, and a `changes` list, newest first: `{ repo, title, who, d, sha, url, files, signals }`.
-- `period.js`: `periodReport`'s body moves into a shared helper so the feature report reuses it. The period report's output is unchanged.
+- `featureReport` calls `periodReport` over the feature's first and last days, so the period report is unchanged.
 
 ## Server (`apps/server`)
 
 - Storage: `<collection>/_features/<id>/` with `feature.json` (`{ id, name, label, status, error, builtAt, engine, commits, people, repos }`), `episode.json` (absent when there are too few commits for a movie) and `report.json`. The collection's info lists `features`.
 - Jobs: `enqueueFeature(collectionId, featureId)` shares the period queue and job line. The worker gets `kind: 'feature'`: combine histories, `cutFeature`, build the episode (report only when too small), write `featureReport`. No match fails with: *No commits in this collection mention "liveserve" in a message, branch, scope or file path. Check the spelling, or re-read the stories so commit bodies are searched too.* `recover()` rebuilds half-built features and those from an older engine. After a collection movie is combined again, its features are rebuilt.
 - API (changes local-only, like periods):
-  - `POST /api/collections/:c/features` `{ name }` → 202 `{ feature, job }`; the same name again returns the existing feature.
+  - `POST /api/collections/:c/features` `{ name }` → 202 `{ feature, job }`; the same name again returns the existing feature (200, `job: null`) unless it failed.
+- Old histories: `story.json` records `historyFormat` (2 = with bodies). An update reads a story with an older format from git again, even when its head hasn't moved.
   - `POST /api/collections/:c/features/:id/rebuild`, `DELETE /api/collections/:c/features/:id`.
   - `GET /api/collections/:c/features/:id/(episode|report|share)`; share is the one-file .html download.
 

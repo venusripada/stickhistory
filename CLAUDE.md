@@ -22,9 +22,9 @@ npm install                 # npm workspaces; Node 18.17+
 npm run dev                 # library server (127.0.0.1:5174) + web app (http://127.0.0.1:5173, proxies /api)
 npm run serve               # build, then app + API on one port
 npm run serve:lan           # same, also on the LAN: other machines watch, only this machine changes
-npm test                    # vitest: story-engine, github-fetcher, git-source, player director, server (82 tests)
+npm test                    # vitest: story-engine, github-fetcher, git-source, player director, server
 npm run build               # apps/web/dist
-npm run e2e                 # needs a build first; Chromium + the real server on a temp library, 34 checks, screenshots in e2e/output/
+npm run e2e                 # needs a build first; Chromium + the real server on a temp library, screenshots in e2e/output/
 npm run cli -- --help       # commit-wars github|git|rebuild
 ```
 
@@ -45,13 +45,15 @@ repo link ──apps/server job──▶ clone ──readHistory()──▶ Hist
   - `index.js`: `buildEpisode()`.
   - `groups.js`: `findPullRequests()` (the commits a merge brought in, from parent links) and the bosses in `timeline.groups`: feature pull requests, Tech Debt, release hives.
   - `period.js`: periods of a collection (a quarter or any dates). `cutHistory()` keeps a period's commits, `periodReport()` makes the report (developers, stories, features, fixes, releases), `quartersOf()` lists quarters with commits, `checkPeriod()` checks dates.
+  - `feature.js`: features of a collection. `featureMatcher()` matches a name as a whole word (any case, separators ignored, camelCase humps count), `featureSignals()` says how a commit names it (`text`, `scope`, `path`, `branch`), `cutFeature()` keeps those commits plus what a matching merge brought in (`via-merge`), `featureReport()` is the period report plus `changes`.
   - `validate.js`: `validateEpisode()`.
   - `types.js`: JSDoc for History and Fix.
   - `episode.schema.json`: the Episode contract.
 - `packages/story-engine/src/collection.js`: `combineHistories()` joins a collection's histories; collection episodes have `timeline.repos` and a 10th tuple slot (repo), and `peopleSummary()` lists developers with per-repo counts.
 - `packages/git-source` (Node only): `checkGitUrl`, `cloneRepo` (bare, blobless), `fetchRepo`, `headOf`, `readHistory`. Git runs with an allowed-protocol list and no prompts. `test/make-repo.js` builds throwaway repos for tests.
 - `apps/server`: the local library server (127.0.0.1 only, no new dependencies). `library.js` is the folder tree (folders are the database), `jobs.js` runs one build/update/reread/collection/period job at a time, and the heavy builds run on a worker thread (`build-worker.js`) so the server keeps answering. `api.js` holds the routes and local-only checks, `server.js` the entry point and server-sent events, `share.js` the one-file .html download of a period (the built web app inlined, with the period's movie and report inside).
-  - Periods live in `<collection>/_periods/<from>_<to>/` (period.json, episode.json, report.json). Folders starting with `_` are never stories.
+  - Periods live in `<collection>/_periods/<from>_<to>/` (period.json, episode.json, report.json), features in `<collection>/_features/<id>/` (feature.json, …). Folders starting with `_` are never stories. Features share the period job line and are found again after each collection combine.
+  - `story.json` has `historyFormat`; an update re-reads a story from git when it is older than `HISTORY_FORMAT` (`jobs.js`), since reread and rebuild otherwise use the saved `history.json`.
 - `packages/github-fetcher` (now used only by the CLI's `github` command): `fetchHistory()` uses GraphQL with a token (commits + PR + labels + closing issues + file counts + tags) and REST without one (60 requests an hour, no files or issues). `http.js` holds retries, rate limits and readable errors. Errors are `GitHubError` with a `code` (`not-found`, `rate-limit`, `bad-token`, `network`, …).
 - `packages/player`: a movie player for an episode. Every calendar day gets the same screen time, and `seek(day)` jumps anywhere. It touches no DOM except its canvas.
   - `player.js`: the clock, seeking, follow mode and the API. It emits `time`, `state`, `spotlight` and `loaded`.
