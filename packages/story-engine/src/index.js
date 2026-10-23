@@ -8,6 +8,7 @@ import { splitChapters, releaseWeight } from './chapters.js';
 import { dayOfIso } from './timeline.js';
 export { combineHistories } from './collection.js';
 export { findPullRequests } from './groups.js';
+export { checkFeature, featureMatcher, featureSignals, branchOf, cutFeature, featureReport } from './feature.js';
 export { cutHistory, quarterOf, quartersOf, periodLabel, checkPeriod, periodReport } from './period.js';
 import { buildGroups } from './groups.js';
 

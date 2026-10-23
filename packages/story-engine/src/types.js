@@ -24,6 +24,7 @@
  * @property {string} sha
  * @property {string} date            ISO date or date-time; only YYYY-MM-DD is used.
  * @property {string} message         First line of the commit message.
+ * @property {string} [body]          The rest of the message, trimmed, at most 2,000 characters (git log mode).
  * @property {{ name: string|null, email: string|null, login: string|null, avatarUrl?: string|null }} author
  * @property {number|null} files      Number of files changed, or null when the source can't say.
  * @property {string[]|null} [paths]  Changed file paths when known (git log mode).

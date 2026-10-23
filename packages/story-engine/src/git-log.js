@@ -8,6 +8,7 @@
 export const GIT_LOG_FORMAT = '@@@%H%x1f%ad%x1f%an%x1f%ae%x1f%P%x1f%D%x1f%s%x1f%b%x1e';
 export const GIT_LOG_COMMAND = `git log --no-renames --name-only --date=short --format='${GIT_LOG_FORMAT}'`;
 
+const MAX_BODY = 2000;
 const tagsFromDecoration = (dec) => [...String(dec || '').matchAll(/tag: ([^,]+)/g)].map((m) => m[1].trim());
 
 const CLOSING_RE = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\b:?\s+(?:#(\d+)\b|([\w.-]+)\/([\w.-]+)#(\d+)\b|https?:\/\/github\.com\/([\w.-]+)\/([\w.-]+)\/issues\/(\d+)\b)/gi;
@@ -45,6 +46,9 @@ export function parseGitLog(text, meta = {}) {
   let body = null; // lines of the current commit's body until the %x1e marker
   const endBody = () => {
     cur.issues = closingIssues(cur.message + '\n' + body.join('\n'), repo);
+    // the body is kept (clipped) so a feature can be found in it
+    const text = body.join('\n').trim();
+    if (text) cur.body = text.length > MAX_BODY ? text.slice(0, MAX_BODY) : text;
     // a merge commit's body starts with its pull request's title
     if (cur.parents > 1) { const t = body.map((l) => l.trim()).find(Boolean); if (t) cur.mergeTitle = t; }
     body = null;
