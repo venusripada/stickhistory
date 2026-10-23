@@ -7,6 +7,7 @@
 //   #/c/collection/dev/name   the same, following one developer
 //   #/c/collection/p/id       a period's movie (a quarter or any dates); /dev/name follows one developer
 //   #/c/collection/p/id/report   that period's report
+//   #/c/collection/f/id[/report] a feature's movie and report (its commits in every story); /dev/name too
 //   a downloaded period file (window.__CW_SHARE__) plays its own movie; #/report, #/dev/name
 //   #/sample/opencode         the bundled sample (works without the server)
 //   ?embed=1                  movie only, autoplay, loops (for iframes)
@@ -235,7 +236,7 @@ function showView(v) {
 /** A period's Movie and Report tabs. movieHref is null when the period has too few commits for a movie. */
 function setTabs({ movieHref, reportHref, active }) {
   const nav = $('#periodTabs'), mv = $('#tabMovie'), rp = $('#tabReport');
-  if (movieHref) { mv.href = movieHref; mv.removeAttribute('aria-disabled'); } else { mv.removeAttribute('href'); mv.setAttribute('aria-disabled', 'true'); mv.title = 'Too few commits in this period for a movie'; }
+  if (movieHref) { mv.href = movieHref; mv.removeAttribute('aria-disabled'); } else { mv.removeAttribute('href'); mv.setAttribute('aria-disabled', 'true'); mv.title = 'Too few commits here for a movie'; }
   rp.href = reportHref;
   mv.toggleAttribute('aria-current', active === 'movie'); if (active === 'movie') mv.setAttribute('aria-current', 'page');
   rp.toggleAttribute('aria-current', active === 'report'); if (active === 'report') rp.setAttribute('aria-current', 'page');
@@ -279,7 +280,7 @@ if (!SHARE) subscribe({
   onLibrary: () => lib.refreshSoon(),
   onJob: (job) => {
     lib.onJob(job);
-    if (job.kind === 'period' && current && current.period && current.period.id === job.periodId && current.c === (job.collection && job.collection.slug)) {
+    if ((job.kind === 'period' || job.kind === 'feature') && current && current.period && current.period.kind === job.kind && current.period.id === (job.periodId || job.featureId) && current.c === (job.collection && job.collection.slug)) {
       if (job.state !== 'done') return;
       if (waiting) { waiting = null; route(); return; }
       if (job.changed && document.body.dataset.view === 'story') showNotice(`${current.period.label} was built again.`, { label: 'Reload it', run: () => route() });
@@ -348,21 +349,28 @@ async function openCollection(c, dev) {
   if (dev && !follow(dev)) showNotice(`There's no developer named "${dev}" in ${col.name} now; showing everyone.`);
 }
 
-/** A period's place in the library, or a message saying why it can't open. */
-async function findPeriod(c, id) {
+// periods and features open the same way: a movie tab and a report tab
+const KINDS = {
+  p: { kind: 'period', list: 'periods', share: api.periodShareUrl, episode: api.periodEpisode, report: api.periodReport },
+  f: { kind: 'feature', list: 'features', share: api.featureShareUrl, episode: api.featureEpisode, report: api.featureReport },
+};
+/** A period's or feature's place in the library, or a message saying why it can't open. */
+async function findPeriod(c, id, k = 'p') {
   await lib.refresh();
   const col = lib.collections.find((x) => x.slug === c);
   if (!col) return { error: serverUp === false ? '' : `There's no collection "${c}". It may have been renamed.` };
-  const p = (col.periods || []).find((x) => x.id === id);
-  if (!p) return { error: `There's no period ${id} in ${col.name}. It may have been deleted.` };
-  const enc = encodeURIComponent, base = `#/c/${enc(c)}/p/${enc(id)}`;
-  return { col, p, base, downloadHref: api.periodShareUrl(c, id) };
+  const K = KINDS[k];
+  const found = (col[K.list] || []).find((x) => x.id === id);
+  if (!found) return { error: `There's no ${K.kind} ${id} in ${col.name}. It may have been deleted.` };
+  const p = { ...found, kind: K.kind, label: found.label || found.name || id };
+  const enc = encodeURIComponent, base = `#/c/${enc(c)}/${k}/${enc(id)}`;
+  return { col, p, base, K, downloadHref: K.share(c, id) };
 }
 const isBusy = (p) => ['queued', 'building'].includes(p.status);
 
-async function openPeriod(c, id, dev) {
+async function openPeriod(c, id, dev, k = 'p') {
   showError(''); showNotice('');
-  const f = await findPeriod(c, id);
+  const f = await findPeriod(c, id, k);
   if (f.error != null) { showView('library'); showError(f.error); return; }
   const { col, p, base } = f;
   const meta = { link: `${base}${dev ? `/dev/${encodeURIComponent(dev)}` : ''}`, c, period: p, reportHref: `${base}/report`, downloadHref: f.downloadHref, crumbs: { collection: col.name, story: p.label } };
@@ -375,7 +383,7 @@ async function openPeriod(c, id, dev) {
     else showNotice(`${p.label} has too few commits for a movie.`, { label: 'Open its report', run: () => { location.hash = meta.reportHref; } });
     return;
   }
-  try { showEpisode(await api.periodEpisode(c, id), meta); }
+  try { showEpisode(await f.K.episode(c, id), meta); }
   catch (e) { showError(e.message); return; }
   setTabs(tabs);
   if (dev && !follow(dev)) showNotice(`There's no developer named "${dev}" in ${p.label}; showing everyone.`);
@@ -391,9 +399,9 @@ function showReport(rep, o) {
   window.scrollTo(0, 0);
 }
 
-async function openPeriodReport(c, id) {
+async function openPeriodReport(c, id, k = 'p') {
   showError(''); showNotice('');
-  const f = await findPeriod(c, id);
+  const f = await findPeriod(c, id, k);
   if (f.error != null) { showView('library'); showError(f.error); return; }
   const { p, base } = f;
   current = { link: `${base}/report`, c, period: p, crumbs: { collection: f.col.name, story: p.label } };
@@ -403,7 +411,7 @@ async function openPeriodReport(c, id) {
     return;
   }
   let rep;
-  try { rep = await api.periodReport(c, id); } catch (e) { showError(e.message); return; }
+  try { rep = await f.K.report(c, id); } catch (e) { showError(e.message); return; }
   showReport(rep, { movieHref: p.hasEpisode ? base : null, devHref: p.hasEpisode ? (name) => `${base}/dev/${encodeURIComponent(name)}` : null, downloadHref: f.downloadHref, homeHref: '#/' });
   setTabs({ movieHref: p.hasEpisode ? base : null, reportHref: `${base}/report`, active: 'report' });
 }
@@ -414,11 +422,12 @@ function routeShare() {
   const rep = SHARE.report;
   const reportOpts = { movieHref: SHARE.episode ? '#/' : null, devHref: SHARE.episode ? (name) => `#/dev/${encodeURIComponent(name)}` : null,
     note: `Made with Commit Wars on ${new Date(SHARE.madeAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}, from git history only.` };
-  current = { link: null, shared: true, period: { id: `${rep.from}_${rep.to}`, label: rep.label }, crumbs: { collection: rep.collection, story: rep.label } };
+  const shared = { id: rep.kind === 'feature' ? rep.name : `${rep.from}_${rep.to}`, label: rep.label, kind: rep.kind || 'period' };
+  current = { link: null, shared: true, period: shared, crumbs: { collection: rep.collection, story: rep.label } };
   const tabs = { movieHref: SHARE.episode ? '#/' : null, reportHref: '#/report' };
   if (h === '#/report' || !SHARE.episode) { showReport(rep, reportOpts); setTabs({ ...tabs, active: 'report' }); return; }
   const m = h.match(/^#\/dev\/(.+)$/);
-  const meta = { link: null, shared: true, period: { id: `${rep.from}_${rep.to}`, label: rep.label }, reportHref: '#/report', downloadHref: null, crumbs: { collection: rep.collection, story: rep.label } };
+  const meta = { link: null, shared: true, period: shared, reportHref: '#/report', downloadHref: null, crumbs: { collection: rep.collection, story: rep.label } };
   if (!player.episode) showEpisode(SHARE.episode, meta); else { current = meta; showView('story'); setCrumbs(meta.crumbs); }
   setTabs({ ...tabs, active: 'movie' });
   follow(m ? decodeURIComponent(m[1]) : null);
@@ -436,10 +445,10 @@ async function openSample(name) {
 function route() {
   if (SHARE) { routeShare(); return; }
   const h = location.hash || '';
-  let m = h.match(/^#\/c\/([^/]+)\/p\/([^/]+)\/report$/);
-  if (m) { openPeriodReport(decodeURIComponent(m[1]), decodeURIComponent(m[2])); return; }
-  m = h.match(/^#\/c\/([^/]+)\/p\/([^/]+)(?:\/dev\/(.+))?$/);
-  if (m) { openPeriod(decodeURIComponent(m[1]), decodeURIComponent(m[2]), m[3] ? decodeURIComponent(m[3]) : null); return; }
+  let m = h.match(/^#\/c\/([^/]+)\/([pf])\/([^/]+)\/report$/);
+  if (m) { openPeriodReport(decodeURIComponent(m[1]), decodeURIComponent(m[3]), m[2]); return; }
+  m = h.match(/^#\/c\/([^/]+)\/([pf])\/([^/]+)(?:\/dev\/(.+))?$/);
+  if (m) { openPeriod(decodeURIComponent(m[1]), decodeURIComponent(m[3]), m[4] ? decodeURIComponent(m[4]) : null, m[2]); return; }
   m = h.match(/^#\/s\/([^/]+)\/([^/]+)$/);
   if (m) { openStory(decodeURIComponent(m[1]), decodeURIComponent(m[2])); return; }
   m = h.match(/^#\/c\/([^/]+)(?:\/dev\/(.+))?$/);

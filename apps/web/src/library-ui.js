@@ -50,6 +50,7 @@ export function createLibraryUI({ root, select, onError, onServer, tools, onView
   }
   const jobs = new Map(); // storyId -> latest job
   const periodJobs = new Map(); // 'collectionId/periodId' -> latest job
+  const featureJobs = new Map(); // 'collectionId/featureId' -> latest job
   const devs = new Map(); // collection slug -> { builtAt, list } once its developers are loaded
   const open = new Map(); // panel open per card/collection key: 'rename' | 'delete'
   const fail = (e) => onError(e && e.message ? e.message : String(e));
@@ -130,6 +131,8 @@ export function createLibraryUI({ root, select, onError, onServer, tools, onView
     if (movie) sec.append(movie);
     const per = periodsPanel(col);
     if (per) sec.append(per);
+    const feat = featuresPanel(col);
+    if (feat) sec.append(feat);
     if (open.get(`d:${col.slug}`) && col.episode && col.episode.status === 'ready') sec.append(developersPanel(col));
     if (panel === 'delete') {
       sec.append(el('div', { class: 'confirm', role: 'group', 'aria-label': 'Confirm delete' },
@@ -212,6 +215,46 @@ export function createLibraryUI({ root, select, onError, onServer, tools, onView
             !busy && p.hasReport ? el('a', { class: 'btn small', href: api.periodShareUrl(col.slug, p.id), download: '', title: 'One .html file with the movie and the report. Anyone can open it in a browser.', text: 'Download' }) : null,
             canManage && !busy ? el('button', { class: 'btn small', type: 'button', text: 'Rebuild', onclick: () => act(() => api.rebuildPeriod(col.slug, p.id)) }) : null,
             canManage && !busy ? el('button', { class: 'btn small', type: 'button', text: 'Delete', 'aria-label': `Delete ${p.label || p.id}`, onclick: () => act(() => api.deletePeriod(col.slug, p.id)) }) : null));
+      })));
+    }
+    return box;
+  }
+
+  /** Features: type a name ("liveserve") to get every commit, in every story, that names it. */
+  function featuresPanel(col) {
+    const list = col.features || [];
+    const canMake = canManage && col.stories.some((s) => s.hasHistory);
+    if (!list.length && !canMake) return null;
+    const enc = encodeURIComponent;
+    const box = el('div', { class: 'features', role: 'region', 'aria-label': `Features of ${col.name}` }, el('h4', { text: 'Features' }));
+    if (canMake) {
+      const name = el('input', { type: 'text', 'aria-label': 'Feature name', placeholder: 'Feature name, like liveserve', maxlength: '40', autocomplete: 'off' });
+      const find = () => {
+        if (!name.value.trim()) { onError('Type the feature\'s name, as it shows up in commit messages, branches or file paths.'); name.focus(); return; }
+        act(() => api.createFeature(col.slug, name.value));
+      };
+      name.addEventListener('keydown', (e) => { if (e.key === 'Enter') find(); });
+      box.append(el('div', { class: 'period-form' }, name,
+        el('button', { class: 'btn small', type: 'button', text: 'Find', onclick: find }),
+        el('span', { class: 'st-status', text: 'Finds the name in commit messages, scopes, branches and file paths, across all stories.' })));
+    }
+    if (list.length) {
+      box.append(el('ul', { class: 'period-list' }, list.map((f) => {
+        const base = `#/c/${enc(col.slug)}/f/${enc(f.id)}`;
+        const job = featureJobs.get(`${col.id}/${f.id}`);
+        const busy = (job && (job.state === 'queued' || job.state === 'running')) || ['queued', 'building'].includes(f.status);
+        let status;
+        if (busy) status = el('span', { class: 'st-status busy', role: 'status', text: (job && job.state === 'running' && job.message) || 'Waiting to build…' });
+        else if (f.status === 'error') status = el('span', { class: 'st-status err', text: f.error || 'This feature didn\'t build.' });
+        else status = el('span', { class: 'st-status', text: `${fmtN(f.commits || 0)} commits · ${fmtN(f.people || 0)} developers${f.from ? ` · ${fmtMonth(f.from)} – ${fmtMonth(f.to)}` : ''}${f.status === 'small' ? ' · too few for a movie' : ''} · built ${ago(f.builtAt)}` });
+        return el('li', { 'data-feature': f.id },
+          el('span', { class: 'label', text: f.label || f.name || f.id }), status,
+          el('span', { class: 'actions' },
+            !busy && f.hasEpisode ? el('a', { class: 'btn small primary', href: base, text: 'Play' }) : null,
+            !busy && f.hasReport ? el('a', { class: 'btn small', href: `${base}/report`, text: 'Report' }) : null,
+            !busy && f.hasReport ? el('a', { class: 'btn small', href: api.featureShareUrl(col.slug, f.id), download: '', title: 'One .html file with the movie and the report. Anyone can open it in a browser.', text: 'Download' }) : null,
+            canManage && !busy ? el('button', { class: 'btn small', type: 'button', text: 'Rebuild', onclick: () => act(() => api.rebuildFeature(col.slug, f.id)) }) : null,
+            canManage && !busy ? el('button', { class: 'btn small', type: 'button', text: 'Delete', 'aria-label': `Delete ${f.label || f.id}`, onclick: () => act(() => api.deleteFeature(col.slug, f.id)) }) : null));
       })));
     }
     return box;
@@ -304,6 +347,7 @@ export function createLibraryUI({ root, select, onError, onServer, tools, onView
     onJob(job) {
       if (job.kind === 'collection') { if (job.state === 'done' || job.state === 'error') this.refreshSoon(); return; }
       if (job.kind === 'period') { periodJobs.set(`${job.collectionId}/${job.periodId}`, job); this.refreshSoon(); return; }
+      if (job.kind === 'feature') { featureJobs.set(`${job.collectionId}/${job.featureId}`, job); this.refreshSoon(); return; }
       jobs.set(job.storyId, job);
       const card = root.querySelector(`[data-story="${CSS.escape(job.storyId)}"]`);
       const col = card && collections.find((c) => c.slug === card.closest('[data-collection]').dataset.collection);

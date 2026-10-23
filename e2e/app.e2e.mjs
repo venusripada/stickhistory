@@ -11,6 +11,7 @@ import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, extname, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { networkInterfaces } from 'node:os';
+import { execFileSync } from 'node:child_process';
 import { chromium } from 'playwright';
 import { buildEpisode, parseGitLog, activeAt, isoOfDay, commitRange, TL } from '../packages/story-engine/src/index.js';
 import { startServer } from '../apps/server/src/server.js';
@@ -477,6 +478,85 @@ try {
     check('the report fits a phone without sideways scrolling', sw <= 390, `scrollWidth ${sw}`);
     await shared.screenshot({ path: join(OUT, '20-report-phone.png'), fullPage: true });
     check('no page errors with periods', errors.length === 0 && sharedErrors.length === 0, [...errors, ...sharedErrors].join(' | '));
+    await ctx.close();
+  }
+  // 2h. A feature of a collection: every commit, in every story, that names it.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true });
+    const page = await ctx.newPage();
+    const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
+    const post = (p, body) => fetch(`${app.url}/api${p}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json());
+    // made-up commits that name "rocketpad" by message body, scope, path and merged branch (10 in all), and one decoy
+    const commit = (dir, subject, { body = '', file = 'src/x.txt', day }) => {
+      mkdirSync(dirname(join(dir, file)), { recursive: true });
+      writeFileSync(join(dir, file), `${subject}\n`);
+      const env = { ...process.env, GIT_AUTHOR_DATE: `${day}T12:00:00Z`, GIT_COMMITTER_DATE: `${day}T12:00:00Z` };
+      execFileSync('git', ['-C', dir, 'add', '-A']);
+      execFileSync('git', ['-C', dir, '-c', 'user.name=Cy Test', '-c', 'user.email=cy@example.test', 'commit', '-q', '-m', subject, ...(body ? ['-m', body] : [])], { env });
+    };
+    const one = makeRepo({ n: 12, start: '2024-03-01' }), two = makeRepo({ n: 12, start: '2024-03-01' }); repos.push(one, two);
+    mergePullRequest(one, { name: 'rocketpad-retries', n: 6, pr: 9, title: 'Retries', day: '2024-03-20' });
+    commit(one, 'feat(rocketpad): keys', { day: '2024-03-22' });
+    commit(one, 'chore: move files', { file: 'services/rocketpad/a.txt', day: '2024-03-23' });
+    commit(one, 'feat: rocketpadder decoy', { day: '2024-03-24' });
+    commit(two, 'fix: cache misses', { body: 'Seen in RocketPad.', day: '2024-03-25' });
+    await post('/collections', { name: 'Launch' });
+    await post('/collections/launch/stories', { url: one, name: 'Alpha' });
+    await post('/collections/launch/stories', { url: two, name: 'Beta' });
+    for (let k = 0; k < 300; k++) {
+      const q = (await (await fetch(`${app.url}/api/library`)).json()).collections.find((c) => c.slug === 'launch');
+      if (q && q.episode && q.episode.status === 'ready' && q.episode.repos === 2) break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    await page.goto(BASE + '#/');
+    const box = '[data-collection="launch"] .features';
+    await page.waitForSelector(`${box} input`);
+    await page.fill(`${box} input`, 'RocketPad');
+    await page.press(`${box} input`, 'Enter');
+    const row = `${box} li[data-feature="rocketpad"]`;
+    await page.waitForSelector(`${row} a:has-text("Report")`, { timeout: 30000 });
+    const rowText = await page.textContent(row);
+    check('a feature is found across the stories', /10 commits/.test(rowText) && (await page.locator(`${row} a:has-text("Play")`).count()) === 1, rowText);
+    await page.locator(box).screenshot({ path: join(OUT, '22-features.png') });
+
+    await page.click(`${row} a:has-text("Report")`);
+    await page.waitForSelector('#reportView:not([hidden]) [aria-labelledby="repChanges"]');
+    const head = await page.textContent('#repH');
+    const changes = '#reportView [aria-labelledby="repChanges"] .rep-table tbody tr';
+    const titles = await page.locator(`${changes} td.wrap`).allTextContents();
+    check('the feature report lists every change that names it, and not the decoy', head === 'Launch · RocketPad' && titles.length === 10 && !titles.some((t) => /decoy/.test(t)), `${head}; ${titles.length} changes`);
+    const found = await page.locator('#reportView [aria-labelledby="repChanges"] .sig').allTextContents();
+    check('each change says how it was found', ['message', 'scope', 'path', 'branch', 'merged in'].every((s) => found.includes(s)), [...new Set(found)].join(', '));
+    check('the feature has Movie and Report tabs', await page.isVisible('#periodTabs') && (await page.getAttribute('#tabReport', 'aria-current')) === 'page');
+    await page.screenshot({ path: join(OUT, '23-feature-report.png'), fullPage: true });
+    await page.click('#reportView [aria-labelledby="repChanges"] .chip:has-text("Beta")');
+    const beta = await page.locator(changes).count();
+    check('the changes can be narrowed to one story', beta === 1 && (await page.textContent(`${changes} td.wrap`)) === 'cache misses', `${beta} rows`);
+
+    await page.click('#tabMovie');
+    await page.waitForFunction(() => document.querySelector('#ovDate').textContent.trim().length > 4);
+    const ep = await page.evaluate(() => window.__cwPlayer.episode);
+    check('a feature plays as its own movie', (await page.textContent('#crumbStory')) === 'RocketPad' && ep.summary.commits === 10 && ep.timeline.repos.length === 2, `${ep.summary.commits} commits`);
+
+    await page.goto(BASE + '#/');
+    await page.waitForSelector(`${row} a:has-text("Download")`);
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click(`${row} a:has-text("Download")`)]);
+    check('Download saves the feature as one .html file', dl.suggestedFilename() === 'Launch-RocketPad.commit-wars.html', dl.suggestedFilename());
+    const file = join(OUT, 'feature-share.html');
+    await dl.saveAs(file);
+    const shared = await ctx.newPage();
+    const sharedErrors = []; shared.on('pageerror', (e) => sharedErrors.push(String(e)));
+    await shared.goto(pathToFileURL(file).href + '#/report');
+    await shared.waitForSelector('#reportView:not([hidden]) [aria-labelledby="repChanges"]');
+    check('the downloaded feature file has its changes', (await shared.locator(changes).count()) === 10);
+    await shared.setViewportSize({ width: 390, height: 844 });
+    await shared.waitForTimeout(200);
+    const sw = await shared.evaluate(() => document.documentElement.scrollWidth);
+    check('the feature report fits a phone without sideways scrolling', sw <= 390, `scrollWidth ${sw}`);
+    await shared.screenshot({ path: join(OUT, '24-feature-report-phone.png'), fullPage: true });
+    await shared.emulateMedia({ colorScheme: 'dark' });
+    await shared.screenshot({ path: join(OUT, '25-feature-report-phone-dark.png'), fullPage: true });
+    check('no page errors with features', errors.length === 0 && sharedErrors.length === 0, [...errors, ...sharedErrors].join(' | '));
     await ctx.close();
   }
   // 2g. Quiet fight sounds, and a mute button that is remembered.

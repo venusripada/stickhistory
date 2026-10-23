@@ -332,8 +332,8 @@ body.embed .movie { height: 100vh; border: 0; border-radius: 0; box-shadow: none
 body.embed .screen { aspect-ratio: auto; flex: 1 1 auto; }
 
 /* periods (a quarter or any dates) in the library */
-.periods { display: grid; gap: 8px; padding: 8px 10px; border: 1.5px dashed var(--rule); border-radius: 8px; }
-.periods h4 { margin: 0; font-family: var(--f-mono); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.periods, .features { display: grid; gap: 8px; padding: 8px 10px; border: 1.5px dashed var(--rule); border-radius: 8px; }
+.periods h4, .features h4 { margin: 0; font-family: var(--f-mono); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
 .period-form { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .period-form select, .period-form input { font: inherit; font-size: 0.85rem; padding: 4px 8px; border: 2px solid var(--ink); border-radius: 6px; background: var(--paper); color: var(--ink); min-width: 0; }
 .period-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -354,6 +354,7 @@ body.embed .screen { aspect-ratio: auto; flex: 1 1 auto; }
 .rep-table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
 .rep-table th, .rep-table td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; white-space: nowrap; }
 .rep-table tbody th { font-weight: 700; }
+.rep-table .wrap { white-space: normal; min-width: 14em; overflow-wrap: anywhere; }
 .rep-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rep-table thead th { white-space: nowrap; }
 .rep-table thead button { font: inherit; font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); background: none; border: 0; padding: 0; cursor: pointer; }
@@ -364,6 +365,10 @@ body.embed .screen { aspect-ratio: auto; flex: 1 1 auto; }
 .rep-list li { overflow-wrap: anywhere; }
 .rep-list .meta { display: block; color: var(--muted); font-size: 0.82rem; }
 .rep-list .tag { display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 999px; background: var(--orb); color: #1c2433; font-family: var(--f-mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.rep-changes { min-width: 0; }
+.sig-list { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.sig { padding: 0 6px; border-radius: 999px; border: 1px solid var(--rule); font-family: var(--f-mono); font-size: 0.68rem; letter-spacing: 0.03em; color: var(--muted); }
+.rep-scroll > .btn { margin-top: 6px; }
 .rep-more summary { cursor: pointer; font-weight: 700; margin-bottom: 6px; }
 
 /* a downloaded period file: no library to go back to */

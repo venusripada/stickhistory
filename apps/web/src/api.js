@@ -52,6 +52,13 @@ export const api = {
   periodReport: (c, id) => fetchEpisode(`/collections/${enc(c)}/periods/${enc(id)}/report`),
   /** The one-file download (movie and report) for sharing. */
   periodShareUrl: (c, id) => `/api/collections/${enc(c)}/periods/${enc(id)}/share`,
+  /** Features: a collection's movie and report of the commits that name one feature. */
+  createFeature: (c, name) => call('POST', `/collections/${enc(c)}/features`, { name }),
+  rebuildFeature: (c, id) => call('POST', `/collections/${enc(c)}/features/${enc(id)}/rebuild`, {}),
+  deleteFeature: (c, id) => call('DELETE', `/collections/${enc(c)}/features/${enc(id)}`),
+  featureEpisode: (c, id) => fetchEpisode(`/collections/${enc(c)}/features/${enc(id)}/episode`),
+  featureReport: (c, id) => fetchEpisode(`/collections/${enc(c)}/features/${enc(id)}/report`),
+  featureShareUrl: (c, id) => `/api/collections/${enc(c)}/features/${enc(id)}/share`,
   /** The built episode, reusing the last copy when the server says it hasn't changed. */
   episode: (c, s) => fetchEpisode(story(c, s) + '/episode'),
 };
