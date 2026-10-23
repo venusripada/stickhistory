@@ -3,6 +3,7 @@
 //   <root>/<collection>/collection.json, collection-episode.json (all its stories as one movie)
 //   <root>/<collection>/<story>/story.json, repo.git/, history.json, episode.json
 //   <root>/<collection>/_periods/<from>_<to>/period.json, episode.json, report.json (a quarter or any dates)
+//   <root>/<collection>/_features/<id>/feature.json, episode.json, report.json (one feature across the stories)
 //
 // Every read walks the tree, so folders copied, renamed or removed by hand
 // show up on the next request. JSON writes go to a temp file and are renamed
@@ -35,6 +36,7 @@ const isDir = (p) => { try { return statSync(p).isDirectory(); } catch { return 
 // names starting with _ are the library's own folders (_periods); slugs never start with one
 const subdirs = (p) => (isDir(p) ? readdirSync(p).filter((n) => !n.startsWith('.') && !n.startsWith('_') && isDir(join(p, n))).sort() : []);
 const PERIOD_ID = /^\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$/;
+const FEATURE_ID = /^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u;
 const checkName = (name, what) => {
   const n = String(name ?? '').trim();
   if (!n) throw new LibraryError(400, `Give the ${what} a name.`);
@@ -80,6 +82,7 @@ export function createLibrary(root) {
       episode: j.episode || null, people: { merge: (j.people && j.people.merge) || [], separate: (j.people && j.people.separate) || [] },
       stories: [...order, ...rest].map((s) => storySummary(c, s)),
       periods: periodsOf(c),
+      features: featuresOf(c),
     };
   }
   /** A collection's periods, newest start first. */
@@ -91,6 +94,16 @@ export function createLibrary(root) {
         hasEpisode: existsSync(join(dir, id, 'episode.json')), hasReport: existsSync(join(dir, id, 'report.json')) }))
       .sort((a, b) => (a.id < b.id ? 1 : -1));
   }
+  /** A collection's features, by name. */
+  function featuresOf(c) {
+    const dir = join(root, c, '_features');
+    if (!isDir(dir)) return [];
+    return readdirSync(dir).filter((n) => FEATURE_ID.test(n) && isDir(join(dir, n)))
+      .map((id) => ({ ...(readJson(join(dir, id, 'feature.json')) || { id, name: id, label: id, status: 'error', error: 'This feature\'s feature.json is missing. Delete it and make it again.' }), id,
+        hasEpisode: existsSync(join(dir, id, 'episode.json')), hasReport: existsSync(join(dir, id, 'report.json')) }))
+      .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  }
+  const featurePath = (c, id) => { if (!FEATURE_ID.test(String(id)) || String(id).length > 60) throw new LibraryError(404, 'That feature doesn\'t exist.'); return join(needCollection(c), '_features', id); };
   const periodPath = (c, id) => { if (!PERIOD_ID.test(String(id))) throw new LibraryError(404, 'That period doesn\'t exist.'); return join(needCollection(c), '_periods', id); };
 
   const lib = {
@@ -196,6 +209,18 @@ export function createLibrary(root) {
     readPeriodJson(c, id) { return readJson(join(periodPath(c, id), 'period.json')); },
     writePeriodJson(c, id, value) { writeJson(join(lib.periodDir(c, id, { create: true }), 'period.json'), value); },
     deletePeriod(c, id) { rmSync(lib.periodDir(c, id), { recursive: true, force: true }); },
+
+    features(c) { needCollection(c); return featuresOf(c); },
+    /** A feature's folder (made when missing). */
+    featureDir(c, id, { create = false } = {}) {
+      const d = featurePath(c, id);
+      if (create) mkdirSync(d, { recursive: true });
+      else if (!isDir(d)) throw new LibraryError(404, `There's no feature ${id} in "${c}". It may have been deleted; reload the library.`);
+      return d;
+    },
+    readFeatureJson(c, id) { return readJson(join(featurePath(c, id), 'feature.json')); },
+    writeFeatureJson(c, id, value) { writeJson(join(lib.featureDir(c, id, { create: true }), 'feature.json'), value); },
+    deleteFeature(c, id) { rmSync(lib.featureDir(c, id), { recursive: true, force: true }); },
   };
   return lib;
 }
